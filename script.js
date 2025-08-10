@@ -15,7 +15,6 @@ class MiniscriptCompiler {
             this.loadSavedExpressions();
             this.loadSavedPolicies();
             this.loadKeyVariables();
-            this.setupSplitter();
         } catch (error) {
             console.error('Failed to initialize WASM module:', error);
             this.showError('Failed to load compiler module. Please refresh the page.');
@@ -136,13 +135,16 @@ class MiniscriptCompiler {
         const expression = document.getElementById('expression-input').value.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
         
+        // Clear previous messages
+        this.clearMiniscriptMessages();
+        
         if (!expression) {
-            this.showError('Please enter a miniscript expression.');
+            this.showMiniscriptError('Please enter a miniscript expression.');
             return;
         }
 
         if (!this.wasm) {
-            this.showError('Compiler not ready. Please wait and try again.');
+            this.showMiniscriptError('Compiler not ready, please wait and try again.');
             return;
         }
 
@@ -163,14 +165,21 @@ class MiniscriptCompiler {
             compileBtn.textContent = originalText;
             compileBtn.disabled = false;
 
-            // Display results
-            this.displayResults(result);
+            if (result.success) {
+                this.showMiniscriptSuccess('Miniscript compiled successfully!');
+                // Display results
+                this.displayResults(result);
+            } else {
+                this.showMiniscriptError(result.error);
+                // Clear results
+                document.getElementById('results').innerHTML = '';
+            }
             
         } catch (error) {
             console.error('Compilation error:', error);
             compileBtn.textContent = originalText;
             compileBtn.disabled = false;
-            this.showError(`Compilation failed: ${error.message}`);
+            this.showMiniscriptError(`Compilation failed: ${error.message}`);
         }
     }
 
@@ -187,7 +196,7 @@ class MiniscriptCompiler {
         }
 
         if (!this.wasm) {
-            this.showPolicyError('Compiler not ready. Please wait and try again.');
+            this.showPolicyError('Compiler not ready, please wait and try again.');
             return;
         }
 
@@ -241,7 +250,7 @@ class MiniscriptCompiler {
         const policyErrorsDiv = document.getElementById('policy-errors');
         policyErrorsDiv.innerHTML = `
             <div class="result-box error" style="margin: 0;">
-                <h4>❌ Policy Error</h4>
+                <h4>❌ Policy error</h4>
                 <div style="margin-top: 10px;">${message}</div>
             </div>
         `;
@@ -400,61 +409,33 @@ class MiniscriptCompiler {
         }
     }
 
-    setupSplitter() {
-        const splitter = document.querySelector('.splitter');
-        const sidebar = document.querySelector('.sidebar');
-        let isResizing = false;
-
-        splitter.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-
-            const newWidth = Math.min(Math.max(250, e.clientX), window.innerWidth * 0.6);
-            sidebar.style.width = newWidth + 'px';
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-            }
-        });
-    }
 
     displayResults(result) {
         const resultsDiv = document.getElementById('results');
         resultsDiv.innerHTML = '';
 
         if (!result.success) {
-            this.showError(result.error);
             return;
         }
 
-        // Success message
-        const successDiv = document.createElement('div');
-        successDiv.className = 'result-box success';
-        successDiv.innerHTML = `
-            <h4>✅ Compilation Successful</h4>
+        // Compilation info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'result-box info';
+        infoDiv.innerHTML = `
+            <h4>📊 Compilation info</h4>
             <div style="margin-top: 10px;">
                 <strong>Miniscript Type:</strong> ${result.miniscript_type}<br>
                 <strong>Script Size:</strong> ${result.script_size} bytes
             </div>
         `;
-        resultsDiv.appendChild(successDiv);
+        resultsDiv.appendChild(infoDiv);
 
         // Show compiled miniscript (for policy compilation)
         if (result.compiled_miniscript) {
             const miniscriptDiv = document.createElement('div');
             miniscriptDiv.className = 'result-box info';
             miniscriptDiv.innerHTML = `
-                <h4>🔄 Compiled Miniscript</h4>
+                <h4>🔄 Compiled miniscript</h4>
                 <textarea readonly style="width: 100%; min-height: 60px; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.compiled_miniscript}</textarea>
             `;
             resultsDiv.appendChild(miniscriptDiv);
@@ -465,7 +446,7 @@ class MiniscriptCompiler {
             const scriptDiv = document.createElement('div');
             scriptDiv.className = 'result-box info';
             scriptDiv.innerHTML = `
-                <h4>📜 Generated Script (Hex)</h4>
+                <h4>📜 Generated script (hex)</h4>
                 <textarea readonly style="width: 100%; min-height: 60px; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.script}</textarea>
             `;
             resultsDiv.appendChild(scriptDiv);
@@ -482,7 +463,7 @@ class MiniscriptCompiler {
                 
             scriptAsmDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="margin: 0;">⚡ Bitcoin Script (ASM)</h4>
+                    <h4 style="margin: 0;">⚡ Bitcoin script (ASM)</h4>
                     <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; font-weight: normal;">
                         <input type="checkbox" id="hide-pushbytes" ${document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 'checked' : ''} style="margin: 0;">
                         Hide pushbytes
@@ -506,7 +487,7 @@ class MiniscriptCompiler {
             const addressDiv = document.createElement('div');
             addressDiv.className = 'result-box info';
             addressDiv.innerHTML = `
-                <h4>🏠 Generated Address</h4>
+                <h4>🏠 Generated address</h4>
                 <div style="word-break: break-all; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
                     ${result.address}
                 </div>
@@ -535,15 +516,45 @@ class MiniscriptCompiler {
         `;
     }
 
+    showMiniscriptError(message) {
+        const messagesDiv = document.getElementById('miniscript-messages');
+        messagesDiv.innerHTML = `
+            <div class="result-box error" style="margin: 0;">
+                <h4>❌ Miniscript error</h4>
+                <div style="margin-top: 10px;">${message}</div>
+            </div>
+        `;
+    }
+
+    showMiniscriptSuccess(message) {
+        const messagesDiv = document.getElementById('miniscript-messages');
+        messagesDiv.innerHTML = `
+            <div class="result-box success" style="margin: 0;">
+                <h4>✅ Success</h4>
+                <div style="margin-top: 10px;">${message}</div>
+            </div>
+        `;
+        
+        // Auto-remove success message after 3 seconds
+        setTimeout(() => {
+            messagesDiv.innerHTML = '';
+        }, 3000);
+    }
+
+    clearMiniscriptMessages() {
+        document.getElementById('miniscript-messages').innerHTML = '';
+    }
+
     clearExpression() {
         document.getElementById('expression-input').value = '';
         document.getElementById('results').innerHTML = '';
+        this.clearMiniscriptMessages();
     }
 
     showSaveModal() {
         const expression = document.getElementById('expression-input').value.trim();
         if (!expression) {
-            this.showError('Please enter an expression to save.');
+            this.showMiniscriptError('Please enter an expression to save.');
             return;
         }
         
@@ -674,8 +685,9 @@ class MiniscriptCompiler {
             // Set context to segwit for saved expressions (or use saved context if available)
             const context = savedExpr.context || 'segwit';
             document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
-            // Clear previous results
+            // Clear previous results and messages
             document.getElementById('results').innerHTML = '';
+            this.clearMiniscriptMessages();
         }
     }
 
@@ -908,6 +920,7 @@ window.generateKey = function() {
 window.loadExample = function(example) {
     document.getElementById('expression-input').value = example;
     document.getElementById('results').innerHTML = '';
+    window.compiler.clearMiniscriptMessages();
     // Set context to segwit for all examples
     document.querySelector('input[name="context"][value="segwit"]').checked = true;
 };

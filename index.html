@@ -51,37 +51,13 @@
             min-height: 100vh;
             color: var(--text-color);
             box-sizing: border-box;
-            display: flex;
-        }
-
-        .sidebar {
-            width: 350px;
-            background: var(--container-bg);
-            padding: 20px;
-            max-height: 100vh;
-            overflow-y: auto;
-            position: relative;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin: 0px 20px 20px 20px;
-        }
-
-        .splitter {
-            width: 4px;
-            background: var(--border-color);
-            cursor: col-resize;
-            position: relative;
-            transition: background-color 0.2s;
-        }
-
-        .splitter:hover {
-            background: var(--border-focus);
         }
 
         .main-content {
-            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
-            min-width: 0;
         }
         
         .container {
@@ -304,7 +280,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 8px 12px;
-            background: var(--info-bg);
+            background: var(--container-bg);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             margin-bottom: 8px;
@@ -335,17 +311,13 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: var(--info-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
+            margin-bottom: 15px;
         }
 
         .add-key-form input {
-            padding: 15px;
+            padding: 10px;
             border: 2px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 6px;
             background: var(--container-bg);
             color: var(--text-color);
             font-family: 'Consolas', 'Monaco', monospace;
@@ -359,38 +331,10 @@
             border-color: var(--border-focus);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-
-        .sidebar-section {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .sidebar-section:first-child {
-            margin-top: 165px;
-        }
-
-        .sidebar-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
         
         @media (max-width: 768px) {
-            body {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                max-height: 400px;
-            }
-
-            .splitter {
-                display: none;
-            }
-
             .main-content {
-                max-width: 100%;
+                padding: 15px;
             }
 
             .container {
@@ -422,54 +366,23 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-section">
-            <h3 style="margin-top: 0; margin-bottom: 8px; color: var(--text-secondary); font-size: 16px; font-weight: 600;">Key variables (use public keys only!)</h3>
-            
-            <div class="add-key-form">
-                <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">
-                <input type="text" id="key-value-input" placeholder="Key value (any format)">
-                <div style="display: flex; gap: 10px;">
-                    <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">➕ Add Key</button>
-                    <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">🎲 Generate</button>
-                </div>
-            </div>
-            
-            <div id="key-variables-list">
-                <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No key variables defined.</p>
-            </div>
-        </div>
-
-        <div class="sidebar-section">
-            <h3 style="color: var(--text-secondary); margin-bottom: 8px; font-size: 16px; font-weight: 600;">Saved Policies</h3>
-            <div id="policies-list"></div>
-        </div>
-
-        <div class="sidebar-section">
-            <h3 style="color: var(--text-secondary); margin-bottom: 8px; font-size: 16px; font-weight: 600;">Saved Expressions</h3>
-            <div id="expressions-list"></div>
-        </div>
-    </div>
-
-    <div class="splitter"></div>
-
     <div class="main-content">
         <div class="container">
-            <h1>🔐 Miniscript Compiler</h1>
+            <h1>🔐 Miniscript compiler</h1>
         
         <div class="input-section">
-            <label for="policy-input">Policy Expression (Optional):</label>
+            <label for="policy-input">Policy expression (optional):</label>
             <textarea 
                 id="policy-input" 
                 placeholder="Enter your policy expression here (will be compiled to miniscript)...&#10;&#10;Examples:&#10;• pk(03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd)&#10;• or(pk(Alice),and(pk(Bob),older(144)))&#10;• and(pk(Alice),or(pk(Bob),pk(Charlie)))&#10;• thresh(2,pk(Alice),pk(Bob),pk(Charlie))"
             ></textarea>
             
             <div class="examples-section" style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick Policy Examples:</h4>
+                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick policy examples:</h4>
                 <div class="button-group" style="align-items: flex-start;">
-                    <button onclick="loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single Key</button>
-                    <button onclick="loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR Keys</button>
-                    <button onclick="loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND Keys</button>
+                    <button onclick="loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
+                    <button onclick="loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
+                    <button onclick="loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
                     <button onclick="loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
                     <button onclick="loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
                 </div>
@@ -485,33 +398,33 @@
         <div id="policy-errors" style="margin-bottom: 20px;"></div>
         
         <div class="input-section">
-            <label for="expression-input">Miniscript Expression:</label>
+            <label for="expression-input">Miniscript expression:</label>
             <textarea 
                 id="expression-input" 
                 placeholder="Enter your miniscript expression here...&#10;&#10;Examples:&#10;• pk(03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd)&#10;• and_v(v:pk(key1),pk(key2))&#10;• or_b(pk(key1),s:pk(key2))&#10;• and_v(v:older(144),pk(key1))"
             ></textarea>
             
             <div class="examples-section" style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick Examples:</h4>
+                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick examples:</h4>
                 <div class="button-group" style="align-items: flex-start;">
-                    <button onclick="loadExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single Key</button>
+                    <button onclick="loadExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
                     <button onclick="loadExample('and_v(v:pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-2 AND</button>
-                    <button onclick="loadExample('or_b(pk(Alice),s:pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR Keys</button>
+                    <button onclick="loadExample('or_b(pk(Alice),s:pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
                     <button onclick="loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
                     <button onclick="loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
                 </div>
             </div>
             
             <div class="context-section" style="margin-top: 20px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Script Context:</label>
+                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Script context:</label>
                 <div class="radio-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                         <input type="radio" name="context" value="legacy" style="margin: 0;">
-                        <span>Legacy (P2SH)</span>
+                        <span>Legacy (p2SH)</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                         <input type="radio" name="context" value="segwit" checked style="margin: 0;">
-                        <span>Segwit v0 (P2WSH)</span>
+                        <span>Segwit v0 (p2WSH)</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                         <input type="radio" name="context" value="taproot" style="margin: 0;">
@@ -527,10 +440,53 @@
             <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
         </div>
         
+        <div id="miniscript-messages" style="margin-bottom: 20px;"></div>
+        
+        <div class="results-section" id="results" style="margin-bottom: 20px;">
+        </div>
+        
         <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📘 Policy Reference</summary>
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">🔑 Key variables</summary>
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <h4 style="color: var(--text-secondary);">Basic Functions:</h4>
+                <p style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted);">Define key variables to use names like "Alice" and "Bob". Use public keys only!</p>
+                
+                <div class="add-key-form">
+                    <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">
+                    <input type="text" id="key-value-input" placeholder="Key value (any format)">
+                    <div style="display: flex; gap: 10px;">
+                        <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">➕ Add key</button>
+                        <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">🎲 Generate</button>
+                    </div>
+                </div>
+                
+                <div id="key-variables-list" style="margin-top: 15px;">
+                    <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No key variables defined.</p>
+                </div>
+            </div>
+        </details>
+
+        <details style="margin-bottom: 20px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">💾 Saved policies</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
+                <div id="policies-list">
+                    <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved policies yet.</p>
+                </div>
+            </div>
+        </details>
+
+        <details style="margin-bottom: 20px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📝 Saved expressions</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
+                <div id="expressions-list">
+                    <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved expressions yet.</p>
+                </div>
+            </div>
+        </details>
+        
+        <details style="margin-bottom: 20px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📘 Policy reference</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
+                <h4 style="color: var(--text-secondary);">Basic functions:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - A single public key that must provide a signature</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pkh(key)</code> - A key hash that must be revealed and signed (pay-to-pubkey-hash)</li>
@@ -542,14 +498,14 @@
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - A Bitcoin hash160 preimage that must be provided</li>
                 </ul>
 
-                <h4 style="color: var(--text-secondary);">Logical Operators:</h4>
+                <h4 style="color: var(--text-secondary);">Logical operators:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and(X,Y)</code> - Both conditions X and Y must be satisfied simultaneously</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or(X,Y)</code> - Either condition X or Y must be satisfied (or both)</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X,Y,Z,...)</code> - At least k out of the listed conditions must be satisfied</li>
                 </ul>
 
-                <h4 style="color: var(--text-secondary);">Special Functions:</h4>
+                <h4 style="color: var(--text-secondary);">Special functions:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi(k,key1,key2,...)</code> - Traditional k-of-n multisignature with the listed public keys</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi_a(k,key1,key2,...)</code> - Modern k-of-n multisignature using CHECKSIGADD opcodes</li>
@@ -567,9 +523,9 @@
         </details>
 
         <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📚 Miniscript Reference</summary>
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📚 Miniscript reference</summary>
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <h4 style="color: var(--text-secondary);">Basic Fragments:</h4>
+                <h4 style="color: var(--text-secondary);">Basic fragments:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - Requires a signature from the specified public key</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pkh(key)</code> - Requires revealing and signing with a key that hashes to the given hash160</li>
@@ -581,14 +537,14 @@
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - Requires a preimage that produces the given hash160 (RIPEMD160 of SHA256)</li>
                 </ul>
 
-                <h4 style="color: var(--text-secondary);">AND Combinators:</h4>
+                <h4 style="color: var(--text-secondary);">AND combinators:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_v(X,Y)</code> - Both X and Y must be satisfied, using VERIFY to check X then evaluating Y</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_b(X,Y)</code> - Both X and Y must be satisfied, using BOOLAND to combine their boolean results</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_n(X,Y)</code> - Both X and Y must be satisfied, using NOTIF to conditionally execute Y based on X</li>
                 </ul>
 
-                <h4 style="color: var(--text-secondary);">OR Combinators:</h4>
+                <h4 style="color: var(--text-secondary);">OR combinators:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_b(X,Y)</code> - Either X or Y must be satisfied, using BOOLOR to combine their boolean results</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_c(X,Y)</code> - Either X or Y must be satisfied, using CHECKSIG pattern for efficient evaluation</li>
@@ -619,7 +575,7 @@
                 
                 <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
                     <strong>Note:</strong> Public keys must be 33-byte compressed hex strings (66 characters).
-                    The compiler supports Legacy (P2SH), Segwit v0 (P2WSH), and Taproot contexts.
+                    The compiler supports Legacy (p2SH), Segwit v0 (p2WSH), and Taproot contexts.
                 </p>
 
                 <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
@@ -628,15 +584,13 @@
             </div>
         </details>
         
-        <div class="results-section" id="results">
-        </div>
         </div>
     </div>
     
     <div id="save-modal" class="modal">
         <div class="modal-content">
-            <h3>Save Expression</h3>
-            <label for="save-name">Expression Name:</label>
+            <h3>Save expression</h3>
+            <label for="save-name">Expression name:</label>
             <input type="text" id="save-name" placeholder="Enter a name for this expression">
             <div class="button-group" style="margin-top: 20px;">
                 <button id="confirm-save" class="primary-btn">Save</button>
@@ -647,8 +601,8 @@
 
     <div id="save-policy-modal" class="modal">
         <div class="modal-content">
-            <h3>Save Policy</h3>
-            <label for="save-policy-name">Policy Name:</label>
+            <h3>Save policy</h3>
+            <label for="save-policy-name">Policy name:</label>
             <input type="text" id="save-policy-name" placeholder="Enter a name for this policy">
             <div class="button-group" style="margin-top: 20px;">
                 <button id="confirm-save-policy" class="primary-btn">Save</button>
