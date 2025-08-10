@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cargo install:*)",
-      "Bash(wasm-pack build:*)"
-    ],
-    "deny": []
-  }
-}
