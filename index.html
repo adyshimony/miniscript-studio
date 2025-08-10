@@ -334,33 +334,124 @@
         
         @media (max-width: 768px) {
             .main-content {
-                padding: 15px;
+                padding: 10px;
+                max-width: 100%;
             }
 
             .container {
                 padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+                margin-top: 20px;
+                margin-bottom: 20px;
             }
             
             .button-group {
                 gap: 8px;
+                flex-direction: column;
             }
 
             .button-group button {
-                font-size: 12px !important;
-                padding: 8px 12px !important;
-                min-width: 80px;
+                font-size: 14px !important;
+                padding: 12px !important;
+                min-width: auto;
+                width: 100%;
+            }
+
+            .examples-section .button-group {
+                flex-direction: row;
+                flex-wrap: wrap;
             }
 
             .examples-section .button-group button {
                 font-size: 10px !important;
-                padding: 4px 6px !important;
-                min-width: 50px;
+                padding: 6px 8px !important;
+                min-width: 60px;
+                flex: 1;
             }
-            
-            .expression-item {
+
+            #policy-input, #expression-input {
+                font-size: 16px;
+                padding: 12px 15px;
+                height: 45px;
+            }
+
+            .add-key-form input {
+                font-size: 16px;
+                padding: 12px;
+                height: auto;
+            }
+
+            .key-variable-item, .expression-item {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 8px;
+                padding: 12px;
+            }
+
+            .key-info, .expression-info {
+                margin-right: 0;
+                margin-bottom: 8px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 12px !important;
+            }
+
+            .radio-group label {
+                font-size: 16px;
+            }
+
+            details summary {
+                font-size: 16px;
+                padding: 8px 0;
+            }
+
+            .result-box {
+                padding: 15px;
+                margin-bottom: 10px;
+            }
+
+            .result-box h4 {
+                font-size: 16px;
+            }
+
+            textarea[readonly] {
+                font-size: 12px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 8px;
+            }
+
+            .container {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .examples-section .button-group button {
+                font-size: 9px !important;
+                padding: 4px 6px !important;
+                min-width: 45px;
+            }
+
+            details > div {
+                padding: 15px !important;
+            }
+
+            .modal-content {
+                margin: 20px;
+                min-width: auto;
+                width: calc(100% - 40px);
             }
         }
     </style>
