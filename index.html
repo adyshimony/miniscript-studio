@@ -89,13 +89,13 @@
         
         #policy-input, #expression-input {
             width: 100%;
-            height: 120px;
-            padding: 15px;
+            height: 40px;
+            padding: 10px 15px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 14px;
-            resize: vertical;
+            resize: none;
             transition: border-color 0.3s ease;
             background: var(--container-bg);
             color: var(--text-color);
@@ -371,10 +371,10 @@
             <h1>🔐 Miniscript compiler</h1>
         
         <div class="input-section">
-            <label for="policy-input">Policy expression (optional):</label>
+            <label for="policy-input">Policy (optional):</label>
             <textarea 
                 id="policy-input" 
-                placeholder="Enter your policy expression here (will be compiled to miniscript)...&#10;&#10;Examples:&#10;• pk(03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd)&#10;• or(pk(Alice),and(pk(Bob),older(144)))&#10;• and(pk(Alice),or(pk(Bob),pk(Charlie)))&#10;• thresh(2,pk(Alice),pk(Bob),pk(Charlie))"
+                placeholder="Enter your policy here (will be compiled to miniscript)..."
             ></textarea>
             
             <div class="examples-section" style="margin-top: 15px;">
@@ -401,7 +401,7 @@
             <label for="expression-input">Miniscript expression:</label>
             <textarea 
                 id="expression-input" 
-                placeholder="Enter your miniscript expression here...&#10;&#10;Examples:&#10;• pk(03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd)&#10;• and_v(v:pk(key1),pk(key2))&#10;• or_b(pk(key1),s:pk(key2))&#10;• and_v(v:older(144),pk(key1))"
+                placeholder="Enter your miniscript expression here..."
             ></textarea>
             
             <div class="examples-section" style="margin-top: 15px;">
