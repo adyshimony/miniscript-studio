@@ -1,0 +1,37 @@
+# Cargo backup files
+cargo.back
+
+# Claude folder
+.claude/
+
+# WebAssembly build outputs
+/pkg/
+*.wasm
+
+# All backup files
+*.backup
+*.back
+*.bak
+*.old
+*.orig
+*.tmp
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
