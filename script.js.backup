@@ -1,0 +1,917 @@
+import init, { compile_miniscript, compile_policy } from './pkg/miniscript_wasm.js';
+
+class MiniscriptCompiler {
+    constructor() {
+        this.wasm = null;
+        this.keyVariables = new Map();
+        this.init();
+    }
+
+    async init() {
+        try {
+            this.wasm = await init();
+            console.log('WASM module initialized');
+            this.setupEventListeners();
+            this.loadSavedExpressions();
+            this.loadSavedPolicies();
+            this.loadKeyVariables();
+            this.setupSplitter();
+        } catch (error) {
+            console.error('Failed to initialize WASM module:', error);
+            this.showError('Failed to load compiler module. Please refresh the page.');
+        }
+    }
+
+    setupEventListeners() {
+        // Policy compile button
+        document.getElementById('compile-policy-btn').addEventListener('click', () => {
+            this.compilePolicy();
+        });
+
+        // Clear policy button
+        document.getElementById('clear-policy-btn').addEventListener('click', () => {
+            this.clearPolicy();
+        });
+
+        // Compile button
+        document.getElementById('compile-btn').addEventListener('click', () => {
+            this.compileExpression();
+        });
+
+        // Save policy button  
+        document.getElementById('save-policy-btn').addEventListener('click', () => {
+            this.showSavePolicyModal();
+        });
+
+        // Save button
+        document.getElementById('save-btn').addEventListener('click', () => {
+            this.showSaveModal();
+        });
+
+        // Clear button
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            this.clearExpression();
+        });
+
+        // Save modal buttons
+        document.getElementById('confirm-save').addEventListener('click', () => {
+            this.saveExpression();
+        });
+
+        document.getElementById('cancel-save').addEventListener('click', () => {
+            this.hideSaveModal();
+        });
+
+        // Save policy modal buttons
+        document.getElementById('confirm-save-policy').addEventListener('click', () => {
+            this.savePolicy();
+        });
+
+        document.getElementById('cancel-save-policy').addEventListener('click', () => {
+            this.hideSavePolicyModal();
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('save-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'save-modal') {
+                this.hideSaveModal();
+            }
+        });
+
+        document.getElementById('save-policy-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'save-policy-modal') {
+                this.hideSavePolicyModal();
+            }
+        });
+
+        // Enter key in textarea compiles
+        document.getElementById('expression-input').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                this.compileExpression();
+            }
+        });
+
+        // Enter key in save input saves
+        document.getElementById('save-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.saveExpression();
+            }
+        });
+
+        document.getElementById('save-policy-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.savePolicy();
+            }
+        });
+
+        // Enter key in policy input compiles
+        document.getElementById('policy-input').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                this.compilePolicy();
+            }
+        });
+
+        // Add key button
+        document.getElementById('add-key-btn').addEventListener('click', () => {
+            this.addKeyVariable();
+        });
+
+        // Generate key button - using onclick in HTML
+
+        // Enter key in key inputs adds key
+        document.getElementById('key-name-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('key-value-input').focus();
+            }
+        });
+
+        document.getElementById('key-value-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.addKeyVariable();
+            }
+        });
+    }
+
+    compileExpression() {
+        const expression = document.getElementById('expression-input').value.trim();
+        const context = document.querySelector('input[name="context"]:checked').value;
+        
+        if (!expression) {
+            this.showError('Please enter a miniscript expression.');
+            return;
+        }
+
+        if (!this.wasm) {
+            this.showError('Compiler not ready. Please wait and try again.');
+            return;
+        }
+
+        // Show loading state
+        const compileBtn = document.getElementById('compile-btn');
+        const originalText = compileBtn.textContent;
+        compileBtn.textContent = '⏳ Compiling...';
+        compileBtn.disabled = true;
+
+        try {
+            // Replace key variables in expression
+            const processedExpression = this.replaceKeyVariables(expression);
+            
+            // Call the WASM function with context
+            const result = compile_miniscript(processedExpression, context);
+            
+            // Reset button
+            compileBtn.textContent = originalText;
+            compileBtn.disabled = false;
+
+            // Display results
+            this.displayResults(result);
+            
+        } catch (error) {
+            console.error('Compilation error:', error);
+            compileBtn.textContent = originalText;
+            compileBtn.disabled = false;
+            this.showError(`Compilation failed: ${error.message}`);
+        }
+    }
+
+    compilePolicy() {
+        const policy = document.getElementById('policy-input').value.trim();
+        const context = document.querySelector('input[name="context"]:checked').value;
+        
+        // Clear previous errors
+        this.clearPolicyErrors();
+        
+        if (!policy) {
+            this.showPolicyError('Please enter a policy expression.');
+            return;
+        }
+
+        if (!this.wasm) {
+            this.showPolicyError('Compiler not ready. Please wait and try again.');
+            return;
+        }
+
+        // Show loading state
+        const compilePolicyBtn = document.getElementById('compile-policy-btn');
+        const originalText = compilePolicyBtn.textContent;
+        compilePolicyBtn.textContent = '⏳ Compiling...';
+        compilePolicyBtn.disabled = true;
+
+        try {
+            // Replace key variables in policy
+            const processedPolicy = this.replaceKeyVariables(policy);
+            
+            // Call the WASM function with context
+            const result = compile_policy(processedPolicy, context);
+            
+            // Reset button
+            compilePolicyBtn.textContent = originalText;
+            compilePolicyBtn.disabled = false;
+
+            if (result.success && result.compiled_miniscript) {
+                // Success: fill the miniscript field and show results
+                document.getElementById('expression-input').value = result.compiled_miniscript;
+                // Don't display the compiled_miniscript in results since it's now in the text box
+                result.compiled_miniscript = null;
+                // Display results (script, asm, address)
+                this.displayResults(result);
+            } else {
+                // Error: show policy-specific error
+                this.showPolicyError(result.error || 'Policy compilation failed');
+                // Clear results
+                document.getElementById('results').innerHTML = '';
+            }
+            
+        } catch (error) {
+            console.error('Policy compilation error:', error);
+            compilePolicyBtn.textContent = originalText;
+            compilePolicyBtn.disabled = false;
+            this.showPolicyError(`Policy compilation failed: ${error.message}`);
+        }
+    }
+
+    clearPolicy() {
+        document.getElementById('policy-input').value = '';
+        document.getElementById('expression-input').value = '';
+        document.getElementById('results').innerHTML = '';
+        this.clearPolicyErrors();
+    }
+
+    showPolicyError(message) {
+        const policyErrorsDiv = document.getElementById('policy-errors');
+        policyErrorsDiv.innerHTML = `
+            <div class="result-box error" style="margin: 0;">
+                <h4>❌ Policy Error</h4>
+                <div style="margin-top: 10px;">${message}</div>
+            </div>
+        `;
+    }
+
+    clearPolicyErrors() {
+        document.getElementById('policy-errors').innerHTML = '';
+    }
+
+    replaceKeyVariables(text) {
+        let processedText = text;
+        for (const [name, value] of this.keyVariables) {
+            // Replace key variables in pk(), using word boundaries to avoid partial matches
+            const regex = new RegExp('\\b' + name + '\\b', 'g');
+            processedText = processedText.replace(regex, value);
+        }
+        return processedText;
+    }
+
+    generateKey() {
+        console.log('Generate key button clicked!');
+        
+        // Generate a random 32-byte private key
+        const privateKey = new Uint8Array(32);
+        crypto.getRandomValues(privateKey);
+        
+        // Generate the corresponding compressed public key
+        // This is a simplified approach - in a real implementation you'd use proper secp256k1
+        const publicKey = this.generateCompressedPublicKey(privateKey);
+        
+        console.log('Generated public key:', publicKey);
+        
+        // Set the generated key in the value input
+        const valueInput = document.getElementById('key-value-input');
+        if (valueInput) {
+            valueInput.value = publicKey;
+            console.log('Set value input to:', publicKey);
+        } else {
+            console.error('Could not find key-value-input element');
+        }
+        
+        // Focus on the name input if it's empty
+        const nameInput = document.getElementById('key-name-input');
+        if (nameInput && !nameInput.value.trim()) {
+            nameInput.focus();
+        }
+    }
+
+    generateCompressedPublicKey(privateKey) {
+        // Generate a deterministic but random-looking public key
+        // This creates a valid-format compressed public key for demonstration
+        const pubKey = new Uint8Array(33);
+        
+        // Set compressed public key prefix (0x02 or 0x03)
+        pubKey[0] = 0x02 + (privateKey[0] % 2);
+        
+        // Generate 32 bytes of x-coordinate data
+        for (let i = 1; i < 33; i++) {
+            pubKey[i] = privateKey[(i - 1) % 32] ^ privateKey[i % 32];
+        }
+        
+        // Convert to hex string
+        return Array.from(pubKey)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    addKeyVariable() {
+        const name = document.getElementById('key-name-input').value.trim();
+        const value = document.getElementById('key-value-input').value.trim();
+
+        if (!name || !value) {
+            alert('Please enter both key name and value.');
+            return;
+        }
+
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+            alert('Key name must start with a letter or underscore and contain only letters, numbers, and underscores.');
+            return;
+        }
+
+        // Add or update key variable
+        this.keyVariables.set(name, value);
+        this.saveKeyVariables();
+        this.displayKeyVariables();
+
+        // Clear inputs
+        document.getElementById('key-name-input').value = '';
+        document.getElementById('key-value-input').value = '';
+        document.getElementById('key-name-input').focus();
+    }
+
+    deleteKeyVariable(name) {
+        this.keyVariables.delete(name);
+        this.saveKeyVariables();
+        this.displayKeyVariables();
+    }
+
+    displayKeyVariables() {
+        const listDiv = document.getElementById('key-variables-list');
+        
+        if (this.keyVariables.size === 0) {
+            listDiv.innerHTML = '<p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No key variables defined.</p>';
+            return;
+        }
+
+        listDiv.innerHTML = Array.from(this.keyVariables.entries()).map(([name, value]) => `
+            <div class="key-variable-item">
+                <div class="key-info">
+                    <div class="key-name">${this.escapeHtml(name)}</div>
+                    <div class="key-value">${this.escapeHtml(value)}</div>
+                </div>
+                <button onclick="compiler.deleteKeyVariable('${this.escapeHtml(name)}')" class="danger-btn" style="padding: 4px 8px; font-size: 10px; flex-shrink: 0;">Del</button>
+            </div>
+        `).join('');
+    }
+
+    loadKeyVariables() {
+        try {
+            const saved = localStorage.getItem('miniscript-key-variables');
+            if (saved) {
+                const keyVars = JSON.parse(saved);
+                this.keyVariables = new Map(Object.entries(keyVars));
+            } else {
+                // Add default keys if none exist
+                this.addDefaultKeys();
+            }
+            this.displayKeyVariables();
+        } catch (error) {
+            console.error('Failed to load key variables:', error);
+            this.keyVariables = new Map();
+            this.addDefaultKeys();
+        }
+    }
+
+    addDefaultKeys() {
+        // Default keys used in examples
+        this.keyVariables.set('Alice', '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
+        this.keyVariables.set('Bob', '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
+        this.keyVariables.set('Charlie', '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
+        this.saveKeyVariables();
+    }
+
+    saveKeyVariables() {
+        try {
+            const keyVars = Object.fromEntries(this.keyVariables);
+            localStorage.setItem('miniscript-key-variables', JSON.stringify(keyVars));
+        } catch (error) {
+            console.error('Failed to save key variables:', error);
+        }
+    }
+
+    setupSplitter() {
+        const splitter = document.querySelector('.splitter');
+        const sidebar = document.querySelector('.sidebar');
+        let isResizing = false;
+
+        splitter.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const newWidth = Math.min(Math.max(250, e.clientX), window.innerWidth * 0.6);
+            sidebar.style.width = newWidth + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    }
+
+    displayResults(result) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '';
+
+        if (!result.success) {
+            this.showError(result.error);
+            return;
+        }
+
+        // Success message
+        const successDiv = document.createElement('div');
+        successDiv.className = 'result-box success';
+        successDiv.innerHTML = `
+            <h4>✅ Compilation Successful</h4>
+            <div style="margin-top: 10px;">
+                <strong>Miniscript Type:</strong> ${result.miniscript_type}<br>
+                <strong>Script Size:</strong> ${result.script_size} bytes
+            </div>
+        `;
+        resultsDiv.appendChild(successDiv);
+
+        // Show compiled miniscript (for policy compilation)
+        if (result.compiled_miniscript) {
+            const miniscriptDiv = document.createElement('div');
+            miniscriptDiv.className = 'result-box info';
+            miniscriptDiv.innerHTML = `
+                <h4>🔄 Compiled Miniscript</h4>
+                <textarea readonly style="width: 100%; min-height: 60px; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.compiled_miniscript}</textarea>
+            `;
+            resultsDiv.appendChild(miniscriptDiv);
+        }
+
+        // Show script hex
+        if (result.script) {
+            const scriptDiv = document.createElement('div');
+            scriptDiv.className = 'result-box info';
+            scriptDiv.innerHTML = `
+                <h4>📜 Generated Script (Hex)</h4>
+                <textarea readonly style="width: 100%; min-height: 60px; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.script}</textarea>
+            `;
+            resultsDiv.appendChild(scriptDiv);
+        }
+
+        // Show script ASM
+        if (result.script_asm) {
+            const scriptAsmDiv = document.createElement('div');
+            scriptAsmDiv.className = 'result-box info';
+            
+            const simplifiedAsm = this.simplifyAsm(result.script_asm);
+            const currentAsm = document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 
+                simplifiedAsm : result.script_asm;
+                
+            scriptAsmDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0;">⚡ Bitcoin Script (ASM)</h4>
+                    <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; font-weight: normal;">
+                        <input type="checkbox" id="hide-pushbytes" ${document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 'checked' : ''} style="margin: 0;">
+                        Hide pushbytes
+                    </label>
+                </div>
+                <textarea readonly id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${currentAsm}</textarea>
+            `;
+            
+            // Add event listener for checkbox
+            const checkbox = scriptAsmDiv.querySelector('#hide-pushbytes');
+            const display = scriptAsmDiv.querySelector('#script-asm-display');
+            checkbox.addEventListener('change', () => {
+                display.value = checkbox.checked ? simplifiedAsm : result.script_asm;
+            });
+            
+            resultsDiv.appendChild(scriptAsmDiv);
+        }
+
+        // Show address if available
+        if (result.address) {
+            const addressDiv = document.createElement('div');
+            addressDiv.className = 'result-box info';
+            addressDiv.innerHTML = `
+                <h4>🏠 Generated Address</h4>
+                <div style="word-break: break-all; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    ${result.address}
+                </div>
+            `;
+            resultsDiv.appendChild(addressDiv);
+        } else {
+            const noAddressDiv = document.createElement('div');
+            noAddressDiv.className = 'result-box info';
+            noAddressDiv.innerHTML = `
+                <h4>ℹ️ Note</h4>
+                <div style="margin-top: 10px;">
+                    Address generation not available for this miniscript type without additional context.
+                </div>
+            `;
+            resultsDiv.appendChild(noAddressDiv);
+        }
+    }
+
+    showError(message) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = `
+            <div class="result-box error">
+                <h4>❌ Error</h4>
+                <div style="margin-top: 10px;">${message}</div>
+            </div>
+        `;
+    }
+
+    clearExpression() {
+        document.getElementById('expression-input').value = '';
+        document.getElementById('results').innerHTML = '';
+    }
+
+    showSaveModal() {
+        const expression = document.getElementById('expression-input').value.trim();
+        if (!expression) {
+            this.showError('Please enter an expression to save.');
+            return;
+        }
+        
+        document.getElementById('save-modal').style.display = 'block';
+        document.getElementById('save-name').focus();
+    }
+
+    hideSaveModal() {
+        document.getElementById('save-modal').style.display = 'none';
+        document.getElementById('save-name').value = '';
+        // Remove any existing error messages
+        const errorDiv = document.querySelector('#save-modal .modal-error');
+        if (errorDiv) errorDiv.remove();
+    }
+
+    saveExpression() {
+        const name = document.getElementById('save-name').value.trim();
+        const expression = document.getElementById('expression-input').value.trim();
+
+        if (!name) {
+            this.showModalError('Please enter a name for the expression.');
+            return;
+        }
+
+        if (name.length > 50) {
+            this.showModalError('Expression name must be 50 characters or less.');
+            return;
+        }
+
+        if (!expression) {
+            this.showModalError('No expression to save.');
+            return;
+        }
+
+        // Get existing expressions
+        const savedExpressions = this.getSavedExpressions();
+        
+        // Check storage limits (keep max 20 expressions)
+        if (savedExpressions.length >= 20 && !savedExpressions.some(expr => expr.name === name)) {
+            this.showModalError('Maximum 20 expressions allowed. Please delete some first.');
+            return;
+        }
+        
+        // Check if name already exists
+        if (savedExpressions.some(expr => expr.name === name)) {
+            if (!confirm(`An expression named "${this.escapeHtml(name)}" already exists. Overwrite?`)) {
+                return;
+            }
+            // Remove existing
+            savedExpressions.splice(savedExpressions.findIndex(expr => expr.name === name), 1);
+        }
+
+        // Add new expression with context
+        const context = document.querySelector('input[name="context"]:checked').value;
+        savedExpressions.push({
+            name: name,
+            expression: expression,
+            context: context,
+            timestamp: new Date().toISOString()
+        });
+
+        // Save to localStorage
+        this.setSavedExpressions(savedExpressions);
+        
+        // Refresh the list
+        this.loadSavedExpressions();
+        
+        // Hide modal
+        this.hideSaveModal();
+        
+        // Show success message
+        this.showSuccess(`Expression "${this.escapeHtml(name)}" has been saved!`);
+    }
+
+    showModalError(message) {
+        const modalContent = document.querySelector('#save-modal .modal-content');
+        let errorDiv = modalContent.querySelector('.modal-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'modal-error';
+            errorDiv.style.cssText = 'background: #fed7d7; border: 1px solid #fc8181; color: #c53030; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 14px;';
+            modalContent.insertBefore(errorDiv, modalContent.querySelector('.button-group'));
+        }
+        errorDiv.textContent = message;
+        setTimeout(() => errorDiv.remove(), 3000);
+    }
+
+    showSuccess(message) {
+        const resultsDiv = document.getElementById('results');
+        const successDiv = document.createElement('div');
+        successDiv.className = 'result-box success';
+        successDiv.innerHTML = `<h4>✅ Success</h4><div>${message}</div>`;
+        resultsDiv.appendChild(successDiv);
+        
+        // Auto-remove success message after 3 seconds
+        setTimeout(() => successDiv.remove(), 3000);
+    }
+
+    loadSavedExpressions() {
+        const expressions = this.getSavedExpressions();
+        const listDiv = document.getElementById('expressions-list');
+        
+        if (expressions.length === 0) {
+            listDiv.innerHTML = '<p style="color: #718096; font-style: italic;">No saved expressions yet.</p>';
+            return;
+        }
+
+        listDiv.innerHTML = expressions.map(expr => `
+            <div class="expression-item">
+                <div class="expression-info">
+                    <div class="expression-name">${this.escapeHtml(expr.name)}</div>
+                    <div class="expression-preview">${this.escapeHtml(expr.expression)}</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;">
+                    <button onclick="compiler.loadExpression('${this.escapeHtml(expr.name)}')" class="secondary-btn" style="padding: 4px 8px; font-size: 10px;">Load</button>
+                    <button onclick="compiler.deleteExpression('${this.escapeHtml(expr.name)}')" class="danger-btn" style="padding: 4px 8px; font-size: 10px;">Del</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    loadExpression(name) {
+        const expressions = this.getSavedExpressions();
+        const savedExpr = expressions.find(expr => expr.name === name);
+        
+        if (savedExpr) {
+            document.getElementById('expression-input').value = savedExpr.expression;
+            // Set context to segwit for saved expressions (or use saved context if available)
+            const context = savedExpr.context || 'segwit';
+            document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+            // Clear previous results
+            document.getElementById('results').innerHTML = '';
+        }
+    }
+
+    deleteExpression(name) {
+        if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+            return;
+        }
+
+        const expressions = this.getSavedExpressions();
+        const filteredExpressions = expressions.filter(expr => expr.name !== name);
+        this.setSavedExpressions(filteredExpressions);
+        this.loadSavedExpressions();
+    }
+
+    getSavedExpressions() {
+        try {
+            const saved = localStorage.getItem('miniscript-expressions');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Failed to load saved expressions:', error);
+            return [];
+        }
+    }
+
+    setSavedExpressions(expressions) {
+        try {
+            localStorage.setItem('miniscript-expressions', JSON.stringify(expressions));
+        } catch (error) {
+            console.error('Failed to save expressions:', error);
+            alert('Failed to save expression. Local storage might be full.');
+        }
+    }
+
+    escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    simplifyAsm(scriptAsm) {
+        // Remove only the pushbytes operations, keep the hex data (keys) and other ops
+        return scriptAsm
+            .replace(/OP_PUSHBYTES_\d+\s+/g, '')
+            .replace(/OP_PUSHDATA\d?\s+/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    // Policy saving methods (identical to expression saving)
+    showSavePolicyModal() {
+        const policy = document.getElementById('policy-input').value.trim();
+        if (!policy) {
+            this.showPolicyError('Please enter a policy to save.');
+            return;
+        }
+        
+        document.getElementById('save-policy-modal').style.display = 'block';
+        document.getElementById('save-policy-name').focus();
+    }
+
+    hideSavePolicyModal() {
+        document.getElementById('save-policy-modal').style.display = 'none';
+        document.getElementById('save-policy-name').value = '';
+        // Remove any existing error messages
+        const errorDiv = document.querySelector('#save-policy-modal .modal-error');
+        if (errorDiv) errorDiv.remove();
+    }
+
+    savePolicy() {
+        const name = document.getElementById('save-policy-name').value.trim();
+        const policy = document.getElementById('policy-input').value.trim();
+
+        if (!name) {
+            this.showPolicyModalError('Please enter a name for the policy.');
+            return;
+        }
+
+        if (name.length > 50) {
+            this.showPolicyModalError('Policy name must be 50 characters or less.');
+            return;
+        }
+
+        if (!policy) {
+            this.showPolicyModalError('No policy to save.');
+            return;
+        }
+
+        // Get existing policies
+        const savedPolicies = this.getSavedPolicies();
+        
+        // Check storage limits (keep max 20 policies)
+        if (savedPolicies.length >= 20 && !savedPolicies.some(pol => pol.name === name)) {
+            this.showPolicyModalError('Maximum 20 policies allowed. Please delete some first.');
+            return;
+        }
+        
+        // Check if name already exists
+        if (savedPolicies.some(pol => pol.name === name)) {
+            if (!confirm(`A policy named "${this.escapeHtml(name)}" already exists. Overwrite?`)) {
+                return;
+            }
+            // Remove existing
+            savedPolicies.splice(savedPolicies.findIndex(pol => pol.name === name), 1);
+        }
+
+        // Add new policy with context
+        const context = document.querySelector('input[name="context"]:checked').value;
+        savedPolicies.push({
+            name: name,
+            expression: policy,
+            context: context,
+            timestamp: new Date().toISOString()
+        });
+
+        // Save to localStorage
+        this.setSavedPolicies(savedPolicies);
+        
+        // Refresh the list
+        this.loadSavedPolicies();
+        
+        // Hide modal
+        this.hideSavePolicyModal();
+        
+        // Show success message
+        this.showSuccess(`Policy "${this.escapeHtml(name)}" has been saved!`);
+    }
+
+    showPolicyModalError(message) {
+        const modalContent = document.querySelector('#save-policy-modal .modal-content');
+        let errorDiv = modalContent.querySelector('.modal-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'modal-error';
+            errorDiv.style.cssText = 'background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 14px;';
+            modalContent.insertBefore(errorDiv, modalContent.querySelector('.button-group'));
+        }
+        errorDiv.textContent = message;
+        setTimeout(() => errorDiv.remove(), 3000);
+    }
+
+    loadSavedPolicies() {
+        const policies = this.getSavedPolicies();
+        const listDiv = document.getElementById('policies-list');
+        
+        if (policies.length === 0) {
+            listDiv.innerHTML = '<p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved policies yet.</p>';
+            return;
+        }
+
+        listDiv.innerHTML = policies.map(policy => `
+            <div class="expression-item">
+                <div class="expression-info">
+                    <div class="expression-name">${this.escapeHtml(policy.name)}</div>
+                    <div class="expression-preview">${this.escapeHtml(policy.expression)}</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;">
+                    <button onclick="compiler.loadPolicy('${this.escapeHtml(policy.name)}')" class="secondary-btn" style="padding: 4px 8px; font-size: 10px;">Load</button>
+                    <button onclick="compiler.deletePolicy('${this.escapeHtml(policy.name)}')" class="danger-btn" style="padding: 4px 8px; font-size: 10px;">Del</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    loadPolicy(name) {
+        const policies = this.getSavedPolicies();
+        const savedPolicy = policies.find(policy => policy.name === name);
+        
+        if (savedPolicy) {
+            document.getElementById('policy-input').value = savedPolicy.expression;
+            // Set context to segwit for saved policies (or use saved context if available)
+            const context = savedPolicy.context || 'segwit';
+            document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+            // Clear previous results
+            document.getElementById('results').innerHTML = '';
+            this.clearPolicyErrors();
+        }
+    }
+
+    deletePolicy(name) {
+        if (!confirm(`Are you sure you want to delete policy "${name}"?`)) {
+            return;
+        }
+
+        const policies = this.getSavedPolicies();
+        const filteredPolicies = policies.filter(policy => policy.name !== name);
+        this.setSavedPolicies(filteredPolicies);
+        this.loadSavedPolicies();
+    }
+
+    getSavedPolicies() {
+        try {
+            const saved = localStorage.getItem('miniscript-policies');
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Failed to load saved policies:', error);
+            return [];
+        }
+    }
+
+    setSavedPolicies(policies) {
+        try {
+            localStorage.setItem('miniscript-policies', JSON.stringify(policies));
+        } catch (error) {
+            console.error('Failed to save policies:', error);
+            alert('Failed to save policy. Local storage might be full.');
+        }
+    }
+}
+
+// Initialize the compiler
+const compiler = new MiniscriptCompiler();
+
+// Make compiler globally available for onclick handlers
+window.compiler = compiler;
+
+// Global function for generate key button
+window.generateKey = function() {
+    console.log('Global generateKey called');
+    if (window.compiler && typeof window.compiler.generateKey === 'function') {
+        window.compiler.generateKey();
+    } else {
+        console.error('Compiler or generateKey method not available');
+    }
+};
+
+// Global function to load examples
+window.loadExample = function(example) {
+    document.getElementById('expression-input').value = example;
+    document.getElementById('results').innerHTML = '';
+    // Set context to segwit for all examples
+    document.querySelector('input[name="context"][value="segwit"]').checked = true;
+};
+
+// Global function to load policy examples
+window.loadPolicyExample = function(example) {
+    document.getElementById('policy-input').value = example;
+    document.getElementById('expression-input').value = '';
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('policy-errors').innerHTML = '';
+    // Set context to segwit for all examples
+    document.querySelector('input[name="context"][value="segwit"]').checked = true;
+};
