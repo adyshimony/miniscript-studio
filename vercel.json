@@ -1,0 +1,24 @@
+{
+  "builds": [
+    {
+      "src": "Cargo.toml",
+      "use": "@vercel/rust",
+      "config": {
+        "rustVersion": "1.70.0"
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "."
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}

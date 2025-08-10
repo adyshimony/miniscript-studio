@@ -4,7 +4,7 @@ cargo.back
 # Claude folder
 .claude/
 
-# WebAssembly build outputs
+# WebAssembly build outputs (built by Vercel)
 /pkg/
 *.wasm
 
