@@ -15,14 +15,6 @@ A WebAssembly-powered miniscript compiler that runs in the browser. This tool al
 - **Mobile Responsive**: Works seamlessly on desktop, tablet, and mobile devices
 - **Local Storage**: All data persists locally in your browser - no server required
 
-## Quick Start
-
-1. Open `index.html` in your web browser
-2. Define key variables (e.g., `Alice`, `Bob`) in the Key Variables section
-3. Enter a policy expression like `or(pk(Alice),and(pk(Bob),older(144)))`
-4. Click "Compile" to generate the corresponding miniscript and Bitcoin Script
-5. View the compiled script, assembly code, and Bitcoin address
-
 ## Key Variables
 
 The compiler allows you to define reusable key variables instead of typing full public keys repeatedly:
@@ -118,7 +110,9 @@ cargo install wasm-pack
 # Build the WebAssembly module
 wasm-pack build --target web
 
-# Open index.html in your browser
+# Serve the application (WebAssembly requires HTTP server)
+python -m http.server 8000
+# Then open http://localhost:8000 in your browser
 ```
 
 ## Project Structure

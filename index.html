@@ -755,11 +755,25 @@
                 '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c'
             ];
             
-            // Use private key bytes to deterministically select from the pool
-            const index = privateKey.reduce((acc, byte) => acc + byte, 0) % validPublicKeys.length;
-            const publicKey = validPublicKeys[index];
+            // Get already used keys from the key variables list
+            const usedKeys = [];
+            const keyItems = document.querySelectorAll('.key-variable-item .key-value');
+            keyItems.forEach(item => {
+                usedKeys.push(item.textContent.trim());
+            });
+            
+            // Filter out already used keys
+            const availableKeys = validPublicKeys.filter(key => !usedKeys.includes(key));
+            
+            // If all keys are used, use all keys anyway
+            const keysToUse = availableKeys.length > 0 ? availableKeys : validPublicKeys;
+            
+            // Use private key bytes to deterministically select from available keys
+            const index = privateKey.reduce((acc, byte) => acc + byte, 0) % keysToUse.length;
+            const publicKey = keysToUse[index];
             
             console.log('Generated public key:', publicKey);
+            console.log('Available keys:', availableKeys.length, 'Used keys:', usedKeys.length);
             
             // Set the generated key in the value input
             const valueInput = document.getElementById('key-value-input');

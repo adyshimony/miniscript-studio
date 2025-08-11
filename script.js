@@ -351,9 +351,18 @@ class MiniscriptCompiler {
             '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c'
         ];
         
-        // Use private key bytes to deterministically select from the pool
-        const index = privateKey.reduce((acc, byte) => acc + byte, 0) % validPublicKeys.length;
-        return validPublicKeys[index];
+        // Get already used keys
+        const usedKeys = Array.from(this.keyVariables.values());
+        
+        // Filter out already used keys
+        const availableKeys = validPublicKeys.filter(key => !usedKeys.includes(key));
+        
+        // If all keys are used, return a random one anyway
+        const keysToUse = availableKeys.length > 0 ? availableKeys : validPublicKeys;
+        
+        // Use private key bytes to deterministically select from available keys
+        const index = privateKey.reduce((acc, byte) => acc + byte, 0) % keysToUse.length;
+        return keysToUse[index];
     }
 
     addKeyVariable() {
