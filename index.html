@@ -89,7 +89,7 @@
         
         #policy-input, #expression-input {
             width: 100%;
-            height: 40px;
+            height: 70px;
             padding: 10px 15px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
@@ -376,7 +376,7 @@
             #policy-input, #expression-input {
                 font-size: 16px;
                 padding: 12px 15px;
-                height: 45px;
+                height: 75px;
             }
 
             .add-key-form input {
@@ -596,11 +596,6 @@
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X,Y,Z,...)</code> - At least k out of the listed conditions must be satisfied</li>
                 </ul>
 
-                <h4 style="color: var(--text-secondary);">Special functions:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi(k,key1,key2,...)</code> - Traditional k-of-n multisignature with the listed public keys</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi_a(k,key1,key2,...)</code> - Modern k-of-n multisignature using CHECKSIGADD opcodes</li>
-                </ul>
 
                 <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
                     <strong>Note:</strong> Policy language provides a high-level, human-readable way to express spending conditions that compile to miniscript. 
