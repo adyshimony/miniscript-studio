@@ -465,10 +465,10 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label for="policy-input">Policy (optional):</label>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 2px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 2px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📋
                     </button>
-                    <span style="font-weight: normal; color: var(--text-secondary);">Copy policy</span>
+                    <span style="font-weight: normal; color: var(--text-secondary);">Copy</span>
                 </div>
             </div>
             <textarea 
@@ -505,10 +505,10 @@
                         <span style="cursor: pointer; font-weight: normal; color: var(--text-secondary);" onclick="document.getElementById('replace-keys-checkbox').click()">Show key names</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 2px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 2px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             📋
                         </button>
-                        <span style="font-weight: normal; color: var(--text-secondary);">Copy expression</span>
+                        <span style="font-weight: normal; color: var(--text-secondary);">Copy</span>
                     </div>
                 </div>
             </div>
@@ -693,6 +693,14 @@
         </details>
         
         </div>
+        
+        <footer style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid var(--border-color);">
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">
+                <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="color: var(--text-secondary); text-decoration: none;">
+                    📁 View source on GitHub
+                </a>
+            </p>
+        </footer>
     </div>
     
     <div id="save-modal" class="modal">
