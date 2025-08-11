@@ -1147,6 +1147,28 @@ window.copyMiniscriptExpression = function() {
 };
 
 // Global function to copy policy expression
+window.removePolicyExtraChars = function() {
+    const policyInput = document.getElementById('policy-input');
+    const policy = policyInput.value;
+    
+    if (!policy) {
+        return;
+    }
+    
+    // Remove spaces, carriage returns, and newlines
+    const cleanedPolicy = policy.replace(/[\s\r\n]/g, '');
+    policyInput.value = cleanedPolicy;
+    
+    // Show feedback
+    const button = event.target.closest('button');
+    const textSpan = button.parentElement.querySelector('span');
+    const originalText = textSpan.textContent;
+    textSpan.textContent = 'Cleaned!';
+    setTimeout(() => {
+        textSpan.textContent = originalText;
+    }, 1000);
+};
+
 window.copyPolicyExpression = function() {
     const policyInput = document.getElementById('policy-input');
     const policy = policyInput.value.trim();
