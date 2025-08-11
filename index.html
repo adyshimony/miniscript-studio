@@ -462,7 +462,15 @@
             <h1>🔐 Miniscript compiler</h1>
         
         <div class="input-section">
-            <label for="policy-input">Policy (optional):</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label for="policy-input">Policy (optional):</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 2px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        📋
+                    </button>
+                    <span style="font-weight: normal; color: var(--text-secondary);">Copy policy</span>
+                </div>
+            </div>
             <textarea 
                 id="policy-input" 
                 placeholder="Enter your policy here (will be compiled to miniscript)..."
@@ -491,10 +499,18 @@
         <div class="input-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label for="expression-input">Miniscript expression:</label>
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; color: var(--text-secondary);">
-                    <input type="checkbox" id="replace-keys-checkbox" style="margin: 0;" onchange="handleReplaceKeysChange(this.checked)">
-                    <span>Show key names</span>
-                </label>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="replace-keys-checkbox" style="margin: 0;" onchange="handleReplaceKeysChange(this.checked)">
+                        <span style="cursor: pointer; font-weight: normal; color: var(--text-secondary);" onclick="document.getElementById('replace-keys-checkbox').click()">Show key names</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 2px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            📋
+                        </button>
+                        <span style="font-weight: normal; color: var(--text-secondary);">Copy expression</span>
+                    </div>
+                </div>
             </div>
             <textarea 
                 id="expression-input" 

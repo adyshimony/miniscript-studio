@@ -236,6 +236,12 @@ class MiniscriptCompiler {
                 // Success: fill the miniscript field and show results
                 document.getElementById('expression-input').value = result.compiled_miniscript;
                 
+                // Reset the "Show key names" checkbox since we have a new expression
+                const checkbox = document.getElementById('replace-keys-checkbox');
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                
                 // Show green success message in miniscript messages area
                 this.showMiniscriptSuccess(`Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes`);
                 
@@ -264,6 +270,12 @@ class MiniscriptCompiler {
         document.getElementById('expression-input').value = '';
         document.getElementById('results').innerHTML = '';
         this.clearPolicyErrors();
+        
+        // Reset the "Show key names" checkbox since we cleared the miniscript
+        const checkbox = document.getElementById('replace-keys-checkbox');
+        if (checkbox) {
+            checkbox.checked = false;
+        }
     }
 
     showPolicyError(message) {
@@ -370,6 +382,10 @@ class MiniscriptCompiler {
     }
 
     deleteKeyVariable(name) {
+        if (!confirm(`Are you sure you want to delete key variable "${name}"?`)) {
+            return;
+        }
+        
         this.keyVariables.delete(name);
         this.saveKeyVariables();
         this.displayKeyVariables();
@@ -648,6 +664,12 @@ class MiniscriptCompiler {
         document.getElementById('expression-input').value = '';
         document.getElementById('results').innerHTML = '';
         this.clearMiniscriptMessages();
+        
+        // Clear and uncheck the "Show key names" checkbox
+        const checkbox = document.getElementById('replace-keys-checkbox');
+        if (checkbox) {
+            checkbox.checked = false;
+        }
     }
 
     showSaveModal() {
@@ -787,6 +809,12 @@ class MiniscriptCompiler {
             // Clear previous results and messages
             document.getElementById('results').innerHTML = '';
             this.clearMiniscriptMessages();
+            
+            // Reset the "Show key names" checkbox
+            const checkbox = document.getElementById('replace-keys-checkbox');
+            if (checkbox) {
+                checkbox.checked = false;
+            }
         }
     }
 
@@ -965,6 +993,12 @@ class MiniscriptCompiler {
             // Clear previous results
             document.getElementById('results').innerHTML = '';
             this.clearPolicyErrors();
+            
+            // Reset the "Show key names" checkbox
+            const checkbox = document.getElementById('replace-keys-checkbox');
+            if (checkbox) {
+                checkbox.checked = false;
+            }
         }
     }
 
@@ -1022,6 +1056,12 @@ window.loadExample = function(example) {
     window.compiler.clearMiniscriptMessages();
     // Set context to segwit for all examples
     document.querySelector('input[name="context"][value="segwit"]').checked = true;
+    
+    // Reset the "Show key names" checkbox
+    const checkbox = document.getElementById('replace-keys-checkbox');
+    if (checkbox) {
+        checkbox.checked = false;
+    }
 };
 
 // Global function to load policy examples
@@ -1032,6 +1072,12 @@ window.loadPolicyExample = function(example) {
     document.getElementById('policy-errors').innerHTML = '';
     // Set context to segwit for all examples
     document.querySelector('input[name="context"][value="segwit"]').checked = true;
+    
+    // Reset the "Show key names" checkbox since we cleared the miniscript
+    const checkbox = document.getElementById('replace-keys-checkbox');
+    if (checkbox) {
+        checkbox.checked = false;
+    }
 };
 
 // Global function to handle replace keys checkbox
@@ -1042,4 +1088,88 @@ window.handleReplaceKeysChange = function(isChecked) {
     } else {
         console.error('Compiler or handleReplaceKeysToggle method not available');
     }
+};
+
+// Global function to copy miniscript expression
+window.copyMiniscriptExpression = function() {
+    const expressionInput = document.getElementById('expression-input');
+    const expression = expressionInput.value.trim();
+    
+    if (!expression) {
+        alert('No expression to copy');
+        return;
+    }
+    
+    // Find the text span next to the button
+    const button = event.target.closest('button');
+    const textSpan = button.parentNode.querySelector('span');
+    const originalText = textSpan.textContent;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(expression).then(() => {
+        // Visual feedback - temporarily change text
+        textSpan.textContent = 'Copied!';
+        textSpan.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            textSpan.textContent = originalText;
+            textSpan.style.color = 'var(--text-secondary)';
+        }, 1000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        // Fallback for older browsers
+        expressionInput.select();
+        document.execCommand('copy');
+        
+        // Visual feedback for fallback
+        textSpan.textContent = 'Copied!';
+        textSpan.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            textSpan.textContent = originalText;
+            textSpan.style.color = 'var(--text-secondary)';
+        }, 1000);
+    });
+};
+
+// Global function to copy policy expression
+window.copyPolicyExpression = function() {
+    const policyInput = document.getElementById('policy-input');
+    const policy = policyInput.value.trim();
+    
+    if (!policy) {
+        alert('No policy to copy');
+        return;
+    }
+    
+    // Find the text span next to the button
+    const button = event.target.closest('button');
+    const textSpan = button.parentNode.querySelector('span');
+    const originalText = textSpan.textContent;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(policy).then(() => {
+        // Visual feedback - temporarily change text
+        textSpan.textContent = 'Copied!';
+        textSpan.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            textSpan.textContent = originalText;
+            textSpan.style.color = 'var(--text-secondary)';
+        }, 1000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        // Fallback for older browsers
+        policyInput.select();
+        document.execCommand('copy');
+        
+        // Visual feedback for fallback
+        textSpan.textContent = 'Copied!';
+        textSpan.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            textSpan.textContent = originalText;
+            textSpan.style.color = 'var(--text-secondary)';
+        }, 1000);
+    });
 };
