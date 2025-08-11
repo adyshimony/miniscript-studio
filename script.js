@@ -15,6 +15,7 @@ class MiniscriptCompiler {
             this.loadSavedExpressions();
             this.loadSavedPolicies();
             this.loadKeyVariables();
+            this.setupReplaceKeysCheckbox();
         } catch (error) {
             console.error('Failed to initialize WASM module:', error);
             this.showError('Failed to load compiler module. Please refresh the page.');
@@ -129,6 +130,7 @@ class MiniscriptCompiler {
                 this.addKeyVariable();
             }
         });
+
     }
 
     compileExpression() {
@@ -166,8 +168,21 @@ class MiniscriptCompiler {
             compileBtn.disabled = false;
 
             if (result.success) {
-                this.showMiniscriptSuccess('Miniscript compiled successfully!');
-                // Display results
+                // Debug: Log all available fields
+                console.log('=== ALL COMPILATION RESULT FIELDS ===');
+                console.log('success:', result.success);
+                console.log('error:', result.error);
+                console.log('script:', result.script ? `"${result.script.substring(0, 50)}..." (length: ${result.script.length})` : result.script);
+                console.log('script_asm:', result.script_asm ? `"${result.script_asm.substring(0, 50)}..." (length: ${result.script_asm.length})` : result.script_asm);
+                console.log('address:', result.address);
+                console.log('script_size:', result.script_size);
+                console.log('miniscript_type:', result.miniscript_type);
+                console.log('compiled_miniscript:', result.compiled_miniscript);
+                console.log('=====================================');
+                
+                // Simple success message for now
+                this.showMiniscriptSuccess(`Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes`);
+                // Display results (without the info box since we show it in the success message)
                 this.displayResults(result);
             } else {
                 this.showMiniscriptError(result.error);
@@ -220,6 +235,10 @@ class MiniscriptCompiler {
             if (result.success && result.compiled_miniscript) {
                 // Success: fill the miniscript field and show results
                 document.getElementById('expression-input').value = result.compiled_miniscript;
+                
+                // Show green success message in miniscript messages area
+                this.showMiniscriptSuccess(`Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes`);
+                
                 // Don't display the compiled_miniscript in results since it's now in the text box
                 result.compiled_miniscript = null;
                 // Display results (script, asm, address)
@@ -227,8 +246,9 @@ class MiniscriptCompiler {
             } else {
                 // Error: show policy-specific error
                 this.showPolicyError(result.error || 'Policy compilation failed');
-                // Clear results
+                // Clear results and miniscript messages
                 document.getElementById('results').innerHTML = '';
+                this.clearMiniscriptMessages();
             }
             
         } catch (error) {
@@ -418,18 +438,6 @@ class MiniscriptCompiler {
             return;
         }
 
-        // Compilation info
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'result-box info';
-        infoDiv.innerHTML = `
-            <h4>📊 Compilation info</h4>
-            <div style="margin-top: 10px;">
-                <strong>Miniscript Type:</strong> ${result.miniscript_type}<br>
-                <strong>Script Size:</strong> ${result.script_size} bytes
-            </div>
-        `;
-        resultsDiv.appendChild(infoDiv);
-
         // Show compiled miniscript (for policy compilation)
         if (result.compiled_miniscript) {
             const miniscriptDiv = document.createElement('div');
@@ -534,15 +542,106 @@ class MiniscriptCompiler {
                 <div style="margin-top: 10px;">${message}</div>
             </div>
         `;
-        
-        // Auto-remove success message after 3 seconds
-        setTimeout(() => {
-            messagesDiv.innerHTML = '';
-        }, 3000);
     }
 
     clearMiniscriptMessages() {
         document.getElementById('miniscript-messages').innerHTML = '';
+    }
+
+    handleReplaceKeysToggle(isChecked) {
+        console.log('=== handleReplaceKeysToggle START ===');
+        console.log('isChecked:', isChecked);
+        
+        const expressionInput = document.getElementById('expression-input');
+        if (!expressionInput) {
+            console.error('Expression input not found!');
+            return;
+        }
+        
+        let expression = expressionInput.value;
+        console.log('Current expression:', `"${expression}"`);
+        console.log('Expression length:', expression.length);
+        
+        console.log('this.keyVariables type:', typeof this.keyVariables);
+        console.log('this.keyVariables size:', this.keyVariables ? this.keyVariables.size : 'undefined');
+        console.log('Key variables entries:', Array.from(this.keyVariables.entries()));
+
+        if (!expression.trim()) {
+            console.log('Expression is empty, returning');
+            return;
+        }
+
+        let originalExpression = expression;
+        
+        if (isChecked) {
+            console.log('=== REPLACING KEYS WITH NAMES ===');
+            expression = this.replaceKeysWithNames(expression);
+        } else {
+            console.log('=== REPLACING NAMES WITH KEYS ===');
+            expression = this.replaceNamesWithKeys(expression);
+        }
+
+        console.log('Original expression:', `"${originalExpression}"`);
+        console.log('New expression:     ', `"${expression}"`);
+        console.log('Changed:', originalExpression !== expression);
+        
+        expressionInput.value = expression;
+        console.log('=== handleReplaceKeysToggle END ===');
+    }
+
+    replaceKeysWithNames(text) {
+        let processedText = text;
+        for (const [name, value] of this.keyVariables) {
+            // Simple string replacement - no word boundaries for hex keys
+            processedText = processedText.split(value).join(name);
+        }
+        return processedText;
+    }
+
+    replaceNamesWithKeys(text) {
+        let processedText = text;
+        for (const [name, value] of this.keyVariables) {
+            // Use word boundaries for variable names to avoid partial matches
+            const regex = new RegExp('\\b' + name + '\\b', 'g');
+            processedText = processedText.replace(regex, value);
+        }
+        return processedText;
+    }
+
+    escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    setupReplaceKeysCheckbox() {
+        console.log('Setting up replace keys checkbox');
+        // Wait for DOM to be ready
+        setTimeout(() => {
+            const checkbox = document.getElementById('replace-keys-checkbox');
+            console.log('Looking for checkbox element:', checkbox);
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    console.log('Checkbox clicked, checked:', e.target.checked);
+                    this.handleReplaceKeysToggle(e.target.checked);
+                });
+                console.log('Checkbox event listener added successfully');
+            } else {
+                console.error('Replace keys checkbox not found in DOM');
+                // Try again in case DOM isn't ready
+                setTimeout(() => {
+                    const checkboxRetry = document.getElementById('replace-keys-checkbox');
+                    console.log('Retry - Looking for checkbox:', checkboxRetry);
+                    if (checkboxRetry) {
+                        checkboxRetry.addEventListener('change', (e) => {
+                            console.log('Checkbox clicked (retry), checked:', e.target.checked);
+                            this.handleReplaceKeysToggle(e.target.checked);
+                        });
+                        console.log('Checkbox event listener added on retry');
+                    } else {
+                        console.error('Checkbox still not found on retry');
+                    }
+                }, 1000);
+            }
+        }, 100);
     }
 
     clearExpression() {
@@ -933,4 +1032,14 @@ window.loadPolicyExample = function(example) {
     document.getElementById('policy-errors').innerHTML = '';
     // Set context to segwit for all examples
     document.querySelector('input[name="context"][value="segwit"]').checked = true;
+};
+
+// Global function to handle replace keys checkbox
+window.handleReplaceKeysChange = function(isChecked) {
+    console.log('Global handleReplaceKeysChange called with:', isChecked);
+    if (window.compiler && typeof window.compiler.handleReplaceKeysToggle === 'function') {
+        window.compiler.handleReplaceKeysToggle(isChecked);
+    } else {
+        console.error('Compiler or handleReplaceKeysToggle method not available');
+    }
 };

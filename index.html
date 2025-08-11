@@ -489,7 +489,13 @@
         <div id="policy-errors" style="margin-bottom: 20px;"></div>
         
         <div class="input-section">
-            <label for="expression-input">Miniscript expression:</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label for="expression-input">Miniscript expression:</label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; color: var(--text-secondary);">
+                    <input type="checkbox" id="replace-keys-checkbox" style="margin: 0;" onchange="handleReplaceKeysChange(this.checked)">
+                    <span>Show key names</span>
+                </label>
+            </div>
             <textarea 
                 id="expression-input" 
                 placeholder="Enter your miniscript expression here..."
