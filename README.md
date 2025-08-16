@@ -25,6 +25,26 @@ The compiler allows you to define reusable key variables instead of typing full 
 2. **Generate Keys**: Use the "🎲 Generate" button to create random test keys
 3. **Use in Expressions**: Reference keys by name in policies: `pk(Alice)` instead of `pk(03a34b99...)`
 4. **Toggle Display**: Use "Show key names" checkbox to switch between showing full keys or variable names
+5. **Restore Defaults**: Use "Restore defaults" button to reset to Alice, Bob, Charlie, and David
+6. **Clear All**: Use "Clear all" button to remove all key variables (with confirmation)
+
+### Key Types and Context Detection
+
+The compiler automatically detects the appropriate script context based on the key types used:
+
+- **Compressed Keys** (66 characters, starting with 02/03): Used for Legacy and Segwit v0 contexts
+  - Example: `02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
+  - Visual indicator: Blue color with "compressed" badge
+- **X-only Keys** (64 characters): Used for Taproot context  
+  - Example: `f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
+  - Visual indicator: Purple color with "x-only" badge
+
+### Context-Aware Features
+
+- **Smart Key Generation**: The "🎲 Generate" button creates keys appropriate for the selected script context
+- **Auto-Context Detection**: When loading saved expressions, policies, or examples, the script context automatically switches based on the key types detected
+- **Duplicate Prevention**: Generated keys avoid duplicates with existing key variables
+- **Visual Differentiation**: Key variables are color-coded and badged to easily distinguish between compressed and X-only keys
 
 ### Benefits
 
@@ -32,6 +52,7 @@ The compiler allows you to define reusable key variables instead of typing full 
 - **Reusability**: Define once, use in multiple expressions
 - **Error Reduction**: Avoid typos in long hex keys
 - **Testing**: Generate random keys for experimentation
+- **Context Awareness**: Automatic detection and switching of script contexts based on key formats
 
 ### Example
 
