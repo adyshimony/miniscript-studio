@@ -945,9 +945,12 @@ class MiniscriptCompiler {
         
         if (savedExpr) {
             document.getElementById('expression-input').value = savedExpr.expression;
-            // Set context to segwit for saved expressions (or use saved context if available)
-            const context = savedExpr.context || 'segwit';
+            
+            // Auto-detect context based on key formats in the expression
+            const detectedContext = this.detectContextFromExpression(savedExpr.expression);
+            const context = detectedContext || savedExpr.context || 'segwit';
             document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+            
             // Clear previous results and messages
             document.getElementById('results').innerHTML = '';
             this.clearMiniscriptMessages();
@@ -1006,6 +1009,57 @@ class MiniscriptCompiler {
             .replace(/OP_PUSHDATA\d?\s+/g, '')
             .replace(/\s+/g, ' ')
             .trim();
+    }
+
+    detectContextFromExpression(expression) {
+        // First check for direct hex keys in the expression
+        const hexPattern = /[0-9a-fA-F]{64,66}/g;
+        const hexMatches = expression.match(hexPattern);
+        
+        // Also check for key variable names that might reference our known keys
+        const keyVariablePattern = /[A-Za-z_][A-Za-z0-9_]*/g;
+        const variableMatches = expression.match(keyVariablePattern);
+        
+        let hasXOnlyKeys = false;
+        let hasCompressedKeys = false;
+        
+        // Check direct hex keys
+        if (hexMatches) {
+            for (const match of hexMatches) {
+                if (match.length === 64) {
+                    hasXOnlyKeys = true;
+                } else if (match.length === 66 && (match.startsWith('02') || match.startsWith('03'))) {
+                    hasCompressedKeys = true;
+                }
+            }
+        }
+        
+        // Check key variable names against our known keys
+        if (variableMatches && this.keyVariables) {
+            for (const variable of variableMatches) {
+                if (this.keyVariables.has(variable)) {
+                    const keyValue = this.keyVariables.get(variable);
+                    if (keyValue.length === 64) {
+                        hasXOnlyKeys = true;
+                    } else if (keyValue.length === 66 && (keyValue.startsWith('02') || keyValue.startsWith('03'))) {
+                        hasCompressedKeys = true;
+                    }
+                }
+            }
+        }
+        
+        // Determine context based on key types found
+        if (hasXOnlyKeys && !hasCompressedKeys) {
+            return 'taproot';
+        } else if (hasCompressedKeys && !hasXOnlyKeys) {
+            // For compressed keys, default to segwit (user can manually switch to legacy if needed)
+            return 'segwit';
+        } else if (hasXOnlyKeys && hasCompressedKeys) {
+            // Mixed key types - this is unusual, default to segwit
+            return 'segwit';
+        }
+        
+        return null; // No clear determination
     }
 
     // Policy saving methods (identical to expression saving)
@@ -1129,9 +1183,12 @@ class MiniscriptCompiler {
         
         if (savedPolicy) {
             document.getElementById('policy-input').value = savedPolicy.expression;
-            // Set context to segwit for saved policies (or use saved context if available)
-            const context = savedPolicy.context || 'segwit';
+            
+            // Auto-detect context based on key formats in the policy
+            const detectedContext = this.detectContextFromExpression(savedPolicy.expression);
+            const context = detectedContext || savedPolicy.context || 'segwit';
             document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+            
             // Clear previous results
             document.getElementById('results').innerHTML = '';
             this.clearPolicyErrors();
@@ -1196,8 +1253,11 @@ window.loadExample = function(example) {
     document.getElementById('expression-input').value = example;
     document.getElementById('results').innerHTML = '';
     window.compiler.clearMiniscriptMessages();
-    // Set context to segwit for all examples
-    document.querySelector('input[name="context"][value="segwit"]').checked = true;
+    
+    // Auto-detect context based on key formats in the example
+    const detectedContext = window.compiler.detectContextFromExpression(example);
+    const context = detectedContext || 'segwit';
+    document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
     
     // Reset the "Show key names" checkbox
     const checkbox = document.getElementById('replace-keys-checkbox');
@@ -1212,8 +1272,11 @@ window.loadPolicyExample = function(example) {
     document.getElementById('expression-input').value = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
-    // Set context to segwit for all examples
-    document.querySelector('input[name="context"][value="segwit"]').checked = true;
+    
+    // Auto-detect context based on key formats in the example
+    const detectedContext = window.compiler.detectContextFromExpression(example);
+    const context = detectedContext || 'segwit';
+    document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
     
     // Reset the "Show key names" checkbox since we cleared the miniscript
     const checkbox = document.getElementById('replace-keys-checkbox');
