@@ -203,7 +203,14 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                         }
                     }
                 }
-                Err(e) => Err(format!("Policy parsing failed: {}", e))
+                Err(e) => {
+                    let error_msg = format!("{}", e);
+                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                        Err(format!("Policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
+                    } else {
+                        Err(format!("Policy parsing failed: {}", e))
+                    }
+                }
             }
         },
         "segwit" => {
@@ -231,7 +238,14 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                         }
                     }
                 }
-                Err(e) => Err(format!("Policy parsing failed: {}", e))
+                Err(e) => {
+                    let error_msg = format!("{}", e);
+                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                        Err(format!("Segwit v0 policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
+                    } else {
+                        Err(format!("Policy parsing failed: {}", e))
+                    }
+                }
             }
         },
         "taproot" => {
@@ -260,7 +274,14 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                         }
                     }
                 }
-                Err(e) => Err(format!("Policy parsing failed: {}", e))
+                Err(e) => {
+                    let error_msg = format!("{}", e);
+                    if error_msg.contains("malformed public key") {
+                        Err(format!("Taproot policy parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
+                    } else {
+                        Err(format!("Policy parsing failed: {}", e))
+                    }
+                }
             }
         },
         _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))

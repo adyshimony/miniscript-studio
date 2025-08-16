@@ -305,6 +305,36 @@
             font-size: 10px;
             word-break: break-all;
             line-height: 1.2;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .key-value.xonly {
+            color: #8b5cf6;
+        }
+
+        .key-value.compressed {
+            color: #3b82f6;
+        }
+
+        .key-badge {
+            font-size: 8px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .key-badge.xonly {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .key-badge.compressed {
+            background: #3b82f6;
+            color: white;
         }
 
         .add-key-form {
@@ -492,6 +522,7 @@
                     <button onclick="loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
                     <button onclick="loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
                     <button onclick="loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
+                    <button onclick="loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
                 </div>
             </div>
             
@@ -533,6 +564,7 @@
                     <button onclick="loadExample('or_b(pk(Alice),s:pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
                     <button onclick="loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
                     <button onclick="loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
+                    <button onclick="loadExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
                 </div>
             </div>
             
@@ -569,8 +601,14 @@
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">🔑 Key variables</summary>
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <p style="margin-top: 0; margin-bottom: 10px; color: var(--text-muted);">Define key variables to use names like "Alice" and "Bob". Use public keys only!</p>
-                <p style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted);">💡 To generate Taproot keys (64 characters), select Taproot context below before clicking Generate.</p>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                    <p style="margin: 0; color: var(--text-muted); flex: 1;">Define key variables to use names like "Alice" and "Bob". Use public keys only!</p>
+                    <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 10px; flex-shrink: 0;">
+                        <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px;">🔄 Restore defaults</button>
+                        <button onclick="compiler.clearAllKeys()" class="danger-btn" style="padding: 4px 8px; font-size: 12px;">🗑️ Clear all</button>
+                    </div>
+                </div>
+                <p style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted);">💡 To generate Taproot X-only keys (64 characters), select Taproot context below before clicking Generate.</p>
                 
                 <div class="add-key-form">
                     <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">

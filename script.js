@@ -516,15 +516,24 @@ class MiniscriptCompiler {
             return;
         }
 
-        listDiv.innerHTML = Array.from(this.keyVariables.entries()).map(([name, value]) => `
+        listDiv.innerHTML = Array.from(this.keyVariables.entries()).map(([name, value]) => {
+            const isXOnly = value.length === 64;
+            const keyClass = isXOnly ? 'xonly' : 'compressed';
+            const badgeText = isXOnly ? 'x-only' : 'compressed';
+            
+            return `
             <div class="key-variable-item">
                 <div class="key-info">
                     <div class="key-name">${this.escapeHtml(name)}</div>
-                    <div class="key-value">${this.escapeHtml(value)}</div>
+                    <div class="key-value ${keyClass}">
+                        <span>${this.escapeHtml(value)}</span>
+                        <span class="key-badge ${keyClass}">${badgeText}</span>
+                    </div>
                 </div>
                 <button onclick="compiler.deleteKeyVariable('${this.escapeHtml(name)}')" class="danger-btn" style="padding: 4px 8px; font-size: 10px; flex-shrink: 0;">Del</button>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     loadKeyVariables() {
@@ -550,7 +559,23 @@ class MiniscriptCompiler {
         this.keyVariables.set('Alice', '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
         this.keyVariables.set('Bob', '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
         this.keyVariables.set('Charlie', '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
+        this.keyVariables.set('David', 'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
         this.saveKeyVariables();
+        this.displayKeyVariables();
+    }
+
+    restoreDefaultKeys() {
+        if (confirm('This will restore the default key variables (Alice, Bob, Charlie, David). Continue?')) {
+            this.addDefaultKeys();
+        }
+    }
+
+    clearAllKeys() {
+        if (confirm('Are you sure you want to delete ALL key variables? This cannot be undone.')) {
+            this.keyVariables.clear();
+            this.saveKeyVariables();
+            this.displayKeyVariables();
+        }
     }
 
     saveKeyVariables() {
