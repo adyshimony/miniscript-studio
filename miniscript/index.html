@@ -514,23 +514,32 @@
                 placeholder="Enter your policy here (will be compiled to miniscript)..."
             ></textarea>
             
-            <div class="examples-section" style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick policy examples:</h4>
-                <div class="button-group" style="align-items: flex-start;">
-                    <button onclick="loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                    <button onclick="loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
-                    <button onclick="loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
-                    <button onclick="loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
-                    <button onclick="loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
-                    <button onclick="loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
+            <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start;">
+                <div class="examples-buttons" style="flex: 1;">
+                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Quick policy examples:</h4>
+                    <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
+                        <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
+                        <button onclick="showPolicyDescription('or'); loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
+                        <button onclick="showPolicyDescription('and'); loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
+                        <button onclick="showPolicyDescription('threshold'); loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
+                        <button onclick="showPolicyDescription('timelock'); loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
+                        <button onclick="showPolicyDescription('xonly'); loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
+                    </div>
+                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex policy examples:</h4>
+                    <div class="button-group" style="align-items: flex-start;">
+                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eve),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
+                        <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eve)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
+                        <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
+                        <button onclick="showPolicyDescription('inheritance'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Helen),pk(Ivan),pk(Julia)),older(26280)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
+                        <button onclick="showPolicyDescription('delayed'); loadPolicyExample('or(and(pk(Julia),pk(Karl)),and(pk(David),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: 2-of-2 OR Delayed</button>
+                    </div>
                 </div>
-                <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex policy examples:</h4>
-                <div class="button-group" style="align-items: flex-start;">
-                    <button onclick="loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eve),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
-                    <button onclick="loadPolicyExample('or(pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eve)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
-                    <button onclick="loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
-                    <button onclick="loadPolicyExample('or(pk(David),and(thresh(2,pk(Helen),pk(Ivan),pk(Julia)),older(26280)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
-                    <button onclick="loadPolicyExample('or(and(pk(Julia),pk(Karl)),and(pk(David),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: 2-of-2 OR Delayed</button>
+                
+                <div class="policy-description-panel" style="flex: 1; min-width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; margin-top: 34px;" id="policy-description">
+                    <div class="description-content">
+                        <h5 style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 14px;">📄 Click an example to see description</h5>
+                        <p style="margin: 0; color: var(--secondary-text); font-size: 13px; line-height: 1.4;">Click any policy example button to learn about its spending conditions and use cases.</p>
+                    </div>
                 </div>
             </div>
             

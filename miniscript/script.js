@@ -1296,6 +1296,101 @@ window.loadPolicyExample = function(example) {
     }
 };
 
+// Global function to show policy descriptions
+window.showPolicyDescription = function(exampleId) {
+    const panel = document.getElementById('policy-description');
+    const contentDiv = panel.querySelector('.description-content');
+    
+    const descriptions = {
+        'single': {
+            title: '📄 Single Key Policy',
+            conditions: '🔓 Alice: Immediate spending (no restrictions)',
+            useCase: 'Personal wallet with single owner. Simple and efficient for individual use.',
+            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost'
+        },
+        'or': {
+            title: '📄 OR Keys Policy',
+            conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately',
+            useCase: 'Shared wallet where either party can spend. Useful for joint accounts or backup access.',
+            security: '💡 Either key compromise results in fund loss'
+        },
+        'and': {
+            title: '📄 AND Keys Policy',
+            conditions: '🔓 Alice + Bob: Both signatures required',
+            useCase: '2-of-2 multisig. Both parties must agree to spend. Common for business partnerships.',
+            security: '💡 More secure but requires cooperation of both parties'
+        },
+        'threshold': {
+            title: '📄 2-of-3 Threshold Policy',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie',
+            useCase: 'Board of directors or family trust. Prevents single point of failure while requiring majority.',
+            security: '💡 Balanced security - survives 1 key loss, prevents 1 key compromise'
+        },
+        'timelock': {
+            title: '📄 Timelock Policy',
+            conditions: '🔓 Alice: Immediate spending\n⏰ Bob: After 144 blocks (~1 day)',
+            useCase: 'Emergency access with delay. Alice has daily control, Bob can recover after waiting period.',
+            security: '💡 Cooling-off period prevents rushed decisions'
+        },
+        'xonly': {
+            title: '📄 Taproot X-only Key',
+            conditions: '🔓 David: Immediate spending (Taproot context)',
+            useCase: 'Demonstrates Taproot X-only public keys (64 characters). More efficient and private.',
+            security: '💡 Taproot provides better privacy and efficiency'
+        },
+        'corporate': {
+            title: '📄 Corporate Wallet Policy',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eve (CEO): After January 1, 2025',
+            useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
+            security: '💡 Board control with time-delayed executive override'
+        },
+        'recovery': {
+            title: '📄 Emergency Recovery Policy',
+            conditions: '🔓 Alice: Immediate spending\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
+            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed.',
+            security: '💡 User convenience with family safety net'
+        },
+        'twofa': {
+            title: '📄 2FA + Backup Policy',
+            conditions: '🔓 Alice + (Bob + secret OR wait 1 year)',
+            useCase: 'Two-factor authentication wallet. Alice + second device, or Alice alone after 1 year backup delay.',
+            security: '💡 Strong 2FA security with long-term recovery option'
+        },
+        'inheritance': {
+            title: '📄 Taproot Inheritance Policy',
+            conditions: '🔓 David: Immediate spending\n⏰ Helen + Ivan + Julia: 2-of-3 after 26280 blocks (~6 months)',
+            useCase: 'Estate planning. David controls funds, beneficiaries can inherit after extended waiting period.',
+            security: '💡 Long delay ensures David has opportunity to intervene'
+        },
+        'delayed': {
+            title: '📄 Taproot 2-of-2 OR Delayed',
+            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
+            useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
+            security: '💡 Cooperative control with individual fallback'
+        }
+    };
+    
+    const desc = descriptions[exampleId];
+    if (desc) {
+        contentDiv.innerHTML = `
+            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); white-space: pre-line;">${desc.conditions}</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+            </div>
+            <div>
+                <strong style="color: var(--text-color); font-size: 12px;">Security Notes:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
+            </div>
+        `;
+        panel.style.display = 'block';
+    }
+};
+
 // Global function to handle replace keys checkbox
 window.handleReplaceKeysChange = function(isChecked) {
     console.log('Global handleReplaceKeysChange called with:', isChecked);
