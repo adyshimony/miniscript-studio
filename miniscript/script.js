@@ -1346,9 +1346,9 @@ window.showPolicyDescription = function(exampleId) {
         },
         'recovery': {
             title: '📄 Emergency Recovery Policy',
-            conditions: '🔓 Alice: Immediate spending\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
-            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed.',
-            security: '💡 User convenience with family safety net'
+            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
+            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells wallet software to optimize for Alice\'s path.',
+            security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
         },
         'twofa': {
             title: '📄 2FA + Backup Policy',

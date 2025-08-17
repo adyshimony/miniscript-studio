@@ -516,7 +516,7 @@
             
             <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
-                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Quick policy examples:</h4>
+                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
                         <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
                         <button onclick="showPolicyDescription('or'); loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
@@ -525,10 +525,10 @@
                         <button onclick="showPolicyDescription('timelock'); loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
                         <button onclick="showPolicyDescription('xonly'); loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
                     </div>
-                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex policy examples:</h4>
+                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
                         <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eve),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
-                        <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eve)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
+                        <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eve)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
                         <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
                         <button onclick="showPolicyDescription('inheritance'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Helen),pk(Ivan),pk(Julia)),older(26280)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
                         <button onclick="showPolicyDescription('delayed'); loadPolicyExample('or(and(pk(Julia),pk(Karl)),and(pk(David),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: 2-of-2 OR Delayed</button>
@@ -614,7 +614,7 @@
             
             <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
-                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="miniscript-examples-title">Quick examples:</h4>
+                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="miniscript-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="miniscript-buttons-start">
                         <button onclick="showMiniscriptDescription('single'); loadExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
                         <button onclick="showMiniscriptDescription('and'); loadExample('and_v(v:pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-2 AND</button>
