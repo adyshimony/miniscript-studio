@@ -514,8 +514,8 @@
                 placeholder="Enter your policy here (will be compiled to miniscript)..."
             ></textarea>
             
-            <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start;">
-                <div class="examples-buttons" style="flex: 1;">
+            <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
+                <div class="examples-buttons" style="flex: 1; min-width: 0;">
                     <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Quick policy examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
                         <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
@@ -535,13 +535,52 @@
                     </div>
                 </div>
                 
-                <div class="policy-description-panel" style="flex: 1; min-width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; margin-top: 34px;" id="policy-description">
+                <div class="policy-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; margin-top: 34px; overflow-wrap: break-word; word-wrap: break-word;" id="policy-description">
                     <div class="description-content">
                         <h5 style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 14px;">📄 Click an example to see description</h5>
                         <p style="margin: 0; color: var(--secondary-text); font-size: 13px; line-height: 1.4;">Click any policy example button to learn about its spending conditions and use cases.</p>
                     </div>
                 </div>
             </div>
+            
+            <!-- Mobile responsive CSS -->
+            <style>
+                @media (max-width: 768px) {
+                    .examples-section {
+                        flex-direction: column !important;
+                        gap: 15px !important;
+                    }
+                    
+                    .policy-description-panel {
+                        margin-top: 0 !important;
+                        flex: none !important;
+                        max-width: none !important;
+                        width: 100% !important;
+                        margin-left: 0 !important;
+                        margin-right: 0 !important;
+                        box-sizing: border-box !important;
+                    }
+                    
+                    #policy-description {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    }
+                }
+                
+                @media (max-width: 1024px) and (min-width: 769px) {
+                    .policy-description-panel {
+                        flex: 0 0 250px !important;
+                        width: 250px !important;
+                    }
+                }
+                
+                @media (max-width: 1200px) and (min-width: 1025px) {
+                    .policy-description-panel {
+                        flex: 0 0 280px !important;
+                        width: 280px !important;
+                    }
+                }
+            </style>
             
             <div class="button-group" style="margin-top: 15px;">
                 <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
