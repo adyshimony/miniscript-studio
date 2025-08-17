@@ -524,6 +524,14 @@
                     <button onclick="loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
                     <button onclick="loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
                 </div>
+                <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex policy examples:</h4>
+                <div class="button-group" style="align-items: flex-start;">
+                    <button onclick="loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eve),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
+                    <button onclick="loadPolicyExample('or(pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eve)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
+                    <button onclick="loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
+                    <button onclick="loadPolicyExample('or(pk(David),and(thresh(2,pk(Helen),pk(Ivan),pk(Julia)),older(26280)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
+                    <button onclick="loadPolicyExample('or(and(pk(Julia),pk(Karl)),and(pk(David),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: 2-of-2 OR Delayed</button>
+                </div>
             </div>
             
             <div class="button-group" style="margin-top: 15px;">
@@ -565,6 +573,14 @@
                     <button onclick="loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
                     <button onclick="loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
                     <button onclick="loadExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
+                </div>
+                <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
+                <div class="button-group" style="align-items: flex-start;">
+                    <button onclick="loadExample('or_d(pk(Alice),or_d(pk(Bob),pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">1-of-3 Multisig</button>
+                    <button onclick="loadExample('or_d(pk(Alice),and_v(v:pk(Bob),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Recovery Wallet</button>
+                    <button onclick="loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Hash + Timelock</button>
+                    <button onclick="loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
+                    <button onclick="loadExample('or_d(pk(Julia),and_v(v:pk(Karl),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Immediate OR Delayed</button>
                 </div>
             </div>
             

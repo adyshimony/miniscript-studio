@@ -556,16 +556,27 @@ class MiniscriptCompiler {
 
     addDefaultKeys() {
         // Default keys used in examples
+        // Compressed keys (for Legacy/Segwit)
         this.keyVariables.set('Alice', '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
         this.keyVariables.set('Bob', '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
         this.keyVariables.set('Charlie', '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
+        this.keyVariables.set('Eve', '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
+        this.keyVariables.set('Frank', '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
+        this.keyVariables.set('Grace', '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+        
+        // X-only keys (for Taproot)
         this.keyVariables.set('David', 'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
+        this.keyVariables.set('Helen', 'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
+        this.keyVariables.set('Ivan', 'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
+        this.keyVariables.set('Julia', '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
+        this.keyVariables.set('Karl', '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
+        
         this.saveKeyVariables();
         this.displayKeyVariables();
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore the default key variables (Alice, Bob, Charlie, David). Continue?')) {
+        if (confirm('This will restore the default key variables (Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl). Continue?')) {
             this.addDefaultKeys();
         }
     }
