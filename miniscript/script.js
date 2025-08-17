@@ -1285,12 +1285,16 @@ window.generateKey = function() {
 window.loadExample = function(example) {
     document.getElementById('expression-input').value = example;
     document.getElementById('results').innerHTML = '';
-    window.compiler.clearMiniscriptMessages();
+    if (window.compiler && window.compiler.clearMiniscriptMessages) {
+        window.compiler.clearMiniscriptMessages();
+    }
     
-    // Auto-detect context based on key formats in the example
-    const detectedContext = window.compiler.detectContextFromExpression(example);
-    const context = detectedContext || 'segwit';
-    document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+    // Auto-detect context based on key formats in the example (only if compiler is ready)
+    if (window.compiler && window.compiler.detectContextFromExpression) {
+        const detectedContext = window.compiler.detectContextFromExpression(example);
+        const context = detectedContext || 'segwit';
+        document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+    }
     
     // Reset the "Show key names" checkbox
     const checkbox = document.getElementById('replace-keys-checkbox');
@@ -1306,10 +1310,12 @@ window.loadPolicyExample = function(example) {
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
     
-    // Auto-detect context based on key formats in the example
-    const detectedContext = window.compiler.detectContextFromExpression(example);
-    const context = detectedContext || 'segwit';
-    document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+    // Auto-detect context based on key formats in the example (only if compiler is ready)
+    if (window.compiler && window.compiler.detectContextFromExpression) {
+        const detectedContext = window.compiler.detectContextFromExpression(example);
+        const context = detectedContext || 'segwit';
+        document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+    }
     
     // Reset the "Show key names" checkbox since we cleared the miniscript
     const checkbox = document.getElementById('replace-keys-checkbox');
@@ -1530,6 +1536,210 @@ window.handleReplaceKeysChange = function(isChecked) {
         window.compiler.handleReplaceKeysToggle(isChecked);
     } else {
         console.error('Compiler or handleReplaceKeysToggle method not available');
+    }
+};
+
+// Make description functions globally available
+window.showPolicyDescription = function(exampleId) {
+    const panel = document.getElementById('policy-description');
+    const contentDiv = panel.querySelector('.description-content');
+    
+    const descriptions = {
+        'single': {
+            title: '📄 Single Key Policy',
+            conditions: '🔓 Alice: Immediate spending (no restrictions)',
+            useCase: 'Personal wallet with single owner. Simple and efficient for individual use.',
+            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost'
+        },
+        'or': {
+            title: '📄 OR Keys Policy',
+            conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately',
+            useCase: 'Shared wallet where either party can spend. Useful for joint accounts or backup access.',
+            security: '💡 Either key compromise results in fund loss'
+        },
+        'and': {
+            title: '📄 AND Keys Policy',
+            conditions: '🔓 Alice + Bob: Both signatures required',
+            useCase: '2-of-2 multisig. Both parties must agree to spend. Common for business partnerships.',
+            security: '💡 More secure but requires cooperation of both parties'
+        },
+        'threshold': {
+            title: '📄 2-of-3 Threshold Policy',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie',
+            useCase: 'Board of directors or family trust. Prevents single point of failure while requiring majority.',
+            security: '💡 Balanced security - survives 1 key loss, prevents 1 key compromise'
+        },
+        'timelock': {
+            title: '📄 Timelock Policy',
+            conditions: '🔓 Alice: Immediate spending\n⏰ Bob: After 144 blocks (~1 day)',
+            useCase: 'Emergency access with delay. Alice has daily control, Bob can recover after waiting period.',
+            security: '💡 Cooling-off period prevents rushed decisions'
+        },
+        'xonly': {
+            title: '📄 Taproot X-only Key',
+            conditions: '🔓 David: Immediate spending (Taproot context)',
+            useCase: 'Demonstrates Taproot X-only public keys (64 characters). More efficient and private.',
+            security: '💡 Taproot provides better privacy and efficiency'
+        },
+        'corporate': {
+            title: '📄 Corporate Wallet Policy',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eve (CEO): After January 1, 2025',
+            useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
+            security: '💡 Board control with time-delayed executive override'
+        },
+        'recovery': {
+            title: '📄 Emergency Recovery Policy',
+            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
+            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
+            security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
+        },
+        'twofa': {
+            title: '📄 2FA + Backup Policy',
+            conditions: '🔓 Alice + (Bob + secret OR wait 1 year)',
+            useCase: 'Two-factor authentication wallet. Alice + second device, or Alice alone after 1 year backup delay.',
+            security: '💡 Strong 2FA security with long-term recovery option'
+        },
+        'inheritance': {
+            title: '📄 Taproot Inheritance Policy',
+            conditions: '🔓 David: Immediate spending\n⏰ Helen + Ivan + Julia: 2-of-3 after 26280 blocks (~6 months)',
+            useCase: 'Estate planning. David controls funds, beneficiaries can inherit after extended waiting period.',
+            security: '💡 Long delay ensures David has opportunity to intervene'
+        },
+        'delayed': {
+            title: '📄 Taproot 2-of-2 OR Delayed',
+            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
+            useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
+            security: '💡 Cooperative control with individual fallback'
+        }
+    };
+    
+    const desc = descriptions[exampleId];
+    if (desc) {
+        contentDiv.innerHTML = `
+            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); white-space: pre-line;">${desc.conditions}</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+            </div>
+            <div>
+                <strong style="color: var(--text-color); font-size: 12px;">Security Notes:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
+            </div>
+        `;
+        panel.style.display = 'block';
+    }
+};
+
+window.showMiniscriptDescription = function(exampleId) {
+    const panel = document.getElementById('miniscript-description');
+    const contentDiv = panel.querySelector('.description-content');
+    
+    const descriptions = {
+        'single': {
+            title: '⚙️ Single Key Miniscript',
+            structure: 'pk(Alice) → Direct public key check',
+            bitcoinScript: 'Compiles to: <Alice> CHECKSIG',
+            useCase: 'Simplest miniscript - requires a signature from Alice to spend.',
+            technical: '💡 Most efficient single-key pattern'
+        },
+        'and': {
+            title: '⚙️ 2-of-2 AND Miniscript',
+            structure: 'and_v(v:pk(Alice),pk(Bob)) → Verify Alice, then check Bob',
+            bitcoinScript: 'Compiles to: <Alice> CHECKSIGVERIFY <Bob> CHECKSIG',
+            useCase: 'Both Alice and Bob must provide signatures. Common for joint accounts or business partnerships.',
+            technical: '💡 Uses VERIFY wrapper for efficient sequential checking'
+        },
+        'or': {
+            title: '⚙️ OR Keys Miniscript',
+            structure: 'or_b(pk(Alice),s:pk(Bob)) → Boolean OR with stack swap',
+            bitcoinScript: 'Compiles to: <Alice> CHECKSIG SWAP <Bob> CHECKSIG BOOLOR',
+            useCase: 'Either Alice or Bob can spend. Useful for backup access or shared control.',
+            technical: '💡 s: wrapper swaps stack elements for proper evaluation'
+        },
+        'complex': {
+            title: '⚙️ Complex AND/OR Miniscript',
+            structure: 'and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie))) → Alice AND (Bob OR Charlie)',
+            bitcoinScript: 'Alice verified first, then Bob OR Charlie evaluated',
+            useCase: 'Alice must always sign, plus either Bob or Charlie. Useful for primary + backup authorization.',
+            technical: '💡 Nested structure demonstrates miniscript composition'
+        },
+        'timelock': {
+            title: '⚙️ Timelock Miniscript',
+            structure: 'and_v(v:pk(Alice),and_v(v:older(144),pk(Bob))) → Alice AND (144 blocks + Bob)',
+            bitcoinScript: 'Verifies Alice, then checks timelock and Bob signature',
+            useCase: 'Alice must sign, plus Bob can only sign after 144 blocks (~1 day). Prevents rushed decisions.',
+            technical: '💡 Relative timelock using CSV (CHECKSEQUENCEVERIFY)'
+        },
+        'xonly': {
+            title: '⚙️ Taproot X-only Key',
+            structure: 'pk(David) → X-only public key (64 chars)',
+            bitcoinScript: 'Compiles to Taproot-compatible script using 32-byte keys',
+            useCase: 'Demonstrates Taproot X-only public keys for improved efficiency and privacy.',
+            technical: '💡 Taproot uses Schnorr signatures with X-only keys'
+        },
+        'multisig': {
+            title: '⚙️ 1-of-3 Multisig Miniscript',
+            structure: 'or_d(pk(Alice),or_d(pk(Bob),pk(Charlie))) → Nested OR with DUP',
+            bitcoinScript: 'Conditional execution using DUP IF pattern for each branch',
+            useCase: 'Any of three parties can spend. More flexible than traditional CHECKMULTISIG.',
+            technical: '💡 or_d uses DUP IF for efficient conditional branching'
+        },
+        'recovery': {
+            title: '⚙️ Recovery Wallet Miniscript',
+            structure: 'or_d(pk(Alice),and_v(v:pk(Bob),older(1008))) → Alice OR (Bob + delay)',
+            bitcoinScript: 'Alice immediate, or Bob after 1008 blocks verification',
+            useCase: 'Alice has daily control, Bob can recover funds after ~1 week waiting period.',
+            technical: '💡 Combines immediate access with time-delayed recovery'
+        },
+        'hash': {
+            title: '⚙️ Hash + Timelock Miniscript',
+            structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+            bitcoinScript: 'Alice AND (Bob OR (secret + timelock))',
+            useCase: 'Alice + Bob normally, or Alice + secret after delay. Two-factor authentication pattern.',
+            technical: '💡 hash160 requires RIPEMD160(SHA256(preimage))'
+        },
+        'inheritance': {
+            title: '⚙️ Taproot Inheritance Miniscript',
+            structure: 'and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))',
+            bitcoinScript: 'David AND (Helen OR (Ivan + 1 year))',
+            useCase: 'David controls funds, Helen can inherit immediately, or Ivan after extended delay.',
+            technical: '💡 Long timelock (52560 blocks ≈ 1 year) for inheritance planning'
+        },
+        'delayed': {
+            title: '⚙️ Taproot Immediate OR Delayed',
+            structure: 'or_d(pk(Julia),and_v(v:pk(Karl),older(144))) → Julia OR (Karl + delay)',
+            bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
+            useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
+            technical: '💡 Demonstrates Taproot miniscript with short timelock'
+        }
+    };
+    
+    const desc = descriptions[exampleId];
+    if (desc) {
+        contentDiv.innerHTML = `
+            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Structure:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Bitcoin Script:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.bitcoinScript}</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+            </div>
+            <div>
+                <strong style="color: var(--text-color); font-size: 12px;">Technical Notes:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.technical}</div>
+            </div>
+        `;
+        panel.style.display = 'block';
     }
 };
 
