@@ -1391,6 +1391,116 @@ window.showPolicyDescription = function(exampleId) {
     }
 };
 
+// Global function to show miniscript descriptions
+window.showMiniscriptDescription = function(exampleId) {
+    const panel = document.getElementById('miniscript-description');
+    const contentDiv = panel.querySelector('.description-content');
+    
+    const descriptions = {
+        'single': {
+            title: '⚙️ Single Key Miniscript',
+            structure: 'pk(Alice) → Direct public key check',
+            bitcoinScript: 'Compiles to: <Alice> CHECKSIG',
+            useCase: 'Simplest miniscript - requires a signature from Alice to spend.',
+            technical: '💡 Most efficient single-key pattern'
+        },
+        'and': {
+            title: '⚙️ 2-of-2 AND Miniscript',
+            structure: 'and_v(v:pk(Alice),pk(Bob)) → Verify Alice, then check Bob',
+            bitcoinScript: 'Compiles to: <Alice> CHECKSIGVERIFY <Bob> CHECKSIG',
+            useCase: 'Both Alice and Bob must provide signatures. Common for joint accounts or business partnerships.',
+            technical: '💡 Uses VERIFY wrapper for efficient sequential checking'
+        },
+        'or': {
+            title: '⚙️ OR Keys Miniscript',
+            structure: 'or_b(pk(Alice),s:pk(Bob)) → Boolean OR with stack swap',
+            bitcoinScript: 'Compiles to: <Alice> CHECKSIG SWAP <Bob> CHECKSIG BOOLOR',
+            useCase: 'Either Alice or Bob can spend. Useful for backup access or shared control.',
+            technical: '💡 s: wrapper swaps stack elements for proper evaluation'
+        },
+        'complex': {
+            title: '⚙️ Complex AND/OR Miniscript',
+            structure: 'and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie))) → Alice AND (Bob OR Charlie)',
+            bitcoinScript: 'Alice verified first, then Bob OR Charlie evaluated',
+            useCase: 'Alice must always sign, plus either Bob or Charlie. Useful for primary + backup authorization.',
+            technical: '💡 Nested structure demonstrates miniscript composition'
+        },
+        'timelock': {
+            title: '⚙️ Timelock Miniscript',
+            structure: 'and_v(v:pk(Alice),and_v(v:older(144),pk(Bob))) → Alice AND (144 blocks + Bob)',
+            bitcoinScript: 'Verifies Alice, then checks timelock and Bob signature',
+            useCase: 'Alice must sign, plus Bob can only sign after 144 blocks (~1 day). Prevents rushed decisions.',
+            technical: '💡 Relative timelock using CSV (CHECKSEQUENCEVERIFY)'
+        },
+        'xonly': {
+            title: '⚙️ Taproot X-only Key',
+            structure: 'pk(David) → X-only public key (64 chars)',
+            bitcoinScript: 'Compiles to Taproot-compatible script using 32-byte keys',
+            useCase: 'Demonstrates Taproot X-only public keys for improved efficiency and privacy.',
+            technical: '💡 Taproot uses Schnorr signatures with X-only keys'
+        },
+        'multisig': {
+            title: '⚙️ 1-of-3 Multisig Miniscript',
+            structure: 'or_d(pk(Alice),or_d(pk(Bob),pk(Charlie))) → Nested OR with DUP',
+            bitcoinScript: 'Conditional execution using DUP IF pattern for each branch',
+            useCase: 'Any of three parties can spend. More flexible than traditional CHECKMULTISIG.',
+            technical: '💡 or_d uses DUP IF for efficient conditional branching'
+        },
+        'recovery': {
+            title: '⚙️ Recovery Wallet Miniscript',
+            structure: 'or_d(pk(Alice),and_v(v:pk(Bob),older(1008))) → Alice OR (Bob + delay)',
+            bitcoinScript: 'Alice immediate, or Bob after 1008 blocks verification',
+            useCase: 'Alice has daily control, Bob can recover funds after ~1 week waiting period.',
+            technical: '💡 Combines immediate access with time-delayed recovery'
+        },
+        'hash': {
+            title: '⚙️ Hash + Timelock Miniscript',
+            structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+            bitcoinScript: 'Alice AND (Bob OR (secret + timelock))',
+            useCase: 'Alice + Bob normally, or Alice + secret after delay. Two-factor authentication pattern.',
+            technical: '💡 hash160 requires RIPEMD160(SHA256(preimage))'
+        },
+        'inheritance': {
+            title: '⚙️ Taproot Inheritance Miniscript',
+            structure: 'and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))',
+            bitcoinScript: 'David AND (Helen OR (Ivan + 1 year))',
+            useCase: 'David controls funds, Helen can inherit immediately, or Ivan after extended delay.',
+            technical: '💡 Long timelock (52560 blocks ≈ 1 year) for inheritance planning'
+        },
+        'delayed': {
+            title: '⚙️ Taproot Immediate OR Delayed',
+            structure: 'or_d(pk(Julia),and_v(v:pk(Karl),older(144))) → Julia OR (Karl + delay)',
+            bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
+            useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
+            technical: '💡 Demonstrates Taproot miniscript with short timelock'
+        }
+    };
+    
+    const desc = descriptions[exampleId];
+    if (desc) {
+        contentDiv.innerHTML = `
+            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Structure:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Bitcoin Script:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.bitcoinScript}</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+            </div>
+            <div>
+                <strong style="color: var(--text-color); font-size: 12px;">Technical Notes:</strong>
+                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.technical}</div>
+            </div>
+        `;
+        panel.style.display = 'block';
+    }
+};
+
 // Global function to handle replace keys checkbox
 window.handleReplaceKeysChange = function(isChecked) {
     console.log('Global handleReplaceKeysChange called with:', isChecked);
