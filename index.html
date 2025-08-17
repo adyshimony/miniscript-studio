@@ -3,879 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Miniscript Compiler</title>
+    <title>Adys - Bitcoin Developer</title>
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --container-bg: white;
-            --text-color: #333;
-            --text-secondary: #4a5568;
-            --text-muted: #718096;
-            --border-color: #e2e8f0;
-            --border-focus: #667eea;
-            --button-secondary-bg: #e2e8f0;
-            --button-secondary-hover: #cbd5e0;
-            --info-bg: #f7fafc;
-            --success-bg: #c6f6d5;
-            --success-border: #68d391;
-            --error-bg: #fed7d7;
-            --error-border: #fc8181;
-            --error-text: #c53030;
+            --bg-color: #1a1a1a;
+            --secondary-bg: #2d2d2d;
+            --text-color: #e2e8f0;
+            --secondary-text: #a0aec0;
+            --border-color: #4a5568;
+            --accent-color: #3182ce;
+            --success-color: #38a169;
+            --error-color: #e53e3e;
+            --warning-color: #d69e2e;
+            --hover-bg: #3a3a3a;
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-gradient: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-                --container-bg: #2d3748;
-                --text-color: #e2e8f0;
-                --text-secondary: #cbd5e0;
-                --text-muted: #a0aec0;
-                --border-color: #4a5568;
-                --border-focus: #63b3ed;
-                --button-secondary-bg: #4a5568;
-                --button-secondary-hover: #718096;
-                --info-bg: #2d3748;
-                --success-bg: #22543d;
-                --success-border: #38a169;
-                --error-bg: #742a2a;
-                --error-border: #e53e3e;
-                --error-text: #feb2b2;
-            }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: var(--bg-gradient);
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
             min-height: 100vh;
-            color: var(--text-color);
-            box-sizing: border-box;
-        }
-
-        .main-content {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .container {
-            background: var(--container-bg);
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
-        }
-        
-        h1 {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-top: 50px;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-        }
-        
-        .input-section {
-            margin-bottom: 30px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-        
-        #policy-input, #expression-input {
-            width: 100%;
-            height: 70px;
-            padding: 10px 15px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
-            resize: vertical;
-            transition: border-color 0.3s ease;
-            background: var(--container-bg);
-            color: var(--text-color);
-            box-sizing: border-box;
-        }
-        
-        #policy-input:focus, #expression-input:focus {
-            outline: none;
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            min-width: 0;
-        }
-
-        .button-group button {
-            flex-shrink: 1;
-            min-width: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .examples-section .button-group {
-            align-items: flex-start;
-        }
-
-        .examples-section .button-group button {
-            font-size: 11px !important;
-            padding: 4px 8px !important;
-            min-width: 60px;
-        }
-        
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            font-size: 14px;
-        }
-        
-        .primary-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .primary-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .secondary-btn {
-            background: var(--button-secondary-bg);
-            color: var(--text-secondary);
-        }
-        
-        .secondary-btn:hover {
-            background: var(--button-secondary-hover);
-        }
-        
-        .danger-btn {
-            background: #e53e3e;
-            color: white;
-        }
-        
-        .danger-btn:hover {
-            background: #c53030;
-        }
-        
-        .saved-expressions {
-            margin-bottom: 20px;
-        }
-        
-        .expression-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: var(--info-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            margin-bottom: 8px;
-            min-width: 0;
-        }
-
-        .expression-info {
-            flex: 1;
-            min-width: 0;
-            margin-right: 10px;
-        }
-        
-        .expression-name {
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-        
-        .expression-preview {
-            font-family: monospace;
-            color: var(--text-muted);
-            font-size: 10px;
-            word-break: break-all;
-            line-height: 1.2;
-        }
-        
-        .results-section {
-            margin-top: 30px;
-        }
-        
-        .result-box {
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-family: monospace;
-        }
-        
-        .error {
-            background: var(--error-bg);
-            border: 1px solid var(--error-border);
-            color: var(--error-text);
-        }
-        
-        .success {
-            background: var(--success-bg);
-            border: 1px solid var(--success-border);
-            color: var(--text-color);
-        }
-        
-        .info {
-            background: var(--info-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-        }
-        
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--container-bg);
-            padding: 30px;
-            border-radius: 12px;
-            min-width: 300px;
-            color: var(--text-color);
-        }
-        
-        #save-name {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            background: var(--container-bg);
-            color: var(--text-color);
-            box-sizing: border-box;
-        }
-
-        .key-variable-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: var(--container-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            margin-bottom: 8px;
-            min-width: 0;
-        }
-
-        .key-info {
-            flex: 1;
-            min-width: 0;
-            margin-right: 10px;
-        }
-
-        .key-name {
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-family: monospace;
-        }
-
-        .key-value {
-            font-family: monospace;
-            color: var(--text-muted);
-            font-size: 10px;
-            word-break: break-all;
-            line-height: 1.2;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .key-value.xonly {
-            color: #8b5cf6;
-        }
-
-        .key-value.compressed {
-            color: #3b82f6;
-        }
-
-        .key-badge {
-            font-size: 8px;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .key-badge.xonly {
-            background: #8b5cf6;
-            color: white;
-        }
-
-        .key-badge.compressed {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .add-key-form {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
         }
 
-        .add-key-form input {
-            padding: 10px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            background: var(--container-bg);
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 3rem;
+        }
+
+        .name {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            color: var(--secondary-text);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: var(--secondary-text);
+            opacity: 0.8;
+        }
+
+        .navigation {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 2rem;
+        }
+
+        .nav-card {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            text-decoration: none;
             color: var(--text-color);
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-            box-sizing: border-box;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
         }
 
-        .add-key-form input:focus {
-            outline: none;
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        .nav-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
-        
+
+        .nav-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-color);
+        }
+
+        .nav-card:hover::before {
+            opacity: 1;
+        }
+
+        .nav-icon {
+            font-size: 2rem;
+            z-index: 1;
+        }
+
+        .nav-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            z-index: 1;
+        }
+
+        .nav-description {
+            font-size: 0.9rem;
+            color: var(--secondary-text);
+            text-align: center;
+            line-height: 1.4;
+            z-index: 1;
+        }
+
+        .footer {
+            padding: 2rem;
+            text-align: center;
+            color: var(--secondary-text);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
         @media (max-width: 768px) {
-            .main-content {
-                padding: 10px;
-                max-width: 100%;
-            }
-
             .container {
-                padding: 15px;
-                margin-bottom: 15px;
+                padding: 1rem;
             }
 
-            h1 {
-                font-size: 1.8em;
-                margin-top: 20px;
-                margin-bottom: 20px;
-            }
-            
-            .button-group {
-                gap: 8px;
-                flex-direction: column;
+            .name {
+                font-size: 2.5rem;
             }
 
-            .button-group button {
-                font-size: 14px !important;
-                padding: 12px !important;
-                min-width: auto;
-                width: 100%;
+            .tagline {
+                font-size: 1.1rem;
             }
 
-            .examples-section .button-group {
-                flex-direction: row;
-                flex-wrap: wrap;
+            .navigation {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
 
-            .examples-section .button-group button {
-                font-size: 10px !important;
-                padding: 6px 8px !important;
-                min-width: 60px;
-                flex: 1;
-            }
-
-            #policy-input, #expression-input {
-                font-size: 16px;
-                padding: 12px 15px;
-                height: 75px;
-            }
-
-            .add-key-form input {
-                font-size: 16px;
-                padding: 12px;
-                height: auto;
-            }
-
-            .key-variable-item, .expression-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-                padding: 12px;
-            }
-
-            .key-info, .expression-info {
-                margin-right: 0;
-                margin-bottom: 8px;
-            }
-
-            .radio-group {
-                flex-direction: column;
-                gap: 12px !important;
-            }
-
-            .radio-group label {
-                font-size: 16px;
-            }
-
-            details summary {
-                font-size: 16px;
-                padding: 8px 0;
-            }
-
-            .result-box {
-                padding: 15px;
-                margin-bottom: 10px;
-            }
-
-            .result-box h4 {
-                font-size: 16px;
-            }
-
-            textarea[readonly] {
-                font-size: 12px !important;
+            .nav-card {
+                padding: 1.5rem 1rem;
             }
         }
 
         @media (max-width: 480px) {
-            .main-content {
-                padding: 8px;
+            .name {
+                font-size: 2rem;
             }
 
-            .container {
-                padding: 12px;
-            }
-
-            h1 {
-                font-size: 1.5em;
-            }
-
-            .examples-section .button-group button {
-                font-size: 9px !important;
-                padding: 4px 6px !important;
-                min-width: 45px;
-            }
-
-            details > div {
-                padding: 15px !important;
-            }
-
-            .modal-content {
-                margin: 20px;
-                min-width: auto;
-                width: calc(100% - 40px);
+            .tagline {
+                font-size: 1rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="main-content">
-        <div class="container">
-            <h1>🔨 Miniscript compiler</h1>
-        
-        <div class="input-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <label for="policy-input">Policy (optional):</label>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <button onclick="removePolicyExtraChars()" style="background: none; border: none; padding: 1px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                            🧹
-                        </button>
-                        <span style="font-weight: normal; color: var(--text-secondary);">Remove extra characters</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 1px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                            📋
-                        </button>
-                        <span style="font-weight: normal; color: var(--text-secondary);">Copy</span>
-                    </div>
-                </div>
-            </div>
-            <textarea 
-                id="policy-input" 
-                placeholder="Enter your policy here (will be compiled to miniscript)..."
-            ></textarea>
-            
-            <div class="examples-section" style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick policy examples:</h4>
-                <div class="button-group" style="align-items: flex-start;">
-                    <button onclick="loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                    <button onclick="loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
-                    <button onclick="loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
-                    <button onclick="loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
-                    <button onclick="loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
-                    <button onclick="loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
-                </div>
-            </div>
-            
-            <div class="button-group" style="margin-top: 15px;">
-                <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
-                <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
-                <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
-            </div>
+    <div class="container">
+        <div class="header">
+            <h1 class="name">Adys</h1>
+            <p class="tagline">Bitcoin Developer & Security Researcher</p>
+            <p class="subtitle">Building tools and infrastructure for Bitcoin</p>
         </div>
-        
-        <div id="policy-errors" style="margin-bottom: 20px;"></div>
-        
-        <div class="input-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <label for="expression-input">Miniscript:</label>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="replace-keys-checkbox" style="margin: 0;" onchange="handleReplaceKeysChange(this.checked)">
-                        <span style="cursor: pointer; font-weight: normal; color: var(--text-secondary);" onclick="document.getElementById('replace-keys-checkbox').click()">Show key names</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 1px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                            📋
-                        </button>
-                        <span style="font-weight: normal; color: var(--text-secondary);">Copy</span>
-                    </div>
-                </div>
-            </div>
-            <textarea 
-                id="expression-input" 
-                placeholder="Enter your miniscript here..."
-            ></textarea>
-            
-            <div class="examples-section" style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px; color: var(--text-secondary);">Quick examples:</h4>
-                <div class="button-group" style="align-items: flex-start;">
-                    <button onclick="loadExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                    <button onclick="loadExample('and_v(v:pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-2 AND</button>
-                    <button onclick="loadExample('or_b(pk(Alice),s:pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
-                    <button onclick="loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
-                    <button onclick="loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
-                    <button onclick="loadExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
-                </div>
-            </div>
-            
-            <div class="context-section" style="margin-top: 20px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Script context:</label>
-                <div class="radio-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
-                        <input type="radio" name="context" value="legacy" style="margin: 0;">
-                        <span>Legacy (p2SH)</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
-                        <input type="radio" name="context" value="segwit" checked style="margin: 0;">
-                        <span>Segwit v0 (p2WSH)</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
-                        <input type="radio" name="context" value="taproot" style="margin: 0;">
-                        <span>Taproot</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-        
-        <div class="button-group">
-            <button id="compile-btn" class="primary-btn">🔨 Compile</button>
-            <button id="save-btn" class="secondary-btn">💾 Save</button>
-            <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
-        </div>
-        
-        <div id="miniscript-messages" style="margin-bottom: 20px;"></div>
-        
-        <div class="results-section" id="results" style="margin-bottom: 20px;">
-        </div>
-        
-        <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">🔑 Key variables</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                    <p style="margin: 0; color: var(--text-muted); flex: 1;">Define key variables to use names like "Alice" and "Bob". Use public keys only!</p>
-                    <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 10px; flex-shrink: 0;">
-                        <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px;">🔄 Restore defaults</button>
-                        <button onclick="compiler.clearAllKeys()" class="danger-btn" style="padding: 4px 8px; font-size: 12px;">🗑️ Clear all</button>
-                    </div>
-                </div>
-                <p style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted);">💡 To generate Taproot X-only keys (64 characters), select Taproot context below before clicking Generate.</p>
-                
-                <div class="add-key-form">
-                    <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">
-                    <input type="text" id="key-value-input" placeholder="Key value (any format)">
-                    <div style="display: flex; gap: 10px;">
-                        <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">➕ Add key</button>
-                        <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">🎲 Generate</button>
-                    </div>
-                </div>
-                
-                <div id="key-variables-list" style="margin-top: 15px;">
-                    <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No key variables defined.</p>
-                </div>
-            </div>
-        </details>
 
-        <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">💾 Saved policies</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <div id="policies-list">
-                    <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved policies yet.</p>
-                </div>
-            </div>
-        </details>
+        <nav class="navigation">
+            <a href="bio.html" class="nav-card">
+                <div class="nav-icon">👤</div>
+                <div class="nav-title">Bio</div>
+                <div class="nav-description">Learn about my background and experience in Bitcoin development</div>
+            </a>
 
-        <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📝 Saved miniscript</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <div id="expressions-list">
-                    <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved expressions yet.</p>
-                </div>
-            </div>
-        </details>
-        
-        <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📘 Policy reference</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <h4 style="color: var(--text-secondary);">Basic functions:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - A single public key that must provide a signature</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - A relative timelock requiring n blocks/seconds to pass since input creation</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - An absolute timelock requiring block height or time n to be reached</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">sha256(h)</code> - A SHA256 hash preimage that must be provided to satisfy the condition</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash256(h)</code> - A double-SHA256 hash preimage that must be provided</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">ripemd160(h)</code> - A RIPEMD160 hash preimage that must be provided</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - A Bitcoin hash160 preimage that must be provided</li>
-                </ul>
+            <a href="blog.html" class="nav-card">
+                <div class="nav-icon">📝</div>
+                <div class="nav-title">Blog</div>
+                <div class="nav-description">Technical articles and insights on Bitcoin protocol development</div>
+            </a>
 
-                <h4 style="color: var(--text-secondary);">Logical operators:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and(X,Y)</code> - Both conditions X and Y must be satisfied simultaneously</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or(X,Y)</code> - Either condition X or Y must be satisfied (or both)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X,Y,Z,...)</code> - At least k out of the listed conditions must be satisfied</li>
-                </ul>
+            <a href="miniscript/index.html" class="nav-card">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-title">Miniscript Compiler</div>
+                <div class="nav-description">WebAssembly-powered tool for compiling Bitcoin policies and miniscripts</div>
+            </a>
 
-
-                <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
-                    <strong>Note:</strong> Policy language provides a high-level, human-readable way to express spending conditions that compile to miniscript. 
-                    Keys can be variable names or full hex public keys. Policies are automatically optimized during compilation.
-                </p>
-
-                <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
-                    <strong>Reference:</strong> <a href="https://bitcoin.sipa.be/miniscript/" target="_blank" style="color: var(--border-focus); text-decoration: none;">https://bitcoin.sipa.be/miniscript/</a>
-                </p>
-            </div>
-        </details>
-
-        <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📚 Miniscript reference</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <h4 style="color: var(--text-secondary);">Basic fragments:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - Requires a signature from the specified public key</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pkh(key)</code> - Requires revealing and signing with a key that hashes to the given hash160</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - Requires that the input's relative locktime (nSequence) is at least n blocks/seconds</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - Requires that the transaction's locktime (nLockTime) is at least block height/time n</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">sha256(h)</code> - Requires a preimage that produces the given SHA256 hash when hashed</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash256(h)</code> - Requires a preimage that produces the given double-SHA256 hash (SHA256 of SHA256)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">ripemd160(h)</code> - Requires a preimage that produces the given RIPEMD160 hash when hashed</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - Requires a preimage that produces the given hash160 (RIPEMD160 of SHA256)</li>
-                </ul>
-
-                <h4 style="color: var(--text-secondary);">AND combinators:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_v(X,Y)</code> - Both X and Y must be satisfied, using VERIFY to check X then evaluating Y</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_b(X,Y)</code> - Both X and Y must be satisfied, using BOOLAND to combine their boolean results</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_n(X,Y)</code> - Both X and Y must be satisfied, using NOTIF to conditionally execute Y based on X</li>
-                </ul>
-
-                <h4 style="color: var(--text-secondary);">OR combinators:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_b(X,Y)</code> - Either X or Y must be satisfied, using BOOLOR to combine their boolean results</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_c(X,Y)</code> - Either X or Y must be satisfied, using CHECKSIG pattern for efficient evaluation</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_d(X,Y)</code> - Either X or Y must be satisfied, using DUP IF to conditionally execute branches</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_i(X,Y)</code> - Either X or Y must be satisfied, using IF/ELSE conditional branching</li>
-                </ul>
-
-                <h4 style="color: var(--text-secondary);">Threshold:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X₁,X₂,...,Xₙ)</code> - Requires k out of n sub-expressions to be satisfied</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi(k,key₁,key₂,...)</code> - Traditional k-of-n multisig using CHECKMULTISIG (Taproot only)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi_a(k,key₁,key₂,...)</code> - Modern k-of-n multisig using CHECKSIGADD opcodes</li>
-                </ul>
-
-                <h4 style="color: var(--text-secondary);">Wrappers:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">a:</code> - Moves the top stack element to/from the altstack for later use</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">s:</code> - Swaps the top two stack elements before evaluation</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">c:</code> - Adds CHECKSIG operation to convert a public key to a signature check</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">t:</code> - Converts any non-zero value to 1 (true), zero values remain 0 (false)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">d:</code> - Duplicates the top stack element if it's non-zero before conditional execution</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">v:</code> - Adds VERIFY operation to ensure the wrapped expression must evaluate to true</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">j:</code> - Checks if the top element has non-zero size before conditional execution</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">n:</code> - Ensures the top stack element is non-zero (adds 0NOTEQUAL check)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">l:</code> - Wraps the left branch of a conditional with IF for selective execution</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">u:</code> - Wraps the right branch of a conditional with IF for selective execution</li>
-                </ul>
-                
-                <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
-                    <strong>Note:</strong> Public keys must be 33-byte compressed hex strings (66 characters) for Legacy and Segwit v0, or 32-byte X-only keys (64 characters) for Taproot.
-                    The compiler supports Legacy (p2SH), Segwit v0 (p2WSH), and Taproot contexts.
-                </p>
-
-                <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
-                    <strong>Reference:</strong> <a href="https://bitcoin.sipa.be/miniscript/" target="_blank" style="color: var(--border-focus); text-decoration: none;">https://bitcoin.sipa.be/miniscript/</a>
-                </p>
-            </div>
-        </details>
-        
-        </div>
-        
-        <footer style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid var(--border-color);">
-            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">
-                <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="color: var(--text-secondary); text-decoration: none;">
-                    📁 View source on GitHub
-                </a>
-            </p>
-        </footer>
-    </div>
-    
-    <div id="save-modal" class="modal">
-        <div class="modal-content">
-            <h3>Save expression</h3>
-            <label for="save-name">Expression name:</label>
-            <input type="text" id="save-name" placeholder="Enter a name for this expression">
-            <div class="button-group" style="margin-top: 20px;">
-                <button id="confirm-save" class="primary-btn">Save</button>
-                <button id="cancel-save" class="secondary-btn">Cancel</button>
-            </div>
-        </div>
+            <a href="talks.html" class="nav-card">
+                <div class="nav-icon">🎤</div>
+                <div class="nav-title">Talks</div>
+                <div class="nav-description">Conference presentations and technical talks on Bitcoin topics</div>
+            </a>
+        </nav>
     </div>
 
-    <div id="save-policy-modal" class="modal">
-        <div class="modal-content">
-            <h3>Save policy</h3>
-            <label for="save-policy-name">Policy name:</label>
-            <input type="text" id="save-policy-name" placeholder="Enter a name for this policy">
-            <div class="button-group" style="margin-top: 20px;">
-                <button id="confirm-save-policy" class="primary-btn">Save</button>
-                <button id="cancel-save-policy" class="secondary-btn">Cancel</button>
-            </div>
-        </div>
-    </div>
-    
-    <script type="module" src="script.js"></script>
-    <script>
-        function generateKey() {
-            console.log('Inline generateKey called');
-            
-            // Pool of valid Bitcoin public keys
-            // 66-character compressed keys for Legacy/Segwit v0 (20 keys)
-            const compressedKeys = [
-                '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-                '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-                '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-                '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-                '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-                '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-                '03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-                '02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-                '03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-                '02791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-                '03581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-                '022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-                '02bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-                '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-                '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-                '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-                '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-                '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-                '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-                '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-            ];
-            
-            // 64-character X-only keys for Taproot (20 keys)
-            const xOnlyKeys = [
-                'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-                'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-                'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-                '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-                '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-                'c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-                '774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-                'e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-                'd01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-                '791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-                '581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-                '2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-                'bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-                '2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-                '0e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-                'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-                '5476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-                'd30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-                '3da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-                'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-            ];
-            
-            // Get selected context
-            const selectedContext = document.querySelector('input[name="context"]:checked').value;
-            
-            // Choose key pool based on context
-            let keyPool;
-            if (selectedContext === 'taproot') {
-                keyPool = xOnlyKeys; // 64-character X-only keys for Taproot
-            } else {
-                keyPool = compressedKeys; // 66-character compressed keys for Legacy/Segwit
-            }
-            
-            // Get already used keys from the key variables list
-            const usedKeys = [];
-            const keyItems = document.querySelectorAll('.key-variable-item .key-value');
-            keyItems.forEach(item => {
-                usedKeys.push(item.textContent.trim());
-            });
-            
-            // Filter out already used keys from the appropriate pool
-            const availableKeys = keyPool.filter(key => !usedKeys.includes(key));
-            
-            // If all keys are used, use all keys anyway
-            const keysToUse = availableKeys.length > 0 ? availableKeys : keyPool;
-            
-            // Simple random selection from available keys
-            const randomIndex = Math.floor(Math.random() * keysToUse.length);
-            const publicKey = keysToUse[randomIndex];
-            
-            console.log('Selected context:', selectedContext);
-            console.log('Key pool length:', keyPool.length);
-            console.log('Generated public key:', publicKey);
-            console.log('Key length:', publicKey.length);
-            console.log('Available keys:', availableKeys.length, 'Used keys:', usedKeys.length);
-            
-            // Set the generated key in the value input
-            const valueInput = document.getElementById('key-value-input');
-            if (valueInput) {
-                valueInput.value = publicKey;
-                console.log('Set value input to:', publicKey);
-            } else {
-                console.error('Could not find key-value-input element');
-            }
-            
-            // Focus on the name input if it's empty
-            const nameInput = document.getElementById('key-name-input');
-            if (nameInput && !nameInput.value.trim()) {
-                nameInput.focus();
-            }
-        }
-    </script>
+    <footer class="footer">
+        <p>&copy; 2025 Adys. Built with passion for Bitcoin.</p>
+    </footer>
 </body>
 </html>
