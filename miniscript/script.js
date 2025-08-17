@@ -276,6 +276,10 @@ class MiniscriptCompiler {
         if (checkbox) {
             checkbox.checked = false;
         }
+        
+        // Hide description panel
+        const policyPanel = document.querySelector('.policy-description-panel');
+        if (policyPanel) policyPanel.style.display = 'none';
     }
 
     showPolicyError(message) {
@@ -586,6 +590,12 @@ class MiniscriptCompiler {
             this.keyVariables.clear();
             this.saveKeyVariables();
             this.displayKeyVariables();
+            
+            // Hide description panels
+            const policyPanel = document.querySelector('.policy-description-panel');
+            const miniscriptPanel = document.querySelector('.miniscript-description-panel');
+            if (policyPanel) policyPanel.style.display = 'none';
+            if (miniscriptPanel) miniscriptPanel.style.display = 'none';
         }
     }
 
@@ -823,6 +833,10 @@ class MiniscriptCompiler {
         if (checkbox) {
             checkbox.checked = false;
         }
+        
+        // Hide description panel
+        const miniscriptPanel = document.querySelector('.miniscript-description-panel');
+        if (miniscriptPanel) miniscriptPanel.style.display = 'none';
     }
 
     showSaveModal() {
@@ -965,6 +979,10 @@ class MiniscriptCompiler {
             // Clear previous results and messages
             document.getElementById('results').innerHTML = '';
             this.clearMiniscriptMessages();
+            
+            // Hide description panel
+            const miniscriptPanel = document.querySelector('.miniscript-description-panel');
+            if (miniscriptPanel) miniscriptPanel.style.display = 'none';
             
             // Reset the "Show key names" checkbox
             const checkbox = document.getElementById('replace-keys-checkbox');
@@ -1204,6 +1222,10 @@ class MiniscriptCompiler {
             document.getElementById('results').innerHTML = '';
             this.clearPolicyErrors();
             
+            // Hide description panel
+            const policyPanel = document.querySelector('.policy-description-panel');
+            if (policyPanel) policyPanel.style.display = 'none';
+            
             // Reset the "Show key names" checkbox
             const checkbox = document.getElementById('replace-keys-checkbox');
             if (checkbox) {
@@ -1347,7 +1369,7 @@ window.showPolicyDescription = function(exampleId) {
         'recovery': {
             title: '📄 Emergency Recovery Policy',
             conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
-            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells wallet software to optimize for Alice\'s path.',
+            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
             security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
         },
         'twofa': {
