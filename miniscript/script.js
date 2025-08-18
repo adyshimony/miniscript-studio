@@ -1,4 +1,5 @@
 import init, { compile_miniscript, compile_policy } from './pkg/miniscript_wasm.js';
+// Cache buster - updated 2025-01-18 v2
 
 class MiniscriptCompiler {
     constructor() {
@@ -580,7 +581,7 @@ class MiniscriptCompiler {
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore the default key variables (Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl). Continue?')) {
+        if (confirm('This will restore 11 default key variables: Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl. Continue?')) {
             this.addDefaultKeys();
         }
     }
