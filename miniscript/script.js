@@ -825,9 +825,9 @@ class MiniscriptCompiler {
         this.keyVariables.set('Alice', '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
         this.keyVariables.set('Bob', '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
         this.keyVariables.set('Charlie', '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
-        this.keyVariables.set('Eve', '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
+        this.keyVariables.set('Eva', '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
         this.keyVariables.set('Frank', '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
-        this.keyVariables.set('Grace', '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+        this.keyVariables.set('Lara', '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
         
         // X-only keys (for Taproot)
         this.keyVariables.set('David', 'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
@@ -852,7 +852,7 @@ class MiniscriptCompiler {
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 14 default key variables: Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl, TestnetKey, MainnetKey, RangeKey. Continue?')) {
+        if (confirm('This will restore 14 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, David, Helen, Ivan, Julia, Karl, TestnetKey, MainnetKey, RangeKey. Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -1747,13 +1747,13 @@ window.showPolicyDescription = function(exampleId) {
         },
         'corporate': {
             title: '📄 Corporate Wallet Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eve (CEO): After January 1, 2025',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2025',
             useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
             security: '💡 Board control with time-delayed executive override'
         },
         'recovery': {
             title: '📄 Emergency Recovery Policy',
-            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
+            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week)',
             useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
             security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
         },
@@ -2047,13 +2047,13 @@ window.showPolicyDescription = function(exampleId) {
         },
         'corporate': {
             title: '📄 Corporate Wallet Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eve (CEO): After January 1, 2025',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2025',
             useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
             security: '💡 Board control with time-delayed executive override'
         },
         'recovery': {
             title: '📄 Emergency Recovery Policy',
-            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
+            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week)',
             useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
             security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
         },

@@ -666,8 +666,8 @@
                     </div>
                     <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
-                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eve),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
-                        <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eve)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
+                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eva),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
+                        <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eva)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
                         <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
                         <button onclick="showPolicyDescription('inheritance'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Helen),pk(Ivan),pk(Julia)),older(26280)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
                         <button onclick="showPolicyDescription('delayed'); loadPolicyExample('or(and(pk(Julia),pk(Karl)),and(pk(David),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: 2-of-2 OR Delayed</button>
@@ -1104,13 +1104,13 @@
                 },
                 'corporate': {
                     title: '📄 Corporate Wallet Policy',
-                    conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eve (CEO): After January 1, 2025',
+                    conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2025',
                     useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
                     security: '💡 Board control with time-delayed executive override'
                 },
                 'recovery': {
                     title: '📄 Emergency Recovery Policy',
-                    conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eve: 2-of-3 after 1008 blocks (~1 week)',
+                    conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week)',
                     useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
                     security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
                 },
