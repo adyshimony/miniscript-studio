@@ -351,6 +351,16 @@ class MiniscriptCompiler {
     applySyntaxHighlighting(text) {
         // Policy language syntax patterns
         return text
+            // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xyzt]pub[A-Za-z0-9]+)(<[0-9;]+>)?(\/\*)?/g, 
+                '<span class="syntax-descriptor-bracket">$1</span>' +
+                '<span class="syntax-fingerprint">$2</span>' +
+                '<span class="syntax-descriptor-bracket">$3</span>' +
+                '<span class="syntax-derivation-path">$4</span>' +
+                '<span class="syntax-descriptor-bracket">$5</span>' +
+                '<span class="syntax-xpub">$6</span>' +
+                '<span class="syntax-range">$7</span>' +
+                '<span class="syntax-wildcard">$8</span>')
             // Functions (pk, and, or, thresh, etc.)
             .replace(/\b(pk|and|or|thresh|older|after|sha256|hash256|ripemd160|hash160)\b/g, '<span class="syntax-function">$1</span>')
             // Numbers 
@@ -390,6 +400,17 @@ class MiniscriptCompiler {
     applyMiniscriptSyntaxHighlighting(text) {
         // Miniscript syntax patterns (based on official spec: https://bitcoin.sipa.be/miniscript/)
         return text
+            // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xyzt]pub[A-Za-z0-9]+)(\/<[0-9;]+>\/\*)/g, 
+                '<span class="syntax-descriptor-bracket">$1</span>' +
+                '<span class="syntax-fingerprint">$2</span>' +
+                '<span class="syntax-descriptor-bracket">$3</span>' +
+                '<span class="syntax-derivation-path">$4</span>' +
+                '<span class="syntax-descriptor-bracket">$5</span>' +
+                '<span class="syntax-xpub">$6</span>' +
+                '<span class="syntax-range">$7</span>')
+            // Compressed public keys (66 hex characters starting with 02 or 03)
+            .replace(/\b(0[23][a-fA-F0-9]{62})\b/g, '<span class="syntax-pubkey">$1</span>')
             // Basic fragments - literals
             .replace(/\b(0|1)\b/g, '<span class="syntax-number">$1</span>')
             // Basic fragments - key checks
