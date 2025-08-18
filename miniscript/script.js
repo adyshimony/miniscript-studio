@@ -836,12 +836,23 @@ class MiniscriptCompiler {
         this.keyVariables.set('Julia', '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
         this.keyVariables.set('Karl', '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
         
+        // Complex descriptor keys
+        this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/1/1');
+        this.keyVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
+        this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<1;0>/*');
+        
+        // Vault keys for complex multi-signature examples
+        this.keyVariables.set('VaultKey1', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<6;7>/*');
+        this.keyVariables.set('VaultKey2', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<12;13>/*');
+        this.keyVariables.set('VaultKey3', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<16;17>/*');
+        this.keyVariables.set('VaultKey4', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<16;17>/*');
+        
         this.saveKeyVariables();
         this.displayKeyVariables();
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 11 default key variables: Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl. Continue?')) {
+        if (confirm('This will restore 14 default key variables: Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl, TestnetKey, MainnetKey, RangeKey. Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -1869,6 +1880,41 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
             useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
             technical: '💡 Demonstrates Taproot miniscript with short timelock'
+        },
+        'htlc_time': {
+            title: '⚙️ Time-based HTLC (Hashed Timelock Contract)',
+            structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+            bitcoinScript: 'Alice AND (Bob immediate OR secret + timelock)',
+            useCase: 'HTLC: Alice approves, Bob can claim immediately, or secret holder after delay.',
+            technical: '💡 Proper HTLC pattern where pk(Bob) is dissatisfiable for or_d type compatibility'
+        },
+        'htlc_hash': {
+            title: '⚙️ Hash-based HTLC (Hashed Timelock Contract)',
+            structure: 'or_d(pk(Alice),and_v(v:hash160(...),and_v(v:pk(Bob),older(144))))',
+            bitcoinScript: 'Alice immediately OR (secret + Bob + timelock)',
+            useCase: 'HTLC variant: Alice can claim anytime, or secret holder + Bob after delay.',
+            technical: '💡 pk(Alice) is dissatisfiable, satisfying or_d requirements'
+        },
+        'full_descriptor': {
+            title: '⚙️ Full Extended Key Descriptor',
+            structure: 'pk([C8FE8D4F/48h/1h/123h/2h]xpub.../0/0) → Full BIP32 path',
+            bitcoinScript: 'Uses derived key from extended public key with full derivation path',
+            useCase: 'HD wallet integration with complete key derivation metadata and fingerprint.',
+            technical: '💡 BIP32 extended keys with origin path information'
+        },
+        'range_descriptor': {
+            title: '⚙️ Multipath Range Descriptor',
+            structure: 'pk([...]/tpub.../<1;0>/*) → Multipath derivation',
+            bitcoinScript: 'Template for multiple derived keys using range notation',
+            useCase: 'BIP389 multipath descriptors for generating multiple related addresses.',
+            technical: '💡 <1;0> creates two derivation paths: .../1/* and .../0/*'
+        },
+        'vault_complex': {
+            title: '🏦 Complex Multi-Signature Vault',
+            structure: 'or_i(or_i(or_i(or_i(and_v(...), and_v(...)), and_v(...)), and_v(...)), and_v(...))',
+            bitcoinScript: 'Hierarchical vault with multiple timelock conditions and threshold signatures',
+            useCase: 'Enterprise Bitcoin custody with progressive security layers: Immediate 2-of-2 multisig for daily operations, degrading to 3-of-5 threshold after 2 months, 2-of-4 after 4 months, 2-of-3 after 6 months, and finally 2-of-2 emergency recovery after 8 months. Each timelock represents realistic business continuity scenarios: normal operations, executive departure, key compromise recovery, and long-term succession planning.',
+            technical: '💡 Implements time-based degraded multisig: starts restrictive (requires specific key pairs), becomes more permissive with longer delays. Uses nested or_i for multiple spending paths, thresh() for m-of-n signatures, and pkh() for key hash verification. Critical for institutional custody where immediate spending needs tight control but recovery scenarios need flexibility.'
         }
     };
     
@@ -2133,6 +2179,41 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
             useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
             technical: '💡 Demonstrates Taproot miniscript with short timelock'
+        },
+        'htlc_time': {
+            title: '⚙️ Time-based HTLC (Hashed Timelock Contract)',
+            structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+            bitcoinScript: 'Alice AND (Bob immediate OR secret + timelock)',
+            useCase: 'HTLC: Alice approves, Bob can claim immediately, or secret holder after delay.',
+            technical: '💡 Proper HTLC pattern where pk(Bob) is dissatisfiable for or_d type compatibility'
+        },
+        'htlc_hash': {
+            title: '⚙️ Hash-based HTLC (Hashed Timelock Contract)',
+            structure: 'or_d(pk(Alice),and_v(v:hash160(...),and_v(v:pk(Bob),older(144))))',
+            bitcoinScript: 'Alice immediately OR (secret + Bob + timelock)',
+            useCase: 'HTLC variant: Alice can claim anytime, or secret holder + Bob after delay.',
+            technical: '💡 pk(Alice) is dissatisfiable, satisfying or_d requirements'
+        },
+        'full_descriptor': {
+            title: '⚙️ Full Extended Key Descriptor',
+            structure: 'pk([C8FE8D4F/48h/1h/123h/2h]xpub.../0/0) → Full BIP32 path',
+            bitcoinScript: 'Uses derived key from extended public key with full derivation path',
+            useCase: 'HD wallet integration with complete key derivation metadata and fingerprint.',
+            technical: '💡 BIP32 extended keys with origin path information'
+        },
+        'range_descriptor': {
+            title: '⚙️ Multipath Range Descriptor',
+            structure: 'pk([...]/tpub.../<1;0>/*) → Multipath derivation',
+            bitcoinScript: 'Template for multiple derived keys using range notation',
+            useCase: 'BIP389 multipath descriptors for generating multiple related addresses.',
+            technical: '💡 <1;0> creates two derivation paths: .../1/* and .../0/*'
+        },
+        'vault_complex': {
+            title: '🏦 Complex Multi-Signature Vault',
+            structure: 'or_i(or_i(or_i(or_i(and_v(...), and_v(...)), and_v(...)), and_v(...)), and_v(...))',
+            bitcoinScript: 'Hierarchical vault with multiple timelock conditions and threshold signatures',
+            useCase: 'Enterprise Bitcoin custody with progressive security layers: Immediate 2-of-2 multisig for daily operations, degrading to 3-of-5 threshold after 2 months, 2-of-4 after 4 months, 2-of-3 after 6 months, and finally 2-of-2 emergency recovery after 8 months. Each timelock represents realistic business continuity scenarios: normal operations, executive departure, key compromise recovery, and long-term succession planning.',
+            technical: '💡 Implements time-based degraded multisig: starts restrictive (requires specific key pairs), becomes more permissive with longer delays. Uses nested or_i for multiple spending paths, thresh() for m-of-n signatures, and pkh() for key hash verification. Critical for institutional custody where immediate spending needs tight control but recovery scenarios need flexibility.'
         }
     };
     
