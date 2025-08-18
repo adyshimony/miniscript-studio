@@ -847,7 +847,6 @@
                         <button onclick="compiler.clearAllKeys()" class="danger-btn" style="padding: 4px 8px; font-size: 12px;">🗑️ Clear all</button>
                     </div>
                 </div>
-                <p style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted);">💡 To generate Taproot X-only keys (64 characters), select Taproot context below before clicking Generate.</p>
                 
                 <div class="add-key-form">
                     <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">
@@ -855,6 +854,36 @@
                     <div style="display: flex; gap: 10px;">
                         <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">➕ Add key</button>
                         <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">🎲 Generate</button>
+                    </div>
+                </div>
+                
+                <div class="key-type-panel" style="margin-top: 15px; padding: 15px; background: var(--secondary-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 14px;">Key type generation:</h4>
+                    <div class="radio-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
+                            <input type="radio" name="keyType" value="compressed" checked style="margin: 0;">
+                            <span>Compressed Public Keys</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
+                            <input type="radio" name="keyType" value="xonly" style="margin: 0;">
+                            <span>X-only Keys (Taproot)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
+                            <input type="radio" name="keyType" value="xpub" style="margin: 0;">
+                            <span>Extended Keys (xpub)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
+                            <input type="radio" name="keyType" value="tpub" style="margin: 0;">
+                            <span>Testnet Keys (tpub)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
+                            <input type="radio" name="keyType" value="ypub" style="margin: 0;">
+                            <span>SegWit P2SH (ypub)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
+                            <input type="radio" name="keyType" value="zpub" style="margin: 0;">
+                            <span>SegWit Native (zpub)</span>
+                        </label>
                     </div>
                 </div>
                 
