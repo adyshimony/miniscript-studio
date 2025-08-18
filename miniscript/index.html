@@ -108,6 +108,92 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
+        /* Policy editor specific styles */
+        .policy-editor {
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.4;
+            min-height: 70px;
+        }
+        
+        .policy-editor:empty::before {
+            content: attr(data-placeholder);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+        
+        /* Syntax highlighting colors */
+        .syntax-function {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .syntax-operator {
+            color: #8b5cf6;
+            font-weight: 600;
+        }
+        
+        .syntax-key {
+            color: #10b981;
+            font-weight: 500;
+        }
+        
+        .syntax-number {
+            color: #f59e0b;
+            font-weight: 500;
+        }
+        
+        .syntax-parenthesis {
+            color: var(--text-color);
+            font-weight: bold;
+        }
+        
+        .syntax-comma {
+            color: var(--text-secondary);
+        }
+        
+        /* Miniscript editor specific styles */
+        .miniscript-editor {
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.4;
+            min-height: 70px;
+        }
+        
+        .miniscript-editor:empty::before {
+            content: attr(data-placeholder);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+        
+        /* Miniscript-specific syntax highlighting colors */
+        .syntax-fragment {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .syntax-wrapper {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+        
+        .syntax-threshold {
+            color: #8b5cf6;
+            font-weight: 600;
+        }
+        
+        .syntax-multisig {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        
+        .syntax-hash-fragment {
+            color: #06b6d4;
+            font-weight: 500;
+        }
+        
         .button-group {
             display: flex;
             gap: 10px;
@@ -509,10 +595,12 @@
                     </div>
                 </div>
             </div>
-            <textarea 
+            <div 
                 id="policy-input" 
-                placeholder="Enter your policy here (will be compiled to miniscript)..."
-            ></textarea>
+                contenteditable="true"
+                data-placeholder="Enter your policy here (will be compiled to miniscript)..."
+                class="policy-editor"
+            ></div>
             
             <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
@@ -607,10 +695,12 @@
                     </div>
                 </div>
             </div>
-            <textarea 
+            <div 
                 id="expression-input" 
-                placeholder="Enter your miniscript here..."
-            ></textarea>
+                contenteditable="true"
+                data-placeholder="Enter your miniscript here..."
+                class="miniscript-editor"
+            ></div>
             
             <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
@@ -794,6 +884,8 @@
                 <h4 style="color: var(--text-secondary);">Basic fragments:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - Requires a signature from the specified public key</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk_k(key)</code> - Requires a signature from the specified public key (key directly on stack)</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk_h(key)</code> - Requires a signature from a key that hashes to the given value</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pkh(key)</code> - Requires revealing and signing with a key that hashes to the given hash160</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - Requires that the input's relative locktime (nSequence) is at least n blocks/seconds</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - Requires that the transaction's locktime (nLockTime) is at least block height/time n</li>
@@ -816,6 +908,11 @@
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_c(X,Y)</code> - Either X or Y must be satisfied, using CHECKSIG pattern for efficient evaluation</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_d(X,Y)</code> - Either X or Y must be satisfied, using DUP IF to conditionally execute branches</li>
                     <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_i(X,Y)</code> - Either X or Y must be satisfied, using IF/ELSE conditional branching</li>
+                </ul>
+
+                <h4 style="color: var(--text-secondary);">Mixed combinators:</h4>
+                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">andor(X,Y,Z)</code> - Optimized AND-OR: (X AND Y) OR Z pattern using efficient Bitcoin Script</li>
                 </ul>
 
                 <h4 style="color: var(--text-secondary);">Threshold:</h4>

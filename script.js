@@ -112,6 +112,32 @@ class MiniscriptCompiler {
             }
         });
 
+        // Policy input syntax highlighting
+        const policyInput = document.getElementById('policy-input');
+        policyInput.addEventListener('input', () => {
+            this.highlightPolicySyntax();
+        });
+        
+        policyInput.addEventListener('paste', (e) => {
+            // Handle paste event to maintain highlighting
+            setTimeout(() => {
+                this.highlightPolicySyntax();
+            }, 0);
+        });
+
+        // Miniscript input syntax highlighting
+        const expressionInput = document.getElementById('expression-input');
+        expressionInput.addEventListener('input', () => {
+            this.highlightMiniscriptSyntax();
+        });
+        
+        expressionInput.addEventListener('paste', (e) => {
+            // Handle paste event to maintain highlighting
+            setTimeout(() => {
+                this.highlightMiniscriptSyntax();
+            }, 0);
+        });
+
         // Add key button
         document.getElementById('add-key-btn').addEventListener('click', () => {
             this.addKeyVariable();
@@ -135,7 +161,7 @@ class MiniscriptCompiler {
     }
 
     compileExpression() {
-        const expression = document.getElementById('expression-input').value.trim();
+        const expression = document.getElementById('expression-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
         
         // Clear previous messages
@@ -200,7 +226,7 @@ class MiniscriptCompiler {
     }
 
     compilePolicy() {
-        const policy = document.getElementById('policy-input').value.trim();
+        const policy = document.getElementById('policy-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
         
         // Clear previous errors
@@ -235,7 +261,8 @@ class MiniscriptCompiler {
 
             if (result.success && result.compiled_miniscript) {
                 // Success: fill the miniscript field and show results
-                document.getElementById('expression-input').value = result.compiled_miniscript;
+                document.getElementById('expression-input').textContent = result.compiled_miniscript;
+                this.highlightMiniscriptSyntax();
                 
                 // Reset the "Show key names" checkbox since we have a new expression
                 const checkbox = document.getElementById('replace-keys-checkbox');
@@ -267,8 +294,8 @@ class MiniscriptCompiler {
     }
 
     clearPolicy() {
-        document.getElementById('policy-input').value = '';
-        document.getElementById('expression-input').value = '';
+        document.getElementById('policy-input').innerHTML = '';
+        document.getElementById('expression-input').innerHTML = '';
         document.getElementById('results').innerHTML = '';
         this.clearPolicyErrors();
         
@@ -295,6 +322,134 @@ class MiniscriptCompiler {
 
     clearPolicyErrors() {
         document.getElementById('policy-errors').innerHTML = '';
+    }
+
+    highlightPolicySyntax() {
+        const policyInput = document.getElementById('policy-input');
+        const text = policyInput.textContent || '';
+        
+        // Save cursor position as offset from start of text
+        const selection = window.getSelection();
+        let caretOffset = 0;
+        
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(policyInput);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            caretOffset = preCaretRange.toString().length;
+        }
+        
+        // Apply syntax highlighting
+        const highlightedHTML = this.applySyntaxHighlighting(text);
+        policyInput.innerHTML = highlightedHTML;
+        
+        // Restore cursor position
+        this.restoreCursor(policyInput, caretOffset);
+    }
+
+    applySyntaxHighlighting(text) {
+        // Policy language syntax patterns
+        return text
+            // Functions (pk, and, or, thresh, etc.)
+            .replace(/\b(pk|and|or|thresh|older|after|sha256|hash256|ripemd160|hash160)\b/g, '<span class="syntax-function">$1</span>')
+            // Numbers 
+            .replace(/\b\d+\b/g, '<span class="syntax-number">$&</span>')
+            // Key variables (capitalized words)
+            .replace(/\b[A-Z][a-zA-Z]*\b/g, '<span class="syntax-key">$&</span>')
+            // Parentheses
+            .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
+            // Commas
+            .replace(/,/g, '<span class="syntax-comma">$&</span>');
+    }
+
+    highlightMiniscriptSyntax() {
+        const expressionInput = document.getElementById('expression-input');
+        const text = expressionInput.textContent || '';
+        
+        // Save cursor position as offset from start of text
+        const selection = window.getSelection();
+        let caretOffset = 0;
+        
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(expressionInput);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            caretOffset = preCaretRange.toString().length;
+        }
+        
+        // Apply syntax highlighting
+        const highlightedHTML = this.applyMiniscriptSyntaxHighlighting(text);
+        expressionInput.innerHTML = highlightedHTML;
+        
+        // Restore cursor position
+        this.restoreCursor(expressionInput, caretOffset);
+    }
+
+    applyMiniscriptSyntaxHighlighting(text) {
+        // Miniscript syntax patterns (based on official spec: https://bitcoin.sipa.be/miniscript/)
+        return text
+            // Basic fragments - literals
+            .replace(/\b(0|1)\b/g, '<span class="syntax-number">$1</span>')
+            // Basic fragments - key checks
+            .replace(/\b(pk|pk_k|pk_h|pkh)\b/g, '<span class="syntax-fragment">$1</span>')
+            // Basic fragments - timelocks
+            .replace(/\b(older|after)\b/g, '<span class="syntax-fragment">$1</span>')
+            // Hash fragments  
+            .replace(/\b(sha256|hash256|ripemd160|hash160)\b/g, '<span class="syntax-hash-fragment">$1</span>')
+            // AND combinators
+            .replace(/\b(and_v|and_b|and_n)\b/g, '<span class="syntax-fragment">$1</span>')
+            // OR combinators
+            .replace(/\b(or_b|or_c|or_d|or_i)\b/g, '<span class="syntax-fragment">$1</span>')
+            // AND-OR combinator
+            .replace(/\b(andor)\b/g, '<span class="syntax-fragment">$1</span>')
+            // Threshold and multisig
+            .replace(/\b(thresh)\b/g, '<span class="syntax-threshold">$1</span>')
+            .replace(/\b(multi|multi_a)\b/g, '<span class="syntax-multisig">$1</span>')
+            // Wrappers (all official wrappers from spec)
+            .replace(/\b([acstdvjlnu]):/g, '<span class="syntax-wrapper">$1:</span>')
+            // Numbers 
+            .replace(/\b\d+\b/g, '<span class="syntax-number">$&</span>')
+            // Key variables (capitalized words)
+            .replace(/\b[A-Z][a-zA-Z]*\b/g, '<span class="syntax-key">$&</span>')
+            // Parentheses
+            .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
+            // Commas
+            .replace(/,/g, '<span class="syntax-comma">$&</span>');
+    }
+
+    restoreCursor(element, offset) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        
+        let currentOffset = 0;
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        let node;
+        while (node = walker.nextNode()) {
+            const nodeLength = node.textContent.length;
+            if (currentOffset + nodeLength >= offset) {
+                const targetOffset = offset - currentOffset;
+                range.setStart(node, Math.min(targetOffset, nodeLength));
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                return;
+            }
+            currentOffset += nodeLength;
+        }
+        
+        // If we couldn't find the exact position, place cursor at end
+        range.selectNodeContents(element);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
     }
 
     replaceKeyVariables(text) {
@@ -738,7 +893,7 @@ class MiniscriptCompiler {
             return;
         }
         
-        let expression = expressionInput.value;
+        let expression = expressionInput.textContent;
         console.log('Current expression:', `"${expression}"`);
         console.log('Expression length:', expression.length);
         
@@ -765,7 +920,8 @@ class MiniscriptCompiler {
         console.log('New expression:     ', `"${expression}"`);
         console.log('Changed:', originalExpression !== expression);
         
-        expressionInput.value = expression;
+        expressionInput.textContent = expression;
+        this.highlightMiniscriptSyntax();
         console.log('=== handleReplaceKeysToggle END ===');
     }
 
@@ -825,7 +981,7 @@ class MiniscriptCompiler {
     }
 
     clearExpression() {
-        document.getElementById('expression-input').value = '';
+        document.getElementById('expression-input').innerHTML = '';
         document.getElementById('results').innerHTML = '';
         this.clearMiniscriptMessages();
         
@@ -841,7 +997,7 @@ class MiniscriptCompiler {
     }
 
     showSaveModal() {
-        const expression = document.getElementById('expression-input').value.trim();
+        const expression = document.getElementById('expression-input').textContent.trim();
         if (!expression) {
             this.showMiniscriptError('Please enter an expression to save.');
             return;
@@ -861,7 +1017,7 @@ class MiniscriptCompiler {
 
     saveExpression() {
         const name = document.getElementById('save-name').value.trim();
-        const expression = document.getElementById('expression-input').value.trim();
+        const expression = document.getElementById('expression-input').textContent.trim();
 
         if (!name) {
             this.showModalError('Please enter a name for the expression.');
@@ -970,7 +1126,8 @@ class MiniscriptCompiler {
         const savedExpr = expressions.find(expr => expr.name === name);
         
         if (savedExpr) {
-            document.getElementById('expression-input').value = savedExpr.expression;
+            document.getElementById('expression-input').textContent = savedExpr.expression;
+            this.highlightMiniscriptSyntax();
             
             // Auto-detect context based on key formats in the expression
             const detectedContext = this.detectContextFromExpression(savedExpr.expression);
@@ -1094,7 +1251,7 @@ class MiniscriptCompiler {
 
     // Policy saving methods (identical to expression saving)
     showSavePolicyModal() {
-        const policy = document.getElementById('policy-input').value.trim();
+        const policy = document.getElementById('policy-input').textContent.trim();
         if (!policy) {
             this.showPolicyError('Please enter a policy to save.');
             return;
@@ -1114,7 +1271,7 @@ class MiniscriptCompiler {
 
     savePolicy() {
         const name = document.getElementById('save-policy-name').value.trim();
-        const policy = document.getElementById('policy-input').value.trim();
+        const policy = document.getElementById('policy-input').textContent.trim();
 
         if (!name) {
             this.showPolicyModalError('Please enter a name for the policy.');
@@ -1212,7 +1369,8 @@ class MiniscriptCompiler {
         const savedPolicy = policies.find(policy => policy.name === name);
         
         if (savedPolicy) {
-            document.getElementById('policy-input').value = savedPolicy.expression;
+            document.getElementById('policy-input').textContent = savedPolicy.expression;
+            this.highlightPolicySyntax();
             
             // Auto-detect context based on key formats in the policy
             const detectedContext = this.detectContextFromExpression(savedPolicy.expression);
@@ -1284,7 +1442,10 @@ window.generateKey = function() {
 
 // Global function to load examples
 window.loadExample = function(example) {
-    document.getElementById('expression-input').value = example;
+    document.getElementById('expression-input').textContent = example;
+    if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+        window.compiler.highlightMiniscriptSyntax();
+    }
     document.getElementById('results').innerHTML = '';
     if (window.compiler && window.compiler.clearMiniscriptMessages) {
         window.compiler.clearMiniscriptMessages();
@@ -1306,8 +1467,11 @@ window.loadExample = function(example) {
 
 // Global function to load policy examples
 window.loadPolicyExample = function(example) {
-    document.getElementById('policy-input').value = example;
-    document.getElementById('expression-input').value = '';
+    document.getElementById('policy-input').textContent = example;
+    if (window.compiler && window.compiler.highlightPolicySyntax) {
+        window.compiler.highlightPolicySyntax();
+    }
+    document.getElementById('expression-input').innerHTML = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
     
@@ -1747,7 +1911,7 @@ window.showMiniscriptDescription = function(exampleId) {
 // Global function to copy miniscript expression
 window.copyMiniscriptExpression = function() {
     const expressionInput = document.getElementById('expression-input');
-    const expression = expressionInput.value.trim();
+    const expression = expressionInput.textContent.trim();
     
     if (!expression) {
         alert('No expression to copy');
@@ -1789,7 +1953,7 @@ window.copyMiniscriptExpression = function() {
 // Global function to copy policy expression
 window.removePolicyExtraChars = function() {
     const policyInput = document.getElementById('policy-input');
-    const policy = policyInput.value;
+    const policy = policyInput.textContent;
     
     if (!policy) {
         return;
@@ -1797,7 +1961,12 @@ window.removePolicyExtraChars = function() {
     
     // Remove spaces, carriage returns, and newlines
     const cleanedPolicy = policy.replace(/[\s\r\n]/g, '');
-    policyInput.value = cleanedPolicy;
+    policyInput.textContent = cleanedPolicy;
+    
+    // Update syntax highlighting
+    if (window.compiler && window.compiler.highlightPolicySyntax) {
+        window.compiler.highlightPolicySyntax();
+    }
     
     // Show feedback
     const button = event.target.closest('button');
@@ -1811,7 +1980,7 @@ window.removePolicyExtraChars = function() {
 
 window.copyPolicyExpression = function() {
     const policyInput = document.getElementById('policy-input');
-    const policy = policyInput.value.trim();
+    const policy = policyInput.textContent.trim();
     
     if (!policy) {
         alert('No policy to copy');
