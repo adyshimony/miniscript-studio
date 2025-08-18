@@ -365,7 +365,7 @@ class MiniscriptCompiler {
         // Policy language syntax patterns
         return text
             // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
-            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xyzt]pub[A-Za-z0-9]+)(<[0-9;]+>)?(\/\*)?/g, 
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)(<[0-9;]+>)?(\/\*)?/g, 
                 '<span class="syntax-descriptor-bracket">$1</span>' +
                 '<span class="syntax-fingerprint">$2</span>' +
                 '<span class="syntax-descriptor-bracket">$3</span>' +
@@ -414,7 +414,7 @@ class MiniscriptCompiler {
         // Miniscript syntax patterns (based on official spec: https://bitcoin.sipa.be/miniscript/)
         return text
             // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
-            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xyzt]pub[A-Za-z0-9]+)(\/<[0-9;]+>\/\*)/g, 
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)(\/<[0-9;]+>\/\*)/g, 
                 '<span class="syntax-descriptor-bracket">$1</span>' +
                 '<span class="syntax-fingerprint">$2</span>' +
                 '<span class="syntax-descriptor-bracket">$3</span>' +
@@ -550,92 +550,48 @@ class MiniscriptCompiler {
                 'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
             ],
             xpub: [
-                'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8',
-                'xpub661MyMwAqRbcEhYXmpSdwB9RqHtPkAXfLgpYvUSJ4MRDM8aE15HCtbfD1WKBzLuPGkqQzgzYoMkx5vdJDJ3K9F3nwWLqX5VCqgwjWHgwW2Q',
-                'xpub661MyMwAqRbcF1zMKxvkeCNFc3D26VH4QnqzRq7T8e6xWJjJwpGdRQhNDgNdBJPdDNVLvPHV2N23fvF4Yqj8T8Xw9E4pGQKDCN5V9m3rKbY',
-                'xpub661MyMwAqRbcGKLChNaRX7s2Knh4QJGPHy72DbDJGfT8PQXrqBJqR5HnLnChWfGDxPMu2eVYTXqNNn7hS7F7Q2vQ8C9RJxbGz8gCpF4pG9H',
-                'xpub661MyMwAqRbcHBqtYHVFE2QdKMm9x4nE8vDBX3qz8CvKfJcxLnb7RnJE5yD6M4B5FZ8QtgRqg5Z3bJQmJqHDYKLPn2v9oG2M8wDCvJ4hWDC',
-                'xpub661MyMwAqRbcHyNf8J7HcYk9CrYjGUK8v9vfRt5VcCLc5EGQ9P4HnFrD6CxGMvEYj8RhqTvJGW5Z3kJ7Jh9fK6vD4P9t7S2C8wRnMvJqFz3',
-                'xpub661MyMwAqRbcJfKGf6BdH4WvJ7Z8Kc9vHq8p6rYz3K4c2Qf8w5JQj4rDMnGcCpJ5V8k9E6f7X2b3N4Yq7G6F8wZ9K2H3J4nFvG8pCvJw2rT',
-                'xpub661MyMwAqRbcKzBq5f7R9W8tCkH4v3Jn6R2YGd8FzV7cJ4K8p9rYtGbHnFjD6vGwJ8QrKzFnH9JvDbCvGwRpMzJ5QtV4KnC8F2pHvNj6HbQ',
-                'xpub661MyMwAqRbcLpHgJf7D6vRt8WzKcF2nY8vGbJqRzCtYh5DfN8pJ6rV7cKwFbGtH9jQ8WzJ5RvMnGcPvJqF4K8H2nYbRtGwVzC9pJhKvD3F',
-                'xpub661MyMwAqRbcMhV4K6pF8JrYzG5cDfH9vJ4nRtGbC8WzKvJ2fR7YtHjGbCvFzJ8QrPnV5K4DfRtGwJcHvGbRzMpJ6FvD8K2nYcRtHjGbCvF',
-                'xpub661MyMwAqRbcNjR8G7bYzFcJvHnGtCz5KpRvMzJqF4D8WrYzH6vGtCbFjP9KnV5R8WzJcHvGbRzMpJ6FvD8K2nYcRtHjGbCvFzJ8QrPnV5K',
-                'xpub661MyMwAqRbcPkT9H8cYzGdJwKnRvNzKqG5E9WsZzJ7vHtDbGvGzK8RrQnW6R9YzJdHvHbSzNqK7GvE9K3nZdRvHjHbDvGzL9RsZzJ7vHtD',
-                'xpub661MyMwAqRbcQmW7J9dZzHfKwLnSvOzLrH6F8YsZzK8vJtEcHvJbTzPqL8SrRnZ7R9ZzKdJvKbUzQrM8GvH9K4nZeRvKjKbEvHzM9SsZzK8',
-                'xpub661MyMwAqRbcRnZ8K5eZzJgLwOnUvQzMsJ7G9YsZzL8vKtFdJvMcUzRrN9HvKcVzTrQ8JvLbWzSsP9MvK5nZfRvMjMcGvKzN9TsZzL8vKtF',
-                'xpub661MyMwAqRbcSpb9L6fZzKhMwPnWvRzOtK8H5YsZzM9vLtGdKvNdWzUsR9KvMdYzWsT9KvMcXzVsQ9NvMdZzYsW9LvNdYzZsX9PvNdZzYsW',
-                'xpub661MyMwAqRbcTqd3M7hZzLjOwQnYvTzQvL9J6YsZzN7vMtHdLvPdZzWsV9RvNdazZsY9SvPdazasZ9TvQdazbtY9WvRdazctY9ZvSdazdt',
-                'xpub661MyMwAqRbcUrf4N8jZzMkPwRnZvWzRwM8K7YsZzP8vOtJdMvQdczZsZ9VvQdczctZ9YvRdczet9cvSdczfuY9ZvVdczguZ9bvVdczhu',
-                'xpub661MyMwAqRbcVsh5P9kZzNmRwSnZvXzSwN9M8YsZzQ9vPtKdNvRdezasZ9cvRdezet9dvSdezfu9evVdezguZ9fvVdezhuZ9hvVdezi',
-                'xpub661MyMwAqRbcWtj6Q6lZzPnSwTnZvYzTxO8N9YsZzR8vQtLdPvTdezct9hvTdezfu9jvVdezhuZ9kvVdezjuZ9mvVdezku9pvVdezlv',
-                'xpub661MyMwAqRbcXvl7R7mZzQoTwVnZvZzUyP8P8YsZzS7vRtMdRvUdezet9kvUdezfu9nvVdezjuZ9ovVdezku9qvVdezlv9svVdezm'
+                'xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda',
+                'xpub6DVwZpXox5Ufcug1ub1LXSuYzej9yTY26asDVveSYJA3d31JhFp25ofUC6cS37YvhWGH26oTbpUdipBYfCc47hWobdezL1cQLKDhCVFqez8',
+                'xpub6DJEDKjse8S92yvQx7JkXLk5aAhkJWXZa5XckxrPy28EwLB6jUzrCS77tAEpRWq3QqF2RivtzDt9ExsyxrqkG75xJty3fwVDvDdFBpmMwfu',
+                'xpub6DX4uxi4koKfkHVJLMDEoeTwQJJYJXM49LcpKpHKgVpSJTRZ8wkYKVtFGRffCDZfzccW9k8qmTcyG3PTFoxapSzv8mu5NzkzgLZTrb2F47N',
+                'xpub6CAyrJvsVeEBuz1GyKquKxdiYjmA9HbhKmPfSX8mCg1JmP7VFMbvKXzze6gsUQ97cYcMD7DG2oge2gMzUY64mkeUGQv2KqtBpi4gw2tL5Wp',
+                'xpub6By2dbMpSdtCVycBc2MjC949ksbuE6tHwVNk53zKEGfUrE2PGF3a3D2YLeokHJPDLHAnm7aGoxT47dWb6m3BmXmhbbKT7dqRXaAridfmRqq',
+                'xpub6CaYzGvBpwvxQ92DMxS3HfVNJ3fZhpn6uVV1JLbLFSMDutjCtBv9NnbKJMgHUvwVmYzYNYTSvgHEdNi4QG7fSUCrB39VdUDzDYVNZKnK54X',
+                'xpub6C4dEw4P295tXPETX4BRbP6Ytt1cstZn2CssjGNmTpSC34PChubYotfBhBvtEG5XzKrDLvELhd9FydP5x19K4KHBXv837zzMiYzX48MhS12',
+                'xpub6DRQCUpZfs7b5vkVobwvSF2cH4BnnU8VjcLJw1WUGdSAbspFhqHRFRw8PDqgKFjL2xXSyyQc9nszDnRaPHsU4U36L6HsQPFxfUQM5o5rX7G',
+                'xpub6CX2v8gD4Lx1tQDrWfDk4RjDsWrqn1SX6Q2p8ACtWsjwSEtyA1HYGVpUNJExtjmsmpTh68h2BrVcRfFFBhJcSSz8SmXcF4crr3zNhKvRTRM',
+                'xpub6Cxu6NiSPeqcCnWTrHFGKgvFN4FM3oJsrSvKHJvsd7X8VUpt1ySe9qFCxfYk1s5yp8bkyhVLDFkH885qSehrnAPjpUZdQ1hh6HowiKg6XvB',
+                'xpub6Bv82ixJNjgxru2C64FdNMT2zcpDtGCXwvbUwAajMjG2xspFuEws2a1FNCDbHfSYPJkE82bLdAKauQ3e4Ro5ToX2zGM9v8RRE9FUyVgtDw7',
+                'xpub6BgdVUWuikQxoNZPZzUeH4wdHbrs3cShA6N2QpvVQRxqVgLkY73kyXd7v6F2fmxgjBunRndwTMdoFGB81tq431cmDXpBdU3FpSyYKPCdFqd',
+                'xpub6CFvZzxtB9b9dxhnMa7E6LhSwLXHsvKXtzpQgvYJh9miAftECi2mnnzEz5KLGEyz1MmetXTLhj93cQR4aeuW2oMnK5aczoLXuK57bbZBcN4',
+                'xpub6BhHskPWuUeDWvoyFV2JiDaoH8bQg2pdzxDuKWcSUU55X7L3dpDv7MAD4YD5M7HHVjTvXRr8KXNupYUVTTmbnSNAqspwgnNe1X8AVdKj5eh',
+                'xpub6Cst8ZhGHGuRCVntQ4rWRffvjc22xobzDEMFj4b5B2pELo6dsXjn3TRCD4dyXGLw2V6V5pG6RSWgyH3bniULoD8frDHmY1XW4iKtPHnjrrZ',
+                'xpub6BoHFYfB5bxrATp6XJkN8WCA5qRg6F8nnvw8vNEJq9fLx6m2wko4zyQuaJzQKH5o2JSTh7kEZs9AamxZUXwPkXq4umrr6wJqojdwMd7nvDg',
+                'xpub6DFEv2BRUtXrNBMHzePBNEqDKSFDDBEgxnvne2ZgwReegyVFFGqthqJ8oyL9NzGtpWbSn5a2EdC4ffZELCFWW75794954to7uf7yeDFQypf',
+                'xpub6DFEv2BRUtXrNBMHzePBNEqDKSFDDBEgxnvne2ZgwReegyVFFGqthqJ8oyL9NzGtpWbSn5a2EdC4ffZELCFWW75794954to7uf7yeDFQypf',
+                'xpub6BogqrbNGr4oC7TSMSxeAjWYGvCZ6ykK3m9XWUbH1B3wvs3JNNrXDKXjPSgfnHfyS1xJ6gis8Ngy5KCxkAD77zUjUMaM3CtrbDmUPFNoUAJ'
             ],
             tpub: [
-                'tpubD6NzVbkrYhZ4XK6sP2L7Q8c6m6SgLvjCf8qJgqfggxG2D9mjSAE4QyLrBzJZVLkqZTdFqEBMCKjT8MQHfLm4RjAjGjHsXPfFmGhKcNnGpSt',
-                'tpubD6NzVbkrYhZ4YN7tQ3L8R9d6n7UhMvmDh9sHfggxH3E9nkTBF5RSLsCzKaWLkrZUdGqFqBMDLjU9MRIgMn5SkAkHuXQgGnGlKcPoHqU',
-                'tpubD6NzVbkrYhZ4ZP8uR4M9S6e7o8VjOvoDj7tJhggxJ4F8plUCG6SVMdDzLbXLmsZVeHqGrCNELkU9NSJhOn6TlBlMoQrJnHtXRhKdRsV',
-                'tpubD6NzVbkrYhZ4aR9vS5N8T7f8p9WkPvpEk8uKjggxK5G8qlVDH7TWNeDzMbYLntZWfJqHsD9PFkV9OSKhQo7UmCmYSjKfStYRkLeWtX',
-                'tpubD6NzVbkrYhZ4bT8wT6O9U8g9q7XlRvqFl9vLjggxL6H8rmWEJ8UXOfEzNcZLouZYgKqJtE9QGlW9RTLjVo8VnDnZTkGmYTkLgXwYsZ',
-                'tpubD6NzVbkrYhZ4cV9xU7P9V9h9s8YmTvsFm9wMjggxM7J8snXFK9VYPfFzOdaLqtZahLqKuF9RHmX9SUMjWp9VoEoaTlHnYUmMhYxZt',
-                'tpubD6NzVbkrYhZ4dX8yV8Q8W8i8t9ZnUvsGn9xNkggxN8K8toYGL9ZaqfGzPeaLruZakMqLvG9SJnY9VVFpbTmObUmQjYyat',
-                'tpubD6NzVbkrYhZ4eZ9zW9R9X9j9u8aoVvtHo9yOlggxP9M8upZHM9bbrfHzQfbLstZblNqMwH9TKoZ9WXGqcTnRkYzbt',
-                'tpubD6NzVbkrYhZ4fa8aX8S8Y8k8v9bpWvuJp9zPlggxQ8N8vqaJN9cctfJzRgcLutZcmOrNxJ9ULpa9XXHrdUnSlazct',
-                'tpubD6NzVbkrYhZ4gb8bY9T9Z9l9w9dqXvvKq9aQmggxR9P9wrbjO9ddu fKzSheLvuZdnRsOyK9VLqb9YYIteTmTkazdfu',
-                'tpubD6NzVbkrYhZ4hc9cZ8U8a8m8x9erYvvLr9bRnggxS8Q9xsckP9eeufLzTjfLwvaenStPzL9WLsc9ZZJufVmUlbzegu',
-                'tpubD6NzVbkrYhZ4id8da9V9b9n9y9fsZvvMs9cSnggxT9R9yudlR9ffvgMzUkgLxwbfpUsRaM9XLtd9aZKvgWnVmczfhv',
-                'tpubD6NzVbkrYhZ4je9eb8W8c8o8z9gtavvNt9dToggxU8S8zuemS9hgvhNzVlhLywcgqVtrSbN8aaMvhXoWnWndhyijw',
-                'tpubD6NzVbkrYhZ4kf8fc9X9d9p9a8hubvvPu9eUpggxV9T9avfnT9ihwjOzWmiLzxdhrbUsScO9baNwhYpXoXnYojklx',
-                'tpubD6NzVbkrYhZ4lg9gd8Y8e8q8b8jvcvvQv9fVqggxW8U8bwgoU9jjxkPzXniMzydisStRdP9caqxjZqYrjYmYolmny',
-                'tpubD6NzVbkrYhZ4mh8he9Z9f9r9c8kwdvvRw9gWrggxX9V9cxhpV9klylQzYojNzaeiuUtSfQ9dbrykaRZssjZqnopy',
-                'tpubD6NzVbkrYhZ4ni9if8a8g9s9d8lxevvSx9hXsggxY8W9dyiqW9lmzmRzapkOzbjvUsUgR9dcszlatTascjaqpqz',
-                'tpubD6NzVbkrYhZ4oj8jg9b9h9t9e8myf vvTy9iYtggxZ9X9ezjrX9mn anSzaqkPzckwVtVhS9edtzmebuYdtdrkSrst',
-                'tpubD6NzVbkrYhZ4pk9kh8c8i8u8f8nzgvvUz9jZuggx98Y9faksY9non rTzbrlyzcmxWvWjT9fevumcvZeuslvtu',
-                'tpubD6NzVbkrYhZ4ql8li9d9j9v9g8o ahvvVa9kauggx89Z9gbltZ9pop zUzcslyzdnyXwXkU9ggwvndwevrymvwv'
-            ],
-            ypub: [
-                'ypub6QqdH2c5z7KqaHZhQm1X4NKUKwjQZjQcuCfJfYKYpWNV8JfCWxJpYmvKQJrHz3EQvG2vQT5zMWqgPzMJkLhHcNJqKhXzQvMVgPqNqMzX',
-                'ypub6QqdH2c5z7KqbIajRn2Y4OLZhRm2X5PLUwkQaTwReWoWuXhJqZnwLRJsBzKqK4FQwH3FRwJ6qQvN6WqhQzNKlLiIdOKrLiXaRwOVhRqOz',
-                'ypub6QqdH2c5z7KqcJbkSo3Z5PMZhSn3X6QMVxrRbYXxLsKrMaoXvYkJrarxwMSJtIzK5HRxJ7rRwP7XsriTaNOmMkiJeOLsLiZbSxPWhSrP',
-                'ypub6QqdH2c5z7KqdLcmTp4a6QOZhTo4Y7RNVysRcZYyMbpXwZlJsas wNTKuJ6SyJ8sSwR8XtsjUbPPnNkjKfPMsOkjLfQNsOkZcTyQZhUo',
-                'ypub6QqdH2c5z7KqeMdnUq5b7QPZhUp5Z8SOVzsScaZzNcpYxamKtbsxwOULvK7TzK9tSwS9YujVcQQoOlkMgQOsQlZdUzRahVsQ',
-                'ypub6QqdH2c5z7KqfOeoVr6c8QRahWq6Z9TPWztTdbaazOdqZyblLucyxPVMwL8UaL0TbK0uTxT0ZvkWdSRpOmkOhQRsQmaeVtS',
-                'ypub6QqdH2c5z7KqgPfpWs7d9QSahXr7a0UQXa0UecbbaQeraaZfMvdzySWNxM9VbM1UcM1TcL1VtaWfTaRqPnlPjQStSmafWuT',
-                'ypub6QqdH2c5z7KqhQgqXt8e0QTahYs8b1VRYa1VfdccbRegbbagNwezytXOOyN0V cN2UdN2VdO2VfP2VgQ2VhR2ViS2VjT2VkU',
-                'ypub6QqdH2c5z7KqiRhrYu9f1QUajZt9c2WTZa2WgeddcSfhbbchPxfaztYPPzO1WeO1XfP1XgQ1XhR1XiS1XjT1XkU1XlV1XmW',
-                'ypub6QqdH2c5z7KqjSisZv8g2QVakau0d3XUaa3XhfeedTgiccdiQygbauYQQaP2YfQ2YgR2YhS2YiT2YjU2YkV2YlW2YmX2YnY',
-                'ypub6QqdH2c5z7KqkTjtaw9h3QWblaX1e4YVbb4YigfeeShjddejiRzhecbvaaZRRbQ3ZgS3ZhT3ZiU3ZjV3ZkW3ZlX3ZmY3ZnZ',
-                'ypub6QqdH2c5z7KqlUkubx8i4QXcmby2f5ZWcc5ZjhggfTikeedkjSahedbwbbaSScR4ahT4aiU4ajV4akW4alX4amY4anZ4aoA',
-                'ypub6QqdH2c5z7KqmVlvcy9j5QYdnbz3g6aXdd6akihhgUjlffellaTjbifecxcbaTdS5biU5bjV5bkW5blX5bmY5bnZ5boA5bpB',
-                'ypub6QqdH2c5z7KqnWmwdz8k6QZeocA4h7bYee7bljiihgVmmggfmmcUkcjgfdydxdcbcUeT6biV6bjW6bkX6blY6bmZ6bnA6boB',
-                'ypub6QqdH2c5z7KqoXnxeA9l7QafpdB5i8cZff8cmkjjiVnoohhgnnddlneDldkheezeedcddVfU7cjW7ckX7clY7cmZ7cnA7coB',
-                'ypub6QqdH2c5z7KqpYoyeB9m8QbgqeC6j9dafg9dnlkjiWoppiihooeemofFmelliffggeeddeWeV8dkX8dlY8dmZ8dnA8doB8dpC',
-                'ypub6QqdH2c5z7KqqZpzfC9n9QchreD7k0ebhh0eomljjXrqqjjiprffnpgGnfmifgjhhfeeedXfW9elY9emZ9enA9eoB9epC9fqD',
-                'ypub6QqdH2c5z7KqraqAgD9o0QdisfE8l1fciig1fpmkkYsrrkkjtshhoqhHoghjohjkhfefeedYgX0fmZ0fnA0foB0fpC0fqD0grE',
-                'ypub6QqdH2c5z7KqsbrBhE9p1QejsfF9m2gdijh2gqnllZtssllkutiipriiprjlprikigfgfeedZhY1gnA1goB1gpC1gqD1grE1hsF',
-                'ypub6QqdH2c5z7KqtcsCiF9q2QfktgG0n3hekjli3hroimmammmlvujjqsjjqskmpsjljhgggeedaiaZ2hoB2hpC2hqD2hrE2hsF2itG'
-            ],
-            zpub: [
-                'zpub6jftahH18ngZxUa6NhgqKCfNKQFXK7GyzYNJd3Q6F7eYwU5rZzTKjK9jLR7Cx6MqPKsHwJC4Fk2J7NkRfQ8Wb8KLq7Nz',
-                'zpub6jftahH18ngZyWb7PijLrDgXXCgGLaAQyOKe4R7Gfa0Ywi6sAaTKlK0kMsE8Dy7RqQKtIwKC5Gl3K8OlSgTXc9KMr8Oz',
-                'zpub6jftahH18ngZzXd8QjkMsEhYXDhHMbBRzPLf5S8Hgb1ZxL7tBuULmK1lNtF9Ez8SrRLuJxLD6Hm4L9PmThUYd0LNs9PzA',
-                'zpub6jftahH18ngZaYe9RklNtFiZYEiHNcCSaPMg6T9Ihc2ayM8uDvVMnK2mOuG0Fa9TsSmvKyME7In5M0QnUi1ae1MOt0QzB',
-                'zpub6jftahH18ngZbZf0SmEJlOgkaoFjZZFjZULh7U0Jid3bzN9vEvWNoK3nPvH1Gb0UtTnwLzNF8Ko6O1RoVj2be2NPu1RzC',
-                'zpub6jftahH18ngZcag1TnFKmPhkbpGkZZGkZaLi8V1Kid4ca P0vFwXPoK4oQwI1Hc1VuUoxMaOG9Mp7P2SpWk3cf3OQv2SzD',
-                'zpub6jftahH18ngZdbh2UoGLnQilcqHlZbMj9W2Ljd5db Q1vGxYQpK5pRxJ1Id2WvVpyNbPH0Oq8Q3Tq4dk4dg4OR4TzE',
-                'zpub6jftahH18ngZeci3VpHMoRimdrImZcOk0X3Mke6ec R2vHyZRqK6qSyK1Je3XwWqzObQI1Pq9R4Ur5el5eg5PS5UzF',
-                'zpub6jftahH18ngZfdj4WqJNpSjnesJnZdPl1Y4Nlf7fd S3vIzaSrK7rTzL1Kf4YxXrazPcRI2Rr0S6Vm6fm6fh6QT6VzG',
-                'zpub6jftahH18ngZgek5XrKOpTjofpKoZeQm2Z5Olog8ge T4vJzbTsK8sUaM1Lg5ZyYsbzQdSJ3Sr1T7Wn7gn7gi7RU7WzH',
-                'zpub6jftahH18ngZhfl6YsLPqUikqpLpaZfRn3a5Pmph2hf U5vKacUsK9tVbN1Mh6azYtczReUK4Ts2U8Xo8hoh8ig8SV8WzI',
-                'zpub6jftahH18ngZigm7ZtMQrVjlrqMqbagSo4b6Qqi3ig V6vLbdUtL0uWcO1Ni7baYudzSfVL5Ut3V9Yp9hp9ji9SY9WzJ',
-                'zpub6jftahH18ngZjhn8auNRsWklsrNrcbhTp5c7Rsk4jh W7vMceVuM1vXdQ1Oj8cbaueDgWM6Wu4W0aq0ip0ijkjTa0XzK',
-                'zpub6jftahH18ngZkio9bvORtXmmtsOsdciUq6d8Stm5ki X8vNdfWvN2wYeR1Pk9dcbvfEhXN7Xu5X1br1jq1ik1Tb1YzL',
-                'zpub6jftahH18ngZljp0cwPSuYnnutPtedkjVr7e9Uo6lj Y9vOfgXvP3xZfS1Ql0edbwgFiYO8Yv6Y2cs2jr2il2Uc2ZzM',
-                'zpub6jftahH18ngZmkq1dxQTvYoovuQufflkWs8f0Vp7mk Za0vQghhNqU aaT zRm1febxhGjYP9Zw7Z3dt3js3im3Ud3azN',
-                'zpub6jftahH18ngZnlr2eyRUwZppwvRvggmmXt9g1Wq8nl ab1vRhiiOsV bbU aSn2gfcyiHkZQ0a8a4eu4kt4jn4Ve4bzO',
-                'zpub6jftahH18ngZoms3fzSVxZqqxwSwhhnmYu0h2Xr9om bc2vSjjjPtW ccV bTo3hgdzjIlaR1b9b5fv5lu5ko5Wf5czP',
-                'zpub6jftahH18ngZpnt4g0TWyarrrywTiiooPv1i3Ys0pn cd3vTkkKQuX ddW cUp4ihgzzkJmbS2c0c6gw6mv6lp6Xg6dzQ',
-                'zpub6jftahH18ngZqou5h1UXzbsssyxUjjppQw2j4Zt1qo de4vUllLRvY eeX dVq5jihd kaKocT3d1d7hy7nw7mq7Yh7ezR'
+                'tpubDCqmaqe5U2vTX1o22an5Xs2249Q7oXuKATftGBjEyYFKJPo6A6Jmf7RZmHTwS7gv1KoqctnbhypL49aYDvMzNywn7wdqYbFagxdGdsNgGPT',
+                'tpubDCUSNNGv9a4ii4vjbdB1vB466uuo9LhSAJdyzJGYNXZHEYcVBXshtMXBcUVF5UjHYoU1Paj7CoqVn8MwYZ23wkU1kRCFZ7cgVBrkctnqzy3',
+                'tpubDDEprh91LAyzRYSdCwm1FHNofRxnu7HBXmVWAx6HRLxauhJ7j3eJb2RH9EXmbGMFk59yDfo2HVPttgfgpmqNjJnkvPon2YnhXmxDw7tvj1P',
+                'tpubDDiJf7V97vkpJpZnr9KpxwNNrVckiYU89VsvtvT9j5miupxtzrpD5w7GpM5R2nPMgvszhXHXzeiC4GTLGJ7UpaQDAi7BEWuCANJMt1Kw2Lw',
+                'tpubDCa93YebgDGSupE8E1Bo9cG4E1RXnqDtK7mtfKZxrFrR7Y4e6FqzwymmtHjg3pbFAGDjuAYssMaQpvEYVSyrGmdU4req5c6acrShh3Y7xQb',
+                'tpubDCXMUmB2ZGXdPw5wT3Rkh11LLL5gPgPP31T8yy4jSNLy16AUEAwZzM854Pdim97Qnwsi4eKfFsNpshQgaJu2ZMQrhdtXBtgSt5GMMrAWP91',
+                'tpubDCs2bP5EMwpgCXPsjByMvQDJChqiU1nFWAsz4LTSXTtKFMdjQ4fsF2xtDMkyysTUaGcW2QHra8AQkhpt7DduR9s8GTr7sAMTrdYkq3LqvJg',
+                'tpubDDhjkCPc8X9Xew4xtiu5b3QYA7GBVss3ZadMkoJj6y7Gpg9qgUdWSS8HtQ7xvyXPGrC2t9BSwcZCkVGGuBgUXjb8f9LZ6on783wBrCpRnTf',
+                'tpubDDUcubxexsYBR9Sv1VBjRtmokycLZJgXtPVpdoZMaj3tXBr4gk9AtFTgNNWdGJ5fJtuXoyjXbDj2NJvKsdzzuPQmdueQn7mAEE2NbdoSYY4',
+                'tpubDDHMijCf2MkCZiyFkDtk1fsjuehjjpE754Uw7QjS24fWtTP8fnQUrr2hAxksRPm1sVEiUhAAxKMa23HS2esAfsPNNP24XWcQDECsj1i5Cen',
+                'tpubDD3as1pSz2mBRHcuDoQ8hvjpFF5xN3gr1uPcA17Cd7F1vxjAw4UuNQ1DYkVh3tJYfikWACsHeD3mkz9cKRRPuqoE9kXGhRAWdnkHBqnE6mv',
+                'tpubDD2Jkdt363ZtTdnvaa4cMhiU2mg7ZjpEHRuw8ViEimfXZRd2FmDhk3XJ3butR1sGGRDasyLSMRi5fGwG8CeTyN9U6tVDkGUjNQq3VJdeA62',
+                'tpubDC8Anx4AbMFdpAygLRf4NqUrmKZysVXSodQBbqmKhmaLgjFCR9xHYsgGytkKDTj8n8abDRsYQmv2voqnxdPekdLWHsyt99yqttghUyCYYE8',
+                'tpubDCm2QWdEdVCC9t4j2E9pJA2u3CfTasqi3RteSzJuzjYsLGYj7gRi2FZAh1GWiyTPpeVFypohde8ziJCRJKn9juATVZs2GPn3RNwHVfxLM6t',
+                'tpubDDK5oGLzXWSUG5H4iyM2vhKaBhygLfJF4iiNG2QqeMRehm71Q6MYtvM165CS1pS27aeTyD9YAsfDcbTzXzCeViLrNUiNNx2GyLN5wKepq7x',
+                'tpubDCdvro24FvfG6WypbAwFfGwT4LzeT54JspmJgr3yYz8WmDV62iXGiiTyAQAPTbDLUT8jZZhb5Bjn6KyqPqwEY8ft54yEMdayby4naEXh7jw',
+                'tpubDDmjDSgRTDBRkjzquEPpgjH7Ky4PUzJ4HceuxbD7YJTQDWYjLuRWhw3Go9H8WqGSfo86wfJ8kC8pW5hKoXYEwAmqy8fnKiciMS5dHMrcJDs',
+                'tpubDCZgEW2jYXbjwu46iz7X9UWWSEE9tpSFtnVAkvw9x2rbPLmZZ3F7TDEQVdskYamiqmKvmYaQu2jwPBasRFMdJP7w6sP1hnvv4VpNe9wGCAr',
+                'tpubDC9mKxZjqKo6nsurSjgnaaxQS3WSWqm8MVRwnnqjYzXRSfKjUxuvjLgMRAix2BLW8NfoPyUDTjkZgb9jENiihS3AoL3cwG18YLDmZmq1VWP',
+                'tpubDC5H7ejMEWt2JF3AF2kdKKokQsAHcksHoHHMgw6S9x5sTs8mZ4rpNPpuNYSJr7RuwiqUgJpYnA6XftMUNW5hGkTduGCtFfBdyj2hXJKN2Xf'
             ]
         };
         
@@ -671,9 +627,27 @@ class MiniscriptCompiler {
             console.error('Could not find key-value-input element');
         }
         
-        // Focus on the name input if it's empty
+        // Set a descriptive name based on key type if name input is empty
         const nameInput = document.getElementById('key-name-input');
         if (nameInput && !nameInput.value.trim()) {
+            const typeLabels = {
+                'compressed': 'CompressedKey',
+                'xonly': 'XOnlyKey', 
+                'xpub': 'ExtendedKey',
+                'tpub': 'TestnetKey'
+            };
+            
+            const baseLabel = typeLabels[selectedType] || 'Key';
+            let counter = 1;
+            let keyName = baseLabel;
+            
+            // Find next available number if name already exists
+            while (this.keyVariables.has(keyName)) {
+                counter++;
+                keyName = `${baseLabel}${counter}`;
+            }
+            
+            nameInput.value = keyName;
             nameInput.focus();
         }
     }
@@ -796,9 +770,21 @@ class MiniscriptCompiler {
         }
 
         listDiv.innerHTML = Array.from(this.keyVariables.entries()).map(([name, value]) => {
-            const isXOnly = value.length === 64;
-            const keyClass = isXOnly ? 'xonly' : 'compressed';
-            const badgeText = isXOnly ? 'x-only' : 'compressed';
+            let keyClass, badgeText;
+            
+            if (value.startsWith('xpub')) {
+                keyClass = 'xpub';
+                badgeText = 'xpub';
+            } else if (value.startsWith('tpub')) {
+                keyClass = 'tpub';
+                badgeText = 'tpub';
+            } else if (value.length === 64) {
+                keyClass = 'xonly';
+                badgeText = 'x-only';
+            } else {
+                keyClass = 'compressed';
+                badgeText = 'compressed';
+            }
             
             return `
             <div class="key-variable-item">

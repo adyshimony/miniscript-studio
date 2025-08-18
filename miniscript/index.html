@@ -464,6 +464,16 @@
             color: white;
         }
 
+        .key-badge.xpub {
+            background: #10b981;
+            color: white;
+        }
+
+        .key-badge.tpub {
+            background: #f59e0b;
+            color: white;
+        }
+
         .add-key-form {
             display: flex;
             flex-direction: column;
@@ -876,14 +886,6 @@
                             <input type="radio" name="keyType" value="tpub" style="margin: 0;">
                             <span>Testnet Keys (tpub)</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
-                            <input type="radio" name="keyType" value="ypub" style="margin: 0;">
-                            <span>SegWit P2SH (ypub)</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-color); cursor: pointer;">
-                            <input type="radio" name="keyType" value="zpub" style="margin: 0;">
-                            <span>SegWit Native (zpub)</span>
-                        </label>
                     </div>
                 </div>
                 
@@ -1295,107 +1297,6 @@
             }
         };
 
-        function generateKey() {
-            console.log('Inline generateKey called');
-            
-            // Pool of valid Bitcoin public keys
-            // 66-character compressed keys for Legacy/Segwit v0 (20 keys)
-            const compressedKeys = [
-                '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-                '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-                '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-                '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-                '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-                '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-                '03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-                '02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-                '03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-                '02791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-                '03581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-                '022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-                '02bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-                '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-                '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-                '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-                '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-                '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-                '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-                '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-            ];
-            
-            // 64-character X-only keys for Taproot (20 keys)
-            const xOnlyKeys = [
-                'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-                'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-                'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-                '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-                '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-                'c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-                '774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-                'e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-                'd01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-                '791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-                '581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-                '2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-                'bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-                '2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-                '0e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-                'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-                '5476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-                'd30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-                '3da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-                'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-            ];
-            
-            // Get selected context
-            const selectedContext = document.querySelector('input[name="context"]:checked').value;
-            
-            // Choose key pool based on context
-            let keyPool;
-            if (selectedContext === 'taproot') {
-                keyPool = xOnlyKeys; // 64-character X-only keys for Taproot
-            } else {
-                keyPool = compressedKeys; // 66-character compressed keys for Legacy/Segwit
-            }
-            
-            // Get already used keys from the key variables list
-            const usedKeys = [];
-            const keyItems = document.querySelectorAll('.key-variable-item .key-value');
-            keyItems.forEach(item => {
-                usedKeys.push(item.textContent.trim());
-            });
-            
-            // Filter out already used keys from the appropriate pool
-            const availableKeys = keyPool.filter(key => !usedKeys.includes(key));
-            
-            // If all keys are used, use all keys anyway
-            const keysToUse = availableKeys.length > 0 ? availableKeys : keyPool;
-            
-            // Simple random selection from available keys
-            const randomIndex = Math.floor(Math.random() * keysToUse.length);
-            const publicKey = keysToUse[randomIndex];
-            
-            console.log('Selected context:', selectedContext);
-            console.log('Key pool length:', keyPool.length);
-            console.log('Generated public key:', publicKey);
-            console.log('Key length:', publicKey.length);
-            console.log('Available keys:', availableKeys.length, 'Used keys:', usedKeys.length);
-            
-            // Set the generated key in the value input
-            const valueInput = document.getElementById('key-value-input');
-            if (valueInput) {
-                valueInput.value = publicKey;
-                console.log('Set value input to:', publicKey);
-            } else {
-                console.error('Could not find key-value-input element');
-            }
-            
-            // Focus on the name input if it's empty
-            const nameInput = document.getElementById('key-name-input');
-            if (nameInput && !nameInput.value.trim()) {
-                nameInput.focus();
-            }
-        }
     </script>
 </body>
 </html>

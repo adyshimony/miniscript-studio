@@ -438,8 +438,15 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
     let trimmed = expression.trim();
     console_log!("Trimmed expression: {}", trimmed);
     
+    // Detect network based on key type
+    let network = if trimmed.contains("tpub") {
+        Network::Testnet
+    } else {
+        Network::Bitcoin
+    };
+    
     // Wrap miniscript with appropriate descriptor based on context
-    let descriptor_expr = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("ypub") || trimmed.contains("zpub") {
+    let descriptor_expr = if trimmed.contains("tpub") || trimmed.contains("xpub") {
         match context {
             "legacy" => format!("sh({})", trimmed),
             "segwit" => format!("wsh({})", trimmed),
@@ -461,7 +468,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
                     let script_size = script.len();
                     
-                    let address = match Address::p2sh(&script, Network::Bitcoin) {
+                    let address = match Address::p2sh(&script, network) {
                         Ok(addr) => Some(addr.to_string()),
                         Err(_) => None,
                     };
@@ -499,7 +506,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                             let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
                             let script_size = script.len();
                             
-                            let address = Some(Address::p2wsh(&script, Network::Bitcoin).to_string());
+                            let address = Some(Address::p2wsh(&script, network).to_string());
                             
                             Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string()))
                         }
@@ -514,7 +521,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
                     let script_size = script.len();
                     
-                    let address = Some(Address::p2wsh(&script, Network::Bitcoin).to_string());
+                    let address = Some(Address::p2wsh(&script, network).to_string());
                     
                     Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string()))
                 }
@@ -538,7 +545,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     let script_size = script.len();
                     
                     // Generate Taproot address
-                    let address = generate_taproot_address(&script);
+                    let address = generate_taproot_address(&script, network);
                     
                     Ok((script_hex, script_asm, address, script_size, "Taproot".to_string()))
                 }
@@ -563,6 +570,13 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
 
     let trimmed = policy.trim();
     
+    // Detect network based on key type
+    let network = if trimmed.contains("tpub") {
+        Network::Testnet
+    } else {
+        Network::Bitcoin
+    };
+    
     console_log!("Processing policy directly: {}", trimmed);
     
     match context {
@@ -577,7 +591,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let script_size = script.len();
                             let miniscript_str = ms.to_string();
                             
-                            let address = match Address::p2sh(&script, Network::Bitcoin) {
+                            let address = match Address::p2sh(&script, network) {
                                 Ok(addr) => Some(addr.to_string()),
                                 Err(_) => None,
                             };
@@ -615,7 +629,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let script_size = script.len();
                             let miniscript_str = ms.to_string();
                             
-                            let address = Some(Address::p2wsh(&script, Network::Bitcoin).to_string());
+                            let address = Some(Address::p2wsh(&script, network).to_string());
                             
                             Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str))
                         }
@@ -651,7 +665,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let miniscript_str = ms.to_string();
                             
                             // Generate Taproot address
-                            let address = generate_taproot_address(&script);
+                            let address = generate_taproot_address(&script, network);
                             
                             Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str))
                         }
@@ -679,7 +693,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
     }
 }
 
-fn generate_taproot_address(_script: &bitcoin::Script) -> Option<String> {
+fn generate_taproot_address(_script: &bitcoin::Script, network: Network) -> Option<String> {
     // Create a simple Taproot address using key-path spending
     // This uses a dummy internal key for demonstration purposes
     
@@ -693,7 +707,7 @@ fn generate_taproot_address(_script: &bitcoin::Script) -> Option<String> {
         Ok(internal_key) => {
             // Create a simple key-path-only Taproot address
             // Note: This is simplified - in practice you'd want script-path spending
-            let address = Address::p2tr(&Secp256k1::verification_only(), internal_key, None, Network::Bitcoin);
+            let address = Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network);
             Some(address.to_string())
         }
         Err(_) => None
