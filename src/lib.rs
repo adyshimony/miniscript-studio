@@ -2,6 +2,10 @@ use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete};
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1};
+use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
+use regex::Regex;
+use std::str::FromStr;
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct CompilationResult {
@@ -15,6 +19,25 @@ pub struct CompilationResult {
     pub compiled_miniscript: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+struct DescriptorInfo {
+    #[allow(dead_code)]
+    fingerprint: Fingerprint,
+    #[allow(dead_code)]
+    derivation_path: DerivationPath,
+    xpub: Xpub,
+    child_paths: Vec<u32>, // For <m;n> ranges
+    #[allow(dead_code)]
+    is_wildcard: bool,     // For /* endings
+}
+
+#[derive(Debug, Clone)]
+struct ParsedDescriptor {
+    #[allow(dead_code)]
+    original: String,
+    info: DescriptorInfo,
+}
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -23,6 +46,163 @@ extern "C" {
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+// Parse HD wallet descriptors from miniscript expressions
+fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescriptor>, String> {
+    let mut descriptors = HashMap::new();
+    
+    console_log!("Parsing descriptors from expression of length: {}", expression.len());
+    
+    // Regex to match the full descriptor pattern including trailing range/wildcard
+    // This matches: [fingerprint/path]xpub/<range>/* (the full pattern we need to replace)
+    let descriptor_re = Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+        .map_err(|e| format!("Regex error: {}", e))?;
+    
+    console_log!("Regex created successfully");
+    
+    for caps in descriptor_re.captures_iter(expression) {
+        let fingerprint_str = caps.get(1).unwrap().as_str();
+        let path_str = caps.get(2).unwrap().as_str();
+        let xpub_str = caps.get(3).unwrap().as_str();
+        let range_str = caps.get(4).map(|m| m.as_str()); // The <range> part
+        let wildcard = true; // Always true since our regex requires /*
+        
+        console_log!("Captured path_str: '{}' (len: {})", path_str, path_str.len());
+        console_log!("Captured range_str: {:?}", range_str);
+        console_log!("Path chars: {:?}", path_str.chars().collect::<Vec<_>>());
+        
+        // Parse fingerprint
+        let fingerprint_bytes = hex::decode(fingerprint_str)
+            .map_err(|e| format!("Invalid fingerprint hex: {}", e))?;
+        if fingerprint_bytes.len() != 4 {
+            return Err("Fingerprint must be 4 bytes".to_string());
+        }
+        let mut fp_array = [0u8; 4];
+        fp_array.copy_from_slice(&fingerprint_bytes);
+        let fingerprint = Fingerprint::from(fp_array);
+        
+        // Parse derivation path - convert 'h' suffix to "'" and add leading slash if missing
+        let mut normalized_path = if path_str.starts_with("/") {
+            path_str.to_string()
+        } else {
+            format!("m/{}", path_str)  // Try 'm/' prefix instead of just '/'
+        };
+        
+        // Convert 'h' hardened notation to "'" notation using regex
+        console_log!("Before regex replacement: '{}'", normalized_path);
+        let hardened_re = Regex::new(r"(\d+)h").unwrap();
+        let temp_result = hardened_re.replace_all(&normalized_path, "$1'");
+        normalized_path = temp_result.to_string();
+        console_log!("After regex replacement: '{}'", normalized_path);
+        
+        // Debug: print each character with its code
+        for (i, ch) in normalized_path.chars().enumerate() {
+            console_log!("Char {}: '{}' (code: {})", i, ch, ch as u32);
+        }
+        
+        console_log!("Original path: '{}', Normalized path: '{}'", path_str, normalized_path);
+        console_log!("Normalized path length: {}, ends with: '{}'", normalized_path.len(), normalized_path.chars().last().unwrap_or(' '));
+        
+        // Try parsing the derivation path with detailed error info
+        console_log!("Attempting to parse derivation path: '{}'", normalized_path);
+        let derivation_path = match DerivationPath::from_str(&normalized_path) {
+            Ok(path) => {
+                console_log!("Successfully parsed derivation path");
+                path
+            },
+            Err(e) => {
+                console_log!("Failed to parse derivation path '{}': {}", normalized_path, e);
+                return Err(format!("Invalid derivation path '{}': {}", normalized_path, e));
+            }
+        };
+        
+        // Parse extended public key
+        let xpub = Xpub::from_str(xpub_str)
+            .map_err(|e| format!("Invalid extended public key: {}", e))?;
+        
+        // Parse child paths from range like 10;11 (already without < >)
+        let child_paths = if let Some(range) = range_str {
+            console_log!("Parsing range: '{}'", range);
+            if range.contains(';') {
+                range.split(';')
+                    .map(|s| {
+                        console_log!("Parsing range component: '{}'", s.trim());
+                        s.trim().parse::<u32>()
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| format!("Invalid range numbers: {}", e))?
+            } else {
+                vec![range.trim().parse::<u32>()
+                    .map_err(|e| format!("Invalid range number: {}", e))?]
+            }
+        } else {
+            vec![]
+        };
+        
+        let descriptor_info = DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths,
+            is_wildcard: wildcard,
+        };
+        
+        // Get the full match including range and wildcard
+        let full_match = caps.get(0).unwrap().as_str();
+        let parsed_descriptor = ParsedDescriptor {
+            original: full_match.to_string(),
+            info: descriptor_info,
+        };
+        
+        console_log!("Full descriptor match: '{}'", full_match);
+        descriptors.insert(full_match.to_string(), parsed_descriptor);
+    }
+    
+    Ok(descriptors)
+}
+
+// Expand descriptor to actual public key
+fn expand_descriptor(descriptor: &ParsedDescriptor, child_index: u32) -> Result<String, String> {
+    // For now, we'll use the first child path or index 0
+    let child_num = if !descriptor.info.child_paths.is_empty() {
+        descriptor.info.child_paths[0]
+    } else {
+        child_index
+    };
+    
+    // Create derivation path for child
+    let child_number = ChildNumber::from_normal_idx(child_num)
+        .map_err(|e| format!("Invalid child number: {}", e))?;
+    
+    // Derive the child key
+    let secp = Secp256k1::verification_only();
+    let child_key = descriptor.info.xpub
+        .derive_pub(&secp, &[child_number])
+        .map_err(|e| format!("Key derivation failed: {}", e))?;
+    
+    // Return just the compressed public key (33 bytes = 66 hex chars)
+    let compressed_key = child_key.public_key.serialize();
+    let hex_key = hex::encode(&compressed_key);
+    console_log!("Derived key bytes: {} bytes", compressed_key.len());
+    console_log!("Derived key hex: {} chars", hex_key.len());
+    console_log!("Derived key: {}", hex_key);
+    Ok(hex_key)
+}
+
+// Replace descriptors in expression with actual keys
+fn replace_descriptors_with_keys(expression: &str, descriptors: &HashMap<String, ParsedDescriptor>) -> Result<String, String> {
+    let mut result = expression.to_string();
+    
+    for (original, descriptor) in descriptors {
+        // For simplicity, use child index 0 for all expansions
+        let public_key = expand_descriptor(descriptor, 0)?;
+        console_log!("Replacing '{}' with '{}' (len: {})", original, public_key, public_key.len());
+        result = result.replace(original, &public_key);
+    }
+    
+    console_log!("Final processed expression: {}", result);
+    Ok(result)
 }
 
 #[wasm_bindgen]
@@ -57,6 +237,7 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
 
 #[wasm_bindgen]
 pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
+    console_log!("=== COMPILE_MINISCRIPT PUBLIC FUNCTION CALLED ===");
     console_log!("Compiling miniscript: {} with context: {}", expression, context);
     
     let result = match compile_expression(expression, context) {
@@ -86,15 +267,38 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
 }
 
 fn compile_expression(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String), String> {
+    console_log!("=== COMPILE_EXPRESSION CALLED ===");
+    console_log!("Expression length: {}", expression.len());
+    console_log!("Expression: {}", expression);
+    console_log!("Context: {}", context);
+    
     if expression.trim().is_empty() {
         return Err("Empty expression - please enter a miniscript".to_string());
     }
 
     let trimmed = expression.trim();
+    console_log!("Trimmed expression: {}", trimmed);
+    
+    // Check if expression contains descriptors and expand them
+    console_log!("Checking for descriptors in expression...");
+    console_log!("Contains [: {}", trimmed.contains("["));
+    console_log!("Contains tpub: {}", trimmed.contains("tpub"));
+    
+    let processed_expression = if trimmed.contains("[") && (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("ypub") || trimmed.contains("zpub")) {
+        console_log!("Detected descriptors in expression, parsing...");
+        let descriptors = parse_descriptors(trimmed)?;
+        console_log!("Found {} descriptors", descriptors.len());
+        replace_descriptors_with_keys(trimmed, &descriptors)?
+    } else {
+        console_log!("No descriptors detected, using original expression");
+        trimmed.to_string()
+    };
+    
+    console_log!("Processing expression: {}", processed_expression);
     
     match context {
         "legacy" => {
-            match trimmed.parse::<Miniscript<PublicKey, Legacy>>() {
+            match processed_expression.parse::<Miniscript<PublicKey, Legacy>>() {
                 Ok(ms) => {
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
@@ -119,7 +323,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
             }
         },
         "segwit" => {
-            match trimmed.parse::<Miniscript<PublicKey, Segwitv0>>() {
+            match processed_expression.parse::<Miniscript<PublicKey, Segwitv0>>() {
                 Ok(ms) => {
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
@@ -141,7 +345,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
             }
         },
         "taproot" => {
-            match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+            match processed_expression.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
                 Ok(ms) => {
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
@@ -174,9 +378,21 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
 
     let trimmed = policy.trim();
     
+    // Check if policy contains descriptors and expand them
+    let processed_policy = if trimmed.contains("[") && (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("ypub") || trimmed.contains("zpub")) {
+        console_log!("Detected descriptors in policy, parsing...");
+        let descriptors = parse_descriptors(trimmed)?;
+        console_log!("Found {} descriptors in policy", descriptors.len());
+        replace_descriptors_with_keys(trimmed, &descriptors)?
+    } else {
+        trimmed.to_string()
+    };
+    
+    console_log!("Processing policy: {}", processed_policy);
+    
     match context {
         "legacy" => {
-            match trimmed.parse::<Concrete<PublicKey>>() {
+            match processed_policy.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
                     match concrete_policy.compile::<Legacy>() {
                         Ok(ms) => {
@@ -214,7 +430,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             }
         },
         "segwit" => {
-            match trimmed.parse::<Concrete<PublicKey>>() {
+            match processed_policy.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
                     match concrete_policy.compile::<Segwitv0>() {
                         Ok(ms) => {
@@ -249,7 +465,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             }
         },
         "taproot" => {
-            match trimmed.parse::<Concrete<XOnlyPublicKey>>() {
+            match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
                 Ok(concrete_policy) => {
                     match concrete_policy.compile::<Tap>() {
                         Ok(ms) => {
@@ -311,5 +527,6 @@ fn generate_taproot_address(_script: &bitcoin::Script) -> Option<String> {
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    console_log!("Real Miniscript WASM module loaded");
+    console_log!("=== REAL MINISCRIPT WASM MODULE LOADED ===");
+    console_log!("Module initialization complete");
 }
