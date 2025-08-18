@@ -264,10 +264,21 @@ class MiniscriptCompiler {
                 document.getElementById('expression-input').textContent = result.compiled_miniscript;
                 this.highlightMiniscriptSyntax();
                 
-                // Reset the "Show key names" checkbox since we have a new expression
-                const checkbox = document.getElementById('replace-keys-checkbox');
-                if (checkbox) {
-                    checkbox.checked = false;
+                // Check if the compiled miniscript contains key names (like ALICE, BOB) or hex keys
+                const containsKeyNames = this.containsKeyNames(result.compiled_miniscript);
+                
+                // Set toggle button state based on content
+                const toggleBtn = document.getElementById('key-names-toggle');
+                if (toggleBtn) {
+                    if (containsKeyNames) {
+                        toggleBtn.style.color = 'var(--success-border)';
+                        toggleBtn.title = 'Hide key names';
+                        toggleBtn.dataset.active = 'true';
+                    } else {
+                        toggleBtn.style.color = 'var(--text-secondary)';
+                        toggleBtn.title = 'Show key names';
+                        toggleBtn.dataset.active = 'false';
+                    }
                 }
                 
                 // Show green success message in miniscript messages area
@@ -300,9 +311,11 @@ class MiniscriptCompiler {
         this.clearPolicyErrors();
         
         // Reset the "Show key names" checkbox since we cleared the miniscript
-        const checkbox = document.getElementById('replace-keys-checkbox');
-        if (checkbox) {
-            checkbox.checked = false;
+        const toggleBtn = document.getElementById('key-names-toggle');
+        if (toggleBtn) {
+            toggleBtn.style.color = 'var(--text-secondary)';
+            toggleBtn.title = 'Show key names';
+            toggleBtn.dataset.active = 'false';
         }
         
         // Hide description panel
@@ -965,38 +978,70 @@ class MiniscriptCompiler {
         return processedText;
     }
 
+    containsKeyNames(text) {
+        // Check if text contains any of our key variable names (like ALICE, BOB, etc.)
+        for (const [name] of this.keyVariables) {
+            const regex = new RegExp('\\b' + name + '\\b', 'i');
+            if (regex.test(text)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    handlePolicyReplaceKeysToggle(isChecked) {
+        console.log('=== handlePolicyReplaceKeysToggle START ===');
+        console.log('isChecked:', isChecked);
+        
+        const policyInput = document.getElementById('policy-input');
+        if (!policyInput) {
+            console.error('Policy input not found!');
+            return;
+        }
+        
+        let policy = policyInput.textContent;
+        console.log('Current policy:', `"${policy}"`);
+        
+        if (!policy.trim()) {
+            console.log('Policy is empty, returning');
+            return;
+        }
+
+        let originalPolicy = policy;
+        
+        if (isChecked) {
+            console.log('=== REPLACING KEYS WITH NAMES ===');
+            policy = this.replaceKeysWithNames(policy);
+        } else {
+            console.log('=== REPLACING NAMES WITH KEYS ===');
+            policy = this.replaceNamesWithKeys(policy);
+        }
+
+        console.log('Processed policy:', policy);
+        
+        policyInput.textContent = policy;
+        this.highlightPolicySyntax();
+        console.log('=== handlePolicyReplaceKeysToggle END ===');
+    }
+
     escapeRegex(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     setupReplaceKeysCheckbox() {
-        console.log('Setting up replace keys checkbox');
-        // Wait for DOM to be ready
+        console.log('Setting up replace keys buttons');
+        // Initialize both toggle button states
         setTimeout(() => {
-            const checkbox = document.getElementById('replace-keys-checkbox');
-            console.log('Looking for checkbox element:', checkbox);
-            if (checkbox) {
-                checkbox.addEventListener('change', (e) => {
-                    console.log('Checkbox clicked, checked:', e.target.checked);
-                    this.handleReplaceKeysToggle(e.target.checked);
-                });
-                console.log('Checkbox event listener added successfully');
-            } else {
-                console.error('Replace keys checkbox not found in DOM');
-                // Try again in case DOM isn't ready
-                setTimeout(() => {
-                    const checkboxRetry = document.getElementById('replace-keys-checkbox');
-                    console.log('Retry - Looking for checkbox:', checkboxRetry);
-                    if (checkboxRetry) {
-                        checkboxRetry.addEventListener('change', (e) => {
-                            console.log('Checkbox clicked (retry), checked:', e.target.checked);
-                            this.handleReplaceKeysToggle(e.target.checked);
-                        });
-                        console.log('Checkbox event listener added on retry');
-                    } else {
-                        console.error('Checkbox still not found on retry');
-                    }
-                }, 1000);
+            const miniscriptToggleBtn = document.getElementById('key-names-toggle');
+            if (miniscriptToggleBtn) {
+                miniscriptToggleBtn.dataset.active = 'false';
+                console.log('Miniscript toggle button initialized');
+            }
+            
+            const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+            if (policyToggleBtn) {
+                policyToggleBtn.dataset.active = 'false';
+                console.log('Policy toggle button initialized');
             }
         }, 100);
     }
@@ -1007,9 +1052,11 @@ class MiniscriptCompiler {
         this.clearMiniscriptMessages();
         
         // Clear and uncheck the "Show key names" checkbox
-        const checkbox = document.getElementById('replace-keys-checkbox');
-        if (checkbox) {
-            checkbox.checked = false;
+        const toggleBtn = document.getElementById('key-names-toggle');
+        if (toggleBtn) {
+            toggleBtn.style.color = 'var(--text-secondary)';
+            toggleBtn.title = 'Show key names';
+            toggleBtn.dataset.active = 'false';
         }
         
         // Hide description panel
@@ -1149,6 +1196,21 @@ class MiniscriptCompiler {
         if (savedExpr) {
             document.getElementById('expression-input').textContent = savedExpr.expression;
             this.highlightMiniscriptSyntax();
+            
+            // Update toggle button state based on loaded content
+            const containsKeyNames = this.containsKeyNames(savedExpr.expression);
+            const toggleBtn = document.getElementById('key-names-toggle');
+            if (toggleBtn) {
+                if (containsKeyNames) {
+                    toggleBtn.style.color = 'var(--success-border)';
+                    toggleBtn.title = 'Hide key names';
+                    toggleBtn.dataset.active = 'true';
+                } else {
+                    toggleBtn.style.color = 'var(--text-secondary)';
+                    toggleBtn.title = 'Show key names';
+                    toggleBtn.dataset.active = 'false';
+                }
+            }
             
             // Auto-detect context based on key formats in the expression
             const detectedContext = this.detectContextFromExpression(savedExpr.expression);
@@ -1393,6 +1455,21 @@ class MiniscriptCompiler {
             document.getElementById('policy-input').textContent = savedPolicy.expression;
             this.highlightPolicySyntax();
             
+            // Update policy toggle button state based on loaded content
+            const containsKeyNames = this.containsKeyNames(savedPolicy.expression);
+            const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+            if (policyToggleBtn) {
+                if (containsKeyNames) {
+                    policyToggleBtn.style.color = 'var(--success-border)';
+                    policyToggleBtn.title = 'Hide key names';
+                    policyToggleBtn.dataset.active = 'true';
+                } else {
+                    policyToggleBtn.style.color = 'var(--text-secondary)';
+                    policyToggleBtn.title = 'Show key names';
+                    policyToggleBtn.dataset.active = 'false';
+                }
+            }
+            
             // Auto-detect context based on key formats in the policy
             const detectedContext = this.detectContextFromExpression(savedPolicy.expression);
             const context = detectedContext || savedPolicy.context || 'segwit';
@@ -1472,6 +1549,23 @@ window.loadExample = function(example) {
         window.compiler.clearMiniscriptMessages();
     }
     
+    // Update toggle button state based on loaded content
+    if (window.compiler && window.compiler.containsKeyNames) {
+        const containsKeyNames = window.compiler.containsKeyNames(example);
+        const toggleBtn = document.getElementById('key-names-toggle');
+        if (toggleBtn) {
+            if (containsKeyNames) {
+                toggleBtn.style.color = 'var(--success-border)';
+                toggleBtn.title = 'Hide key names';
+                toggleBtn.dataset.active = 'true';
+            } else {
+                toggleBtn.style.color = 'var(--text-secondary)';
+                toggleBtn.title = 'Show key names';
+                toggleBtn.dataset.active = 'false';
+            }
+        }
+    }
+    
     // Auto-detect context based on key formats in the example (only if compiler is ready)
     if (window.compiler && window.compiler.detectContextFromExpression) {
         const detectedContext = window.compiler.detectContextFromExpression(example);
@@ -1495,6 +1589,23 @@ window.loadPolicyExample = function(example) {
     document.getElementById('expression-input').innerHTML = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
+    
+    // Update policy toggle button state based on loaded content
+    if (window.compiler && window.compiler.containsKeyNames) {
+        const containsKeyNames = window.compiler.containsKeyNames(example);
+        const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+        if (policyToggleBtn) {
+            if (containsKeyNames) {
+                policyToggleBtn.style.color = 'var(--success-border)';
+                policyToggleBtn.title = 'Hide key names';
+                policyToggleBtn.dataset.active = 'true';
+            } else {
+                policyToggleBtn.style.color = 'var(--text-secondary)';
+                policyToggleBtn.title = 'Show key names';
+                policyToggleBtn.dataset.active = 'false';
+            }
+        }
+    }
     
     // Auto-detect context based on key formats in the example (only if compiler is ready)
     if (window.compiler && window.compiler.detectContextFromExpression) {
@@ -1716,6 +1827,56 @@ window.showMiniscriptDescription = function(exampleId) {
 };
 
 // Global function to handle replace keys checkbox
+// Global function for miniscript toggle button
+window.toggleKeyNames = function() {
+    const button = document.getElementById('key-names-toggle');
+    const isCurrentlyShowing = button.dataset.active === 'true';
+    const newState = !isCurrentlyShowing;
+    
+    // Update button visual state
+    if (newState) {
+        button.style.color = 'var(--success-border)';
+        button.title = 'Hide key names';
+        button.dataset.active = 'true';
+    } else {
+        button.style.color = 'var(--text-secondary)';
+        button.title = 'Show key names';
+        button.dataset.active = 'false';
+    }
+    
+    // Call the actual toggle logic
+    if (window.compiler && typeof window.compiler.handleReplaceKeysToggle === 'function') {
+        window.compiler.handleReplaceKeysToggle(newState);
+    } else {
+        console.error('Compiler or handleReplaceKeysToggle method not available');
+    }
+};
+
+// Global function for policy toggle button
+window.togglePolicyKeyNames = function() {
+    const button = document.getElementById('policy-key-names-toggle');
+    const isCurrentlyShowing = button.dataset.active === 'true';
+    const newState = !isCurrentlyShowing;
+    
+    // Update button visual state
+    if (newState) {
+        button.style.color = 'var(--success-border)';
+        button.title = 'Hide key names';
+        button.dataset.active = 'true';
+    } else {
+        button.style.color = 'var(--text-secondary)';
+        button.title = 'Show key names';
+        button.dataset.active = 'false';
+    }
+    
+    // Call the actual policy toggle logic
+    if (window.compiler && typeof window.compiler.handlePolicyReplaceKeysToggle === 'function') {
+        window.compiler.handlePolicyReplaceKeysToggle(newState);
+    } else {
+        console.error('Compiler or handlePolicyReplaceKeysToggle method not available');
+    }
+};
+
 window.handleReplaceKeysChange = function(isChecked) {
     console.log('Global handleReplaceKeysChange called with:', isChecked);
     if (window.compiler && typeof window.compiler.handleReplaceKeysToggle === 'function') {
@@ -1939,21 +2100,22 @@ window.copyMiniscriptExpression = function() {
         return;
     }
     
-    // Find the text span next to the button
+    // Find the button for visual feedback
     const button = event.target.closest('button');
-    const textSpan = button.parentNode.querySelector('span');
-    const originalText = textSpan.textContent;
+    const originalTitle = button.title;
     
     // Copy to clipboard
     navigator.clipboard.writeText(expression).then(() => {
-        // Visual feedback - temporarily change text
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        // Visual feedback - temporarily change button
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     }).catch(err => {
         console.error('Failed to copy:', err);
         // Fallback for older browsers
@@ -1961,14 +2123,48 @@ window.copyMiniscriptExpression = function() {
         document.execCommand('copy');
         
         // Visual feedback for fallback
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     });
+};
+
+// Global function to remove extra characters from miniscript expression
+window.removeMiniscriptExtraChars = function() {
+    const expressionInput = document.getElementById('expression-input');
+    const expression = expressionInput.textContent;
+    
+    if (!expression) {
+        return;
+    }
+    
+    // Remove spaces, carriage returns, and newlines
+    const cleanedExpression = expression.replace(/[\s\r\n]/g, '');
+    expressionInput.textContent = cleanedExpression;
+    
+    // Update syntax highlighting
+    if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+        window.compiler.highlightMiniscriptSyntax();
+    }
+    
+    // Show feedback
+    const button = event.target.closest('button');
+    const originalTitle = button.title;
+    button.textContent = '✨';
+    button.title = 'Cleaned!';
+    button.style.color = 'var(--success-border)';
+    
+    setTimeout(() => {
+        button.textContent = '🧹';
+        button.title = originalTitle;
+        button.style.color = 'var(--text-secondary)';
+    }, 1500);
 };
 
 // Global function to copy policy expression
@@ -1991,12 +2187,16 @@ window.removePolicyExtraChars = function() {
     
     // Show feedback
     const button = event.target.closest('button');
-    const textSpan = button.parentElement.querySelector('span');
-    const originalText = textSpan.textContent;
-    textSpan.textContent = 'Cleaned!';
+    const originalTitle = button.title;
+    button.textContent = '✨';
+    button.title = 'Cleaned!';
+    button.style.color = 'var(--success-border)';
+    
     setTimeout(() => {
-        textSpan.textContent = originalText;
-    }, 1000);
+        button.textContent = '🧹';
+        button.title = originalTitle;
+        button.style.color = 'var(--text-secondary)';
+    }, 1500);
 };
 
 window.copyPolicyExpression = function() {
@@ -2008,21 +2208,22 @@ window.copyPolicyExpression = function() {
         return;
     }
     
-    // Find the text span next to the button
+    // Find the button for visual feedback
     const button = event.target.closest('button');
-    const textSpan = button.parentNode.querySelector('span');
-    const originalText = textSpan.textContent;
+    const originalTitle = button.title;
     
     // Copy to clipboard
     navigator.clipboard.writeText(policy).then(() => {
-        // Visual feedback - temporarily change text
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        // Visual feedback - temporarily change button
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     }).catch(err => {
         console.error('Failed to copy:', err);
         // Fallback for older browsers
@@ -2030,12 +2231,14 @@ window.copyPolicyExpression = function() {
         document.execCommand('copy');
         
         // Visual feedback for fallback
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     });
 };
