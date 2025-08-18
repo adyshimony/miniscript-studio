@@ -264,10 +264,21 @@ class MiniscriptCompiler {
                 document.getElementById('expression-input').textContent = result.compiled_miniscript;
                 this.highlightMiniscriptSyntax();
                 
-                // Reset the "Show key names" checkbox since we have a new expression
-                const checkbox = document.getElementById('replace-keys-checkbox');
-                if (checkbox) {
-                    checkbox.checked = false;
+                // Check if the compiled miniscript contains key names (like ALICE, BOB) or hex keys
+                const containsKeyNames = this.containsKeyNames(result.compiled_miniscript);
+                
+                // Set toggle button state based on content
+                const toggleBtn = document.getElementById('key-names-toggle');
+                if (toggleBtn) {
+                    if (containsKeyNames) {
+                        toggleBtn.style.color = 'var(--success-border)';
+                        toggleBtn.title = 'Hide key names';
+                        toggleBtn.dataset.active = 'true';
+                    } else {
+                        toggleBtn.style.color = 'var(--text-secondary)';
+                        toggleBtn.title = 'Show key names';
+                        toggleBtn.dataset.active = 'false';
+                    }
                 }
                 
                 // Show green success message in miniscript messages area
@@ -300,9 +311,11 @@ class MiniscriptCompiler {
         this.clearPolicyErrors();
         
         // Reset the "Show key names" checkbox since we cleared the miniscript
-        const checkbox = document.getElementById('replace-keys-checkbox');
-        if (checkbox) {
-            checkbox.checked = false;
+        const toggleBtn = document.getElementById('key-names-toggle');
+        if (toggleBtn) {
+            toggleBtn.style.color = 'var(--text-secondary)';
+            toggleBtn.title = 'Show key names';
+            toggleBtn.dataset.active = 'false';
         }
         
         // Hide description panel
@@ -351,6 +364,16 @@ class MiniscriptCompiler {
     applySyntaxHighlighting(text) {
         // Policy language syntax patterns
         return text
+            // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)(<[0-9;]+>)?(\/\*)?/g, 
+                '<span class="syntax-descriptor-bracket">$1</span>' +
+                '<span class="syntax-fingerprint">$2</span>' +
+                '<span class="syntax-descriptor-bracket">$3</span>' +
+                '<span class="syntax-derivation-path">$4</span>' +
+                '<span class="syntax-descriptor-bracket">$5</span>' +
+                '<span class="syntax-xpub">$6</span>' +
+                '<span class="syntax-range">$7</span>' +
+                '<span class="syntax-wildcard">$8</span>')
             // Functions (pk, and, or, thresh, etc.)
             .replace(/\b(pk|and|or|thresh|older|after|sha256|hash256|ripemd160|hash160)\b/g, '<span class="syntax-function">$1</span>')
             // Numbers 
@@ -390,6 +413,17 @@ class MiniscriptCompiler {
     applyMiniscriptSyntaxHighlighting(text) {
         // Miniscript syntax patterns (based on official spec: https://bitcoin.sipa.be/miniscript/)
         return text
+            // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)(\/<[0-9;]+>\/\*)/g, 
+                '<span class="syntax-descriptor-bracket">$1</span>' +
+                '<span class="syntax-fingerprint">$2</span>' +
+                '<span class="syntax-descriptor-bracket">$3</span>' +
+                '<span class="syntax-derivation-path">$4</span>' +
+                '<span class="syntax-descriptor-bracket">$5</span>' +
+                '<span class="syntax-xpub">$6</span>' +
+                '<span class="syntax-range">$7</span>')
+            // Compressed public keys (66 hex characters starting with 02 or 03)
+            .replace(/\b(0[23][a-fA-F0-9]{62})\b/g, '<span class="syntax-pubkey">$1</span>')
             // Basic fragments - literals
             .replace(/\b(0|1)\b/g, '<span class="syntax-number">$1</span>')
             // Basic fragments - key checks
@@ -465,64 +499,105 @@ class MiniscriptCompiler {
     generateKey() {
         console.log('Generate key button clicked!');
         
-        // 66-character compressed keys for Legacy/Segwit v0 (20 keys)
-        const compressedKeys = [
-            '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-            '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-            '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-            '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-            '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-            '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-            '03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-            '02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-            '03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-            '02791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-            '03581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-            '022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-            '02bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-            '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-            '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-            '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-            '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-            '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-            '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-            '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-        ];
+        // Get selected key type from radio buttons
+        const selectedType = document.querySelector('input[name="keyType"]:checked')?.value || 'compressed';
+        console.log('Selected key type:', selectedType);
         
-        // 64-character X-only keys for Taproot (20 keys)
-        const xOnlyKeys = [
-            'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-            'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-            'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-            '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-            '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-            'c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-            '774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-            'e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-            'd01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-            '791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-            '581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-            '2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-            'bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-            '2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-            '0e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-            'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-            '5476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-            'd30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-            '3da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-            'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-        ];
+        // Define all key pools (20 keys each)
+        const keyPools = {
+            compressed: [
+                '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
+                '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
+                '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
+                '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
+                '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+                '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
+                '03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
+                '02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
+                '03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
+                '02791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
+                '03581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
+                '022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
+                '02bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
+                '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
+                '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
+                '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+                '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
+                '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
+                '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
+                '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
+            ],
+            xonly: [
+                'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
+                'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
+                'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
+                '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
+                '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+                'c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
+                '774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
+                'e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
+                'd01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
+                '791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
+                '581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
+                '2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
+                'bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
+                '2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
+                '0e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
+                'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+                '5476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
+                'd30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
+                '3da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
+                'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
+            ],
+            xpub: [
+                'xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda',
+                'xpub6DVwZpXox5Ufcug1ub1LXSuYzej9yTY26asDVveSYJA3d31JhFp25ofUC6cS37YvhWGH26oTbpUdipBYfCc47hWobdezL1cQLKDhCVFqez8',
+                'xpub6DJEDKjse8S92yvQx7JkXLk5aAhkJWXZa5XckxrPy28EwLB6jUzrCS77tAEpRWq3QqF2RivtzDt9ExsyxrqkG75xJty3fwVDvDdFBpmMwfu',
+                'xpub6DX4uxi4koKfkHVJLMDEoeTwQJJYJXM49LcpKpHKgVpSJTRZ8wkYKVtFGRffCDZfzccW9k8qmTcyG3PTFoxapSzv8mu5NzkzgLZTrb2F47N',
+                'xpub6CAyrJvsVeEBuz1GyKquKxdiYjmA9HbhKmPfSX8mCg1JmP7VFMbvKXzze6gsUQ97cYcMD7DG2oge2gMzUY64mkeUGQv2KqtBpi4gw2tL5Wp',
+                'xpub6By2dbMpSdtCVycBc2MjC949ksbuE6tHwVNk53zKEGfUrE2PGF3a3D2YLeokHJPDLHAnm7aGoxT47dWb6m3BmXmhbbKT7dqRXaAridfmRqq',
+                'xpub6CaYzGvBpwvxQ92DMxS3HfVNJ3fZhpn6uVV1JLbLFSMDutjCtBv9NnbKJMgHUvwVmYzYNYTSvgHEdNi4QG7fSUCrB39VdUDzDYVNZKnK54X',
+                'xpub6C4dEw4P295tXPETX4BRbP6Ytt1cstZn2CssjGNmTpSC34PChubYotfBhBvtEG5XzKrDLvELhd9FydP5x19K4KHBXv837zzMiYzX48MhS12',
+                'xpub6DRQCUpZfs7b5vkVobwvSF2cH4BnnU8VjcLJw1WUGdSAbspFhqHRFRw8PDqgKFjL2xXSyyQc9nszDnRaPHsU4U36L6HsQPFxfUQM5o5rX7G',
+                'xpub6CX2v8gD4Lx1tQDrWfDk4RjDsWrqn1SX6Q2p8ACtWsjwSEtyA1HYGVpUNJExtjmsmpTh68h2BrVcRfFFBhJcSSz8SmXcF4crr3zNhKvRTRM',
+                'xpub6Cxu6NiSPeqcCnWTrHFGKgvFN4FM3oJsrSvKHJvsd7X8VUpt1ySe9qFCxfYk1s5yp8bkyhVLDFkH885qSehrnAPjpUZdQ1hh6HowiKg6XvB',
+                'xpub6Bv82ixJNjgxru2C64FdNMT2zcpDtGCXwvbUwAajMjG2xspFuEws2a1FNCDbHfSYPJkE82bLdAKauQ3e4Ro5ToX2zGM9v8RRE9FUyVgtDw7',
+                'xpub6BgdVUWuikQxoNZPZzUeH4wdHbrs3cShA6N2QpvVQRxqVgLkY73kyXd7v6F2fmxgjBunRndwTMdoFGB81tq431cmDXpBdU3FpSyYKPCdFqd',
+                'xpub6CFvZzxtB9b9dxhnMa7E6LhSwLXHsvKXtzpQgvYJh9miAftECi2mnnzEz5KLGEyz1MmetXTLhj93cQR4aeuW2oMnK5aczoLXuK57bbZBcN4',
+                'xpub6BhHskPWuUeDWvoyFV2JiDaoH8bQg2pdzxDuKWcSUU55X7L3dpDv7MAD4YD5M7HHVjTvXRr8KXNupYUVTTmbnSNAqspwgnNe1X8AVdKj5eh',
+                'xpub6Cst8ZhGHGuRCVntQ4rWRffvjc22xobzDEMFj4b5B2pELo6dsXjn3TRCD4dyXGLw2V6V5pG6RSWgyH3bniULoD8frDHmY1XW4iKtPHnjrrZ',
+                'xpub6BoHFYfB5bxrATp6XJkN8WCA5qRg6F8nnvw8vNEJq9fLx6m2wko4zyQuaJzQKH5o2JSTh7kEZs9AamxZUXwPkXq4umrr6wJqojdwMd7nvDg',
+                'xpub6DFEv2BRUtXrNBMHzePBNEqDKSFDDBEgxnvne2ZgwReegyVFFGqthqJ8oyL9NzGtpWbSn5a2EdC4ffZELCFWW75794954to7uf7yeDFQypf',
+                'xpub6DFEv2BRUtXrNBMHzePBNEqDKSFDDBEgxnvne2ZgwReegyVFFGqthqJ8oyL9NzGtpWbSn5a2EdC4ffZELCFWW75794954to7uf7yeDFQypf',
+                'xpub6BogqrbNGr4oC7TSMSxeAjWYGvCZ6ykK3m9XWUbH1B3wvs3JNNrXDKXjPSgfnHfyS1xJ6gis8Ngy5KCxkAD77zUjUMaM3CtrbDmUPFNoUAJ'
+            ],
+            tpub: [
+                'tpubDCqmaqe5U2vTX1o22an5Xs2249Q7oXuKATftGBjEyYFKJPo6A6Jmf7RZmHTwS7gv1KoqctnbhypL49aYDvMzNywn7wdqYbFagxdGdsNgGPT',
+                'tpubDCUSNNGv9a4ii4vjbdB1vB466uuo9LhSAJdyzJGYNXZHEYcVBXshtMXBcUVF5UjHYoU1Paj7CoqVn8MwYZ23wkU1kRCFZ7cgVBrkctnqzy3',
+                'tpubDDEprh91LAyzRYSdCwm1FHNofRxnu7HBXmVWAx6HRLxauhJ7j3eJb2RH9EXmbGMFk59yDfo2HVPttgfgpmqNjJnkvPon2YnhXmxDw7tvj1P',
+                'tpubDDiJf7V97vkpJpZnr9KpxwNNrVckiYU89VsvtvT9j5miupxtzrpD5w7GpM5R2nPMgvszhXHXzeiC4GTLGJ7UpaQDAi7BEWuCANJMt1Kw2Lw',
+                'tpubDCa93YebgDGSupE8E1Bo9cG4E1RXnqDtK7mtfKZxrFrR7Y4e6FqzwymmtHjg3pbFAGDjuAYssMaQpvEYVSyrGmdU4req5c6acrShh3Y7xQb',
+                'tpubDCXMUmB2ZGXdPw5wT3Rkh11LLL5gPgPP31T8yy4jSNLy16AUEAwZzM854Pdim97Qnwsi4eKfFsNpshQgaJu2ZMQrhdtXBtgSt5GMMrAWP91',
+                'tpubDCs2bP5EMwpgCXPsjByMvQDJChqiU1nFWAsz4LTSXTtKFMdjQ4fsF2xtDMkyysTUaGcW2QHra8AQkhpt7DduR9s8GTr7sAMTrdYkq3LqvJg',
+                'tpubDDhjkCPc8X9Xew4xtiu5b3QYA7GBVss3ZadMkoJj6y7Gpg9qgUdWSS8HtQ7xvyXPGrC2t9BSwcZCkVGGuBgUXjb8f9LZ6on783wBrCpRnTf',
+                'tpubDDUcubxexsYBR9Sv1VBjRtmokycLZJgXtPVpdoZMaj3tXBr4gk9AtFTgNNWdGJ5fJtuXoyjXbDj2NJvKsdzzuPQmdueQn7mAEE2NbdoSYY4',
+                'tpubDDHMijCf2MkCZiyFkDtk1fsjuehjjpE754Uw7QjS24fWtTP8fnQUrr2hAxksRPm1sVEiUhAAxKMa23HS2esAfsPNNP24XWcQDECsj1i5Cen',
+                'tpubDD3as1pSz2mBRHcuDoQ8hvjpFF5xN3gr1uPcA17Cd7F1vxjAw4UuNQ1DYkVh3tJYfikWACsHeD3mkz9cKRRPuqoE9kXGhRAWdnkHBqnE6mv',
+                'tpubDD2Jkdt363ZtTdnvaa4cMhiU2mg7ZjpEHRuw8ViEimfXZRd2FmDhk3XJ3butR1sGGRDasyLSMRi5fGwG8CeTyN9U6tVDkGUjNQq3VJdeA62',
+                'tpubDC8Anx4AbMFdpAygLRf4NqUrmKZysVXSodQBbqmKhmaLgjFCR9xHYsgGytkKDTj8n8abDRsYQmv2voqnxdPekdLWHsyt99yqttghUyCYYE8',
+                'tpubDCm2QWdEdVCC9t4j2E9pJA2u3CfTasqi3RteSzJuzjYsLGYj7gRi2FZAh1GWiyTPpeVFypohde8ziJCRJKn9juATVZs2GPn3RNwHVfxLM6t',
+                'tpubDDK5oGLzXWSUG5H4iyM2vhKaBhygLfJF4iiNG2QqeMRehm71Q6MYtvM165CS1pS27aeTyD9YAsfDcbTzXzCeViLrNUiNNx2GyLN5wKepq7x',
+                'tpubDCdvro24FvfG6WypbAwFfGwT4LzeT54JspmJgr3yYz8WmDV62iXGiiTyAQAPTbDLUT8jZZhb5Bjn6KyqPqwEY8ft54yEMdayby4naEXh7jw',
+                'tpubDDmjDSgRTDBRkjzquEPpgjH7Ky4PUzJ4HceuxbD7YJTQDWYjLuRWhw3Go9H8WqGSfo86wfJ8kC8pW5hKoXYEwAmqy8fnKiciMS5dHMrcJDs',
+                'tpubDCZgEW2jYXbjwu46iz7X9UWWSEE9tpSFtnVAkvw9x2rbPLmZZ3F7TDEQVdskYamiqmKvmYaQu2jwPBasRFMdJP7w6sP1hnvv4VpNe9wGCAr',
+                'tpubDC9mKxZjqKo6nsurSjgnaaxQS3WSWqm8MVRwnnqjYzXRSfKjUxuvjLgMRAix2BLW8NfoPyUDTjkZgb9jENiihS3AoL3cwG18YLDmZmq1VWP',
+                'tpubDC5H7ejMEWt2JF3AF2kdKKokQsAHcksHoHHMgw6S9x5sTs8mZ4rpNPpuNYSJr7RuwiqUgJpYnA6XftMUNW5hGkTduGCtFfBdyj2hXJKN2Xf'
+            ]
+        };
         
-        // Get selected context
-        const selectedContext = document.querySelector('input[name="context"]:checked')?.value || 'segwit';
-        
-        // Choose key pool based on context
-        let keyPool;
-        if (selectedContext === 'taproot') {
-            keyPool = xOnlyKeys; // 64-character X-only keys for Taproot
-        } else {
-            keyPool = compressedKeys; // 66-character compressed keys for Legacy/Segwit
-        }
+        // Get the key pool for the selected type
+        const keyPool = keyPools[selectedType];
+        console.log('Selected key type:', selectedType, 'Pool size:', keyPool.length);
         
         // Get already used keys
         const usedKeys = Array.from(this.keyVariables.values());
@@ -537,7 +612,7 @@ class MiniscriptCompiler {
         const randomIndex = Math.floor(Math.random() * keysToUse.length);
         const publicKey = keysToUse[randomIndex];
         
-        console.log('Selected context:', selectedContext);
+        console.log('Selected key type:', selectedType);
         console.log('Key pool length:', keyPool.length);
         console.log('Generated public key:', publicKey);
         console.log('Key length:', publicKey.length);
@@ -552,9 +627,27 @@ class MiniscriptCompiler {
             console.error('Could not find key-value-input element');
         }
         
-        // Focus on the name input if it's empty
+        // Set a descriptive name based on key type if name input is empty
         const nameInput = document.getElementById('key-name-input');
         if (nameInput && !nameInput.value.trim()) {
+            const typeLabels = {
+                'compressed': 'CompressedKey',
+                'xonly': 'XOnlyKey', 
+                'xpub': 'ExtendedKey',
+                'tpub': 'TestnetKey'
+            };
+            
+            const baseLabel = typeLabels[selectedType] || 'Key';
+            let counter = 1;
+            let keyName = baseLabel;
+            
+            // Find next available number if name already exists
+            while (this.keyVariables.has(keyName)) {
+                counter++;
+                keyName = `${baseLabel}${counter}`;
+            }
+            
+            nameInput.value = keyName;
             nameInput.focus();
         }
     }
@@ -677,9 +770,21 @@ class MiniscriptCompiler {
         }
 
         listDiv.innerHTML = Array.from(this.keyVariables.entries()).map(([name, value]) => {
-            const isXOnly = value.length === 64;
-            const keyClass = isXOnly ? 'xonly' : 'compressed';
-            const badgeText = isXOnly ? 'x-only' : 'compressed';
+            let keyClass, badgeText;
+            
+            if (value.startsWith('xpub')) {
+                keyClass = 'xpub';
+                badgeText = 'xpub';
+            } else if (value.startsWith('tpub')) {
+                keyClass = 'tpub';
+                badgeText = 'tpub';
+            } else if (value.length === 64) {
+                keyClass = 'xonly';
+                badgeText = 'x-only';
+            } else {
+                keyClass = 'compressed';
+                badgeText = 'compressed';
+            }
             
             return `
             <div class="key-variable-item">
@@ -731,12 +836,23 @@ class MiniscriptCompiler {
         this.keyVariables.set('Julia', '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
         this.keyVariables.set('Karl', '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
         
+        // Complex descriptor keys
+        this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/1/1');
+        this.keyVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
+        this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<1;0>/*');
+        
+        // Vault keys for complex multi-signature examples
+        this.keyVariables.set('VaultKey1', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<6;7>/*');
+        this.keyVariables.set('VaultKey2', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<12;13>/*');
+        this.keyVariables.set('VaultKey3', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<16;17>/*');
+        this.keyVariables.set('VaultKey4', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<16;17>/*');
+        
         this.saveKeyVariables();
         this.displayKeyVariables();
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 11 default key variables: Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl. Continue?')) {
+        if (confirm('This will restore 14 default key variables: Alice, Bob, Charlie, Eve, Frank, Grace, David, Helen, Ivan, Julia, Karl, TestnetKey, MainnetKey, RangeKey. Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -944,38 +1060,70 @@ class MiniscriptCompiler {
         return processedText;
     }
 
+    containsKeyNames(text) {
+        // Check if text contains any of our key variable names (like ALICE, BOB, etc.)
+        for (const [name] of this.keyVariables) {
+            const regex = new RegExp('\\b' + name + '\\b', 'i');
+            if (regex.test(text)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    handlePolicyReplaceKeysToggle(isChecked) {
+        console.log('=== handlePolicyReplaceKeysToggle START ===');
+        console.log('isChecked:', isChecked);
+        
+        const policyInput = document.getElementById('policy-input');
+        if (!policyInput) {
+            console.error('Policy input not found!');
+            return;
+        }
+        
+        let policy = policyInput.textContent;
+        console.log('Current policy:', `"${policy}"`);
+        
+        if (!policy.trim()) {
+            console.log('Policy is empty, returning');
+            return;
+        }
+
+        let originalPolicy = policy;
+        
+        if (isChecked) {
+            console.log('=== REPLACING KEYS WITH NAMES ===');
+            policy = this.replaceKeysWithNames(policy);
+        } else {
+            console.log('=== REPLACING NAMES WITH KEYS ===');
+            policy = this.replaceNamesWithKeys(policy);
+        }
+
+        console.log('Processed policy:', policy);
+        
+        policyInput.textContent = policy;
+        this.highlightPolicySyntax();
+        console.log('=== handlePolicyReplaceKeysToggle END ===');
+    }
+
     escapeRegex(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     setupReplaceKeysCheckbox() {
-        console.log('Setting up replace keys checkbox');
-        // Wait for DOM to be ready
+        console.log('Setting up replace keys buttons');
+        // Initialize both toggle button states
         setTimeout(() => {
-            const checkbox = document.getElementById('replace-keys-checkbox');
-            console.log('Looking for checkbox element:', checkbox);
-            if (checkbox) {
-                checkbox.addEventListener('change', (e) => {
-                    console.log('Checkbox clicked, checked:', e.target.checked);
-                    this.handleReplaceKeysToggle(e.target.checked);
-                });
-                console.log('Checkbox event listener added successfully');
-            } else {
-                console.error('Replace keys checkbox not found in DOM');
-                // Try again in case DOM isn't ready
-                setTimeout(() => {
-                    const checkboxRetry = document.getElementById('replace-keys-checkbox');
-                    console.log('Retry - Looking for checkbox:', checkboxRetry);
-                    if (checkboxRetry) {
-                        checkboxRetry.addEventListener('change', (e) => {
-                            console.log('Checkbox clicked (retry), checked:', e.target.checked);
-                            this.handleReplaceKeysToggle(e.target.checked);
-                        });
-                        console.log('Checkbox event listener added on retry');
-                    } else {
-                        console.error('Checkbox still not found on retry');
-                    }
-                }, 1000);
+            const miniscriptToggleBtn = document.getElementById('key-names-toggle');
+            if (miniscriptToggleBtn) {
+                miniscriptToggleBtn.dataset.active = 'false';
+                console.log('Miniscript toggle button initialized');
+            }
+            
+            const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+            if (policyToggleBtn) {
+                policyToggleBtn.dataset.active = 'false';
+                console.log('Policy toggle button initialized');
             }
         }, 100);
     }
@@ -986,9 +1134,11 @@ class MiniscriptCompiler {
         this.clearMiniscriptMessages();
         
         // Clear and uncheck the "Show key names" checkbox
-        const checkbox = document.getElementById('replace-keys-checkbox');
-        if (checkbox) {
-            checkbox.checked = false;
+        const toggleBtn = document.getElementById('key-names-toggle');
+        if (toggleBtn) {
+            toggleBtn.style.color = 'var(--text-secondary)';
+            toggleBtn.title = 'Show key names';
+            toggleBtn.dataset.active = 'false';
         }
         
         // Hide description panel
@@ -1128,6 +1278,21 @@ class MiniscriptCompiler {
         if (savedExpr) {
             document.getElementById('expression-input').textContent = savedExpr.expression;
             this.highlightMiniscriptSyntax();
+            
+            // Update toggle button state based on loaded content
+            const containsKeyNames = this.containsKeyNames(savedExpr.expression);
+            const toggleBtn = document.getElementById('key-names-toggle');
+            if (toggleBtn) {
+                if (containsKeyNames) {
+                    toggleBtn.style.color = 'var(--success-border)';
+                    toggleBtn.title = 'Hide key names';
+                    toggleBtn.dataset.active = 'true';
+                } else {
+                    toggleBtn.style.color = 'var(--text-secondary)';
+                    toggleBtn.title = 'Show key names';
+                    toggleBtn.dataset.active = 'false';
+                }
+            }
             
             // Auto-detect context based on key formats in the expression
             const detectedContext = this.detectContextFromExpression(savedExpr.expression);
@@ -1372,6 +1537,21 @@ class MiniscriptCompiler {
             document.getElementById('policy-input').textContent = savedPolicy.expression;
             this.highlightPolicySyntax();
             
+            // Update policy toggle button state based on loaded content
+            const containsKeyNames = this.containsKeyNames(savedPolicy.expression);
+            const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+            if (policyToggleBtn) {
+                if (containsKeyNames) {
+                    policyToggleBtn.style.color = 'var(--success-border)';
+                    policyToggleBtn.title = 'Hide key names';
+                    policyToggleBtn.dataset.active = 'true';
+                } else {
+                    policyToggleBtn.style.color = 'var(--text-secondary)';
+                    policyToggleBtn.title = 'Show key names';
+                    policyToggleBtn.dataset.active = 'false';
+                }
+            }
+            
             // Auto-detect context based on key formats in the policy
             const detectedContext = this.detectContextFromExpression(savedPolicy.expression);
             const context = detectedContext || savedPolicy.context || 'segwit';
@@ -1451,6 +1631,23 @@ window.loadExample = function(example) {
         window.compiler.clearMiniscriptMessages();
     }
     
+    // Update toggle button state based on loaded content
+    if (window.compiler && window.compiler.containsKeyNames) {
+        const containsKeyNames = window.compiler.containsKeyNames(example);
+        const toggleBtn = document.getElementById('key-names-toggle');
+        if (toggleBtn) {
+            if (containsKeyNames) {
+                toggleBtn.style.color = 'var(--success-border)';
+                toggleBtn.title = 'Hide key names';
+                toggleBtn.dataset.active = 'true';
+            } else {
+                toggleBtn.style.color = 'var(--text-secondary)';
+                toggleBtn.title = 'Show key names';
+                toggleBtn.dataset.active = 'false';
+            }
+        }
+    }
+    
     // Auto-detect context based on key formats in the example (only if compiler is ready)
     if (window.compiler && window.compiler.detectContextFromExpression) {
         const detectedContext = window.compiler.detectContextFromExpression(example);
@@ -1474,6 +1671,23 @@ window.loadPolicyExample = function(example) {
     document.getElementById('expression-input').innerHTML = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
+    
+    // Update policy toggle button state based on loaded content
+    if (window.compiler && window.compiler.containsKeyNames) {
+        const containsKeyNames = window.compiler.containsKeyNames(example);
+        const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+        if (policyToggleBtn) {
+            if (containsKeyNames) {
+                policyToggleBtn.style.color = 'var(--success-border)';
+                policyToggleBtn.title = 'Hide key names';
+                policyToggleBtn.dataset.active = 'true';
+            } else {
+                policyToggleBtn.style.color = 'var(--text-secondary)';
+                policyToggleBtn.title = 'Show key names';
+                policyToggleBtn.dataset.active = 'false';
+            }
+        }
+    }
     
     // Auto-detect context based on key formats in the example (only if compiler is ready)
     if (window.compiler && window.compiler.detectContextFromExpression) {
@@ -1666,6 +1880,41 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
             useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
             technical: '💡 Demonstrates Taproot miniscript with short timelock'
+        },
+        'htlc_time': {
+            title: '⚙️ Time-based HTLC (Hashed Timelock Contract)',
+            structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+            bitcoinScript: 'Alice AND (Bob immediate OR secret + timelock)',
+            useCase: 'HTLC: Alice approves, Bob can claim immediately, or secret holder after delay.',
+            technical: '💡 Proper HTLC pattern where pk(Bob) is dissatisfiable for or_d type compatibility'
+        },
+        'htlc_hash': {
+            title: '⚙️ Hash-based HTLC (Hashed Timelock Contract)',
+            structure: 'or_d(pk(Alice),and_v(v:hash160(...),and_v(v:pk(Bob),older(144))))',
+            bitcoinScript: 'Alice immediately OR (secret + Bob + timelock)',
+            useCase: 'HTLC variant: Alice can claim anytime, or secret holder + Bob after delay.',
+            technical: '💡 pk(Alice) is dissatisfiable, satisfying or_d requirements'
+        },
+        'full_descriptor': {
+            title: '⚙️ Full Extended Key Descriptor',
+            structure: 'pk([C8FE8D4F/48h/1h/123h/2h]xpub.../0/0) → Full BIP32 path',
+            bitcoinScript: 'Uses derived key from extended public key with full derivation path',
+            useCase: 'HD wallet integration with complete key derivation metadata and fingerprint.',
+            technical: '💡 BIP32 extended keys with origin path information'
+        },
+        'range_descriptor': {
+            title: '⚙️ Multipath Range Descriptor',
+            structure: 'pk([...]/tpub.../<1;0>/*) → Multipath derivation',
+            bitcoinScript: 'Template for multiple derived keys using range notation',
+            useCase: 'BIP389 multipath descriptors for generating multiple related addresses.',
+            technical: '💡 <1;0> creates two derivation paths: .../1/* and .../0/*'
+        },
+        'vault_complex': {
+            title: '🏦 Complex Multi-Signature Vault',
+            structure: 'or_i(or_i(or_i(or_i(and_v(...), and_v(...)), and_v(...)), and_v(...)), and_v(...))',
+            bitcoinScript: 'Hierarchical vault with multiple timelock conditions and threshold signatures',
+            useCase: 'Enterprise Bitcoin custody with progressive security layers: Immediate 2-of-2 multisig for daily operations, degrading to 3-of-5 threshold after 2 months, 2-of-4 after 4 months, 2-of-3 after 6 months, and finally 2-of-2 emergency recovery after 8 months. Each timelock represents realistic business continuity scenarios: normal operations, executive departure, key compromise recovery, and long-term succession planning.',
+            technical: '💡 Implements time-based degraded multisig: starts restrictive (requires specific key pairs), becomes more permissive with longer delays. Uses nested or_i for multiple spending paths, thresh() for m-of-n signatures, and pkh() for key hash verification. Critical for institutional custody where immediate spending needs tight control but recovery scenarios need flexibility.'
         }
     };
     
@@ -1695,6 +1944,56 @@ window.showMiniscriptDescription = function(exampleId) {
 };
 
 // Global function to handle replace keys checkbox
+// Global function for miniscript toggle button
+window.toggleKeyNames = function() {
+    const button = document.getElementById('key-names-toggle');
+    const isCurrentlyShowing = button.dataset.active === 'true';
+    const newState = !isCurrentlyShowing;
+    
+    // Update button visual state
+    if (newState) {
+        button.style.color = 'var(--success-border)';
+        button.title = 'Hide key names';
+        button.dataset.active = 'true';
+    } else {
+        button.style.color = 'var(--text-secondary)';
+        button.title = 'Show key names';
+        button.dataset.active = 'false';
+    }
+    
+    // Call the actual toggle logic
+    if (window.compiler && typeof window.compiler.handleReplaceKeysToggle === 'function') {
+        window.compiler.handleReplaceKeysToggle(newState);
+    } else {
+        console.error('Compiler or handleReplaceKeysToggle method not available');
+    }
+};
+
+// Global function for policy toggle button
+window.togglePolicyKeyNames = function() {
+    const button = document.getElementById('policy-key-names-toggle');
+    const isCurrentlyShowing = button.dataset.active === 'true';
+    const newState = !isCurrentlyShowing;
+    
+    // Update button visual state
+    if (newState) {
+        button.style.color = 'var(--success-border)';
+        button.title = 'Hide key names';
+        button.dataset.active = 'true';
+    } else {
+        button.style.color = 'var(--text-secondary)';
+        button.title = 'Show key names';
+        button.dataset.active = 'false';
+    }
+    
+    // Call the actual policy toggle logic
+    if (window.compiler && typeof window.compiler.handlePolicyReplaceKeysToggle === 'function') {
+        window.compiler.handlePolicyReplaceKeysToggle(newState);
+    } else {
+        console.error('Compiler or handlePolicyReplaceKeysToggle method not available');
+    }
+};
+
 window.handleReplaceKeysChange = function(isChecked) {
     console.log('Global handleReplaceKeysChange called with:', isChecked);
     if (window.compiler && typeof window.compiler.handleReplaceKeysToggle === 'function') {
@@ -1880,6 +2179,41 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
             useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
             technical: '💡 Demonstrates Taproot miniscript with short timelock'
+        },
+        'htlc_time': {
+            title: '⚙️ Time-based HTLC (Hashed Timelock Contract)',
+            structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+            bitcoinScript: 'Alice AND (Bob immediate OR secret + timelock)',
+            useCase: 'HTLC: Alice approves, Bob can claim immediately, or secret holder after delay.',
+            technical: '💡 Proper HTLC pattern where pk(Bob) is dissatisfiable for or_d type compatibility'
+        },
+        'htlc_hash': {
+            title: '⚙️ Hash-based HTLC (Hashed Timelock Contract)',
+            structure: 'or_d(pk(Alice),and_v(v:hash160(...),and_v(v:pk(Bob),older(144))))',
+            bitcoinScript: 'Alice immediately OR (secret + Bob + timelock)',
+            useCase: 'HTLC variant: Alice can claim anytime, or secret holder + Bob after delay.',
+            technical: '💡 pk(Alice) is dissatisfiable, satisfying or_d requirements'
+        },
+        'full_descriptor': {
+            title: '⚙️ Full Extended Key Descriptor',
+            structure: 'pk([C8FE8D4F/48h/1h/123h/2h]xpub.../0/0) → Full BIP32 path',
+            bitcoinScript: 'Uses derived key from extended public key with full derivation path',
+            useCase: 'HD wallet integration with complete key derivation metadata and fingerprint.',
+            technical: '💡 BIP32 extended keys with origin path information'
+        },
+        'range_descriptor': {
+            title: '⚙️ Multipath Range Descriptor',
+            structure: 'pk([...]/tpub.../<1;0>/*) → Multipath derivation',
+            bitcoinScript: 'Template for multiple derived keys using range notation',
+            useCase: 'BIP389 multipath descriptors for generating multiple related addresses.',
+            technical: '💡 <1;0> creates two derivation paths: .../1/* and .../0/*'
+        },
+        'vault_complex': {
+            title: '🏦 Complex Multi-Signature Vault',
+            structure: 'or_i(or_i(or_i(or_i(and_v(...), and_v(...)), and_v(...)), and_v(...)), and_v(...))',
+            bitcoinScript: 'Hierarchical vault with multiple timelock conditions and threshold signatures',
+            useCase: 'Enterprise Bitcoin custody with progressive security layers: Immediate 2-of-2 multisig for daily operations, degrading to 3-of-5 threshold after 2 months, 2-of-4 after 4 months, 2-of-3 after 6 months, and finally 2-of-2 emergency recovery after 8 months. Each timelock represents realistic business continuity scenarios: normal operations, executive departure, key compromise recovery, and long-term succession planning.',
+            technical: '💡 Implements time-based degraded multisig: starts restrictive (requires specific key pairs), becomes more permissive with longer delays. Uses nested or_i for multiple spending paths, thresh() for m-of-n signatures, and pkh() for key hash verification. Critical for institutional custody where immediate spending needs tight control but recovery scenarios need flexibility.'
         }
     };
     
@@ -1918,21 +2252,22 @@ window.copyMiniscriptExpression = function() {
         return;
     }
     
-    // Find the text span next to the button
+    // Find the button for visual feedback
     const button = event.target.closest('button');
-    const textSpan = button.parentNode.querySelector('span');
-    const originalText = textSpan.textContent;
+    const originalTitle = button.title;
     
     // Copy to clipboard
     navigator.clipboard.writeText(expression).then(() => {
-        // Visual feedback - temporarily change text
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        // Visual feedback - temporarily change button
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     }).catch(err => {
         console.error('Failed to copy:', err);
         // Fallback for older browsers
@@ -1940,14 +2275,48 @@ window.copyMiniscriptExpression = function() {
         document.execCommand('copy');
         
         // Visual feedback for fallback
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     });
+};
+
+// Global function to remove extra characters from miniscript expression
+window.removeMiniscriptExtraChars = function() {
+    const expressionInput = document.getElementById('expression-input');
+    const expression = expressionInput.textContent;
+    
+    if (!expression) {
+        return;
+    }
+    
+    // Remove spaces, carriage returns, and newlines
+    const cleanedExpression = expression.replace(/[\s\r\n]/g, '');
+    expressionInput.textContent = cleanedExpression;
+    
+    // Update syntax highlighting
+    if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+        window.compiler.highlightMiniscriptSyntax();
+    }
+    
+    // Show feedback
+    const button = event.target.closest('button');
+    const originalTitle = button.title;
+    button.textContent = '✨';
+    button.title = 'Cleaned!';
+    button.style.color = 'var(--success-border)';
+    
+    setTimeout(() => {
+        button.textContent = '🧹';
+        button.title = originalTitle;
+        button.style.color = 'var(--text-secondary)';
+    }, 1500);
 };
 
 // Global function to copy policy expression
@@ -1970,12 +2339,16 @@ window.removePolicyExtraChars = function() {
     
     // Show feedback
     const button = event.target.closest('button');
-    const textSpan = button.parentElement.querySelector('span');
-    const originalText = textSpan.textContent;
-    textSpan.textContent = 'Cleaned!';
+    const originalTitle = button.title;
+    button.textContent = '✨';
+    button.title = 'Cleaned!';
+    button.style.color = 'var(--success-border)';
+    
     setTimeout(() => {
-        textSpan.textContent = originalText;
-    }, 1000);
+        button.textContent = '🧹';
+        button.title = originalTitle;
+        button.style.color = 'var(--text-secondary)';
+    }, 1500);
 };
 
 window.copyPolicyExpression = function() {
@@ -1987,21 +2360,22 @@ window.copyPolicyExpression = function() {
         return;
     }
     
-    // Find the text span next to the button
+    // Find the button for visual feedback
     const button = event.target.closest('button');
-    const textSpan = button.parentNode.querySelector('span');
-    const originalText = textSpan.textContent;
+    const originalTitle = button.title;
     
     // Copy to clipboard
     navigator.clipboard.writeText(policy).then(() => {
-        // Visual feedback - temporarily change text
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        // Visual feedback - temporarily change button
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     }).catch(err => {
         console.error('Failed to copy:', err);
         // Fallback for older browsers
@@ -2009,12 +2383,14 @@ window.copyPolicyExpression = function() {
         document.execCommand('copy');
         
         // Visual feedback for fallback
-        textSpan.textContent = 'Copied!';
-        textSpan.style.color = 'var(--success-border)';
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
         
         setTimeout(() => {
-            textSpan.textContent = originalText;
-            textSpan.style.color = 'var(--text-secondary)';
-        }, 1000);
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
     });
 };
