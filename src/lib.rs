@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey};
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1};
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
@@ -54,14 +54,28 @@ fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescripto
     
     console_log!("Parsing descriptors from expression of length: {}", expression.len());
     
-    // Regex to match the full descriptor pattern including trailing range/wildcard
-    // This matches: [fingerprint/path]xpub/<range>/* (the full pattern we need to replace)
-    let descriptor_re = Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
-        .map_err(|e| format!("Regex error: {}", e))?;
+    // Regex patterns for different descriptor formats:
+    // 1. Full descriptor: [fingerprint/path]xpub/<range>/*
+    let full_descriptor_re = Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+        .map_err(|e| format!("Full descriptor regex error: {}", e))?;
     
-    console_log!("Regex created successfully");
+    // 2. Bare extended key with range: xpub/<range>/*
+    let bare_extended_re = Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+        .map_err(|e| format!("Bare extended regex error: {}", e))?;
     
-    for caps in descriptor_re.captures_iter(expression) {
+    // 3. Extended key with single derivation: xpub/0/*
+    let single_deriv_re = Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
+        .map_err(|e| format!("Single derivation regex error: {}", e))?;
+    
+    // 4. Extended key with fixed double derivation: xpub/0/0
+    let fixed_double_deriv_re = Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
+        .map_err(|e| format!("Fixed double derivation regex error: {}", e))?;
+    
+    console_log!("All regex patterns created successfully");
+    console_log!("Expression to parse: '{}'", expression);
+    
+    // Process full descriptors first
+    for caps in full_descriptor_re.captures_iter(expression) {
         let fingerprint_str = caps.get(1).unwrap().as_str();
         let path_str = caps.get(2).unwrap().as_str();
         let xpub_str = caps.get(3).unwrap().as_str();
@@ -159,30 +173,175 @@ fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescripto
         descriptors.insert(full_match.to_string(), parsed_descriptor);
     }
     
+    // Process bare extended keys with range: xpub/<range>/*
+    for caps in bare_extended_re.captures_iter(expression) {
+        let xpub_str = caps.get(1).unwrap().as_str();
+        let range_str = caps.get(2).map(|m| m.as_str()); // The range part
+        
+        console_log!("Processing bare extended key: '{}'", xpub_str);
+        console_log!("Range: '{:?}'", range_str);
+        
+        // Parse extended public key
+        let xpub = Xpub::from_str(xpub_str)
+            .map_err(|e| format!("Invalid extended public key: {}", e))?;
+        
+        // Parse child paths from range
+        let child_paths = if let Some(range) = range_str {
+            if range.contains(';') {
+                range.split(';')
+                    .map(|s| s.trim().parse::<u32>())
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| format!("Invalid range numbers: {}", e))?
+            } else {
+                vec![range.trim().parse::<u32>()
+                    .map_err(|e| format!("Invalid range number: {}", e))?]
+            }
+        } else {
+            vec![]
+        };
+        
+        // Create descriptor info with dummy fingerprint and path for bare keys
+        let dummy_fingerprint = Fingerprint::from([0u8; 4]);
+        let dummy_path = DerivationPath::from_str("m/0")
+            .map_err(|e| format!("Failed to create dummy path: {}", e))?;
+        
+        let descriptor_info = DescriptorInfo {
+            fingerprint: dummy_fingerprint,
+            derivation_path: dummy_path,
+            xpub,
+            child_paths,
+            is_wildcard: true,
+        };
+        
+        let full_match = caps.get(0).unwrap().as_str();
+        let parsed_descriptor = ParsedDescriptor {
+            original: full_match.to_string(),
+            info: descriptor_info,
+        };
+        
+        console_log!("Bare extended key match: '{}'", full_match);
+        descriptors.insert(full_match.to_string(), parsed_descriptor);
+    }
+    
+    // Process extended keys with single derivation: xpub/0/*
+    for caps in single_deriv_re.captures_iter(expression) {
+        let xpub_str = caps.get(1).unwrap().as_str();
+        let deriv_str = caps.get(2).unwrap().as_str();
+        
+        console_log!("Processing single derivation extended key: '{}'", xpub_str);
+        console_log!("Derivation: '{}'", deriv_str);
+        
+        // Parse extended public key
+        let xpub = Xpub::from_str(xpub_str)
+            .map_err(|e| format!("Invalid extended public key: {}", e))?;
+        
+        // Parse single derivation index
+        let deriv_index = deriv_str.parse::<u32>()
+            .map_err(|e| format!("Invalid derivation index: {}", e))?;
+        
+        // Create descriptor info with dummy fingerprint and path for bare keys
+        let dummy_fingerprint = Fingerprint::from([0u8; 4]);
+        let dummy_path = DerivationPath::from_str("m/0")
+            .map_err(|e| format!("Failed to create dummy path: {}", e))?;
+        
+        let descriptor_info = DescriptorInfo {
+            fingerprint: dummy_fingerprint,
+            derivation_path: dummy_path,
+            xpub,
+            child_paths: vec![deriv_index],
+            is_wildcard: true,
+        };
+        
+        let full_match = caps.get(0).unwrap().as_str();
+        let parsed_descriptor = ParsedDescriptor {
+            original: full_match.to_string(),
+            info: descriptor_info,
+        };
+        
+        console_log!("Single derivation match: '{}'", full_match);
+        descriptors.insert(full_match.to_string(), parsed_descriptor);
+    }
+    
+    // Process extended keys with fixed double derivation: xpub/0/0
+    for caps in fixed_double_deriv_re.captures_iter(expression) {
+        let xpub_str = caps.get(1).unwrap().as_str();
+        let first_deriv_str = caps.get(2).unwrap().as_str();
+        let second_deriv_str = caps.get(3).unwrap().as_str();
+        
+        console_log!("Processing fixed double derivation extended key: '{}'", xpub_str);
+        console_log!("First derivation: '{}', Second derivation: '{}'", first_deriv_str, second_deriv_str);
+        
+        // Parse extended public key
+        let xpub = Xpub::from_str(xpub_str)
+            .map_err(|e| format!("Invalid extended public key: {}", e))?;
+        
+        // Parse both derivation indices
+        let first_deriv = first_deriv_str.parse::<u32>()
+            .map_err(|e| format!("Invalid first derivation index: {}", e))?;
+        let second_deriv = second_deriv_str.parse::<u32>()
+            .map_err(|e| format!("Invalid second derivation index: {}", e))?;
+        
+        // Create descriptor info with dummy fingerprint and path for bare keys
+        let dummy_fingerprint = Fingerprint::from([0u8; 4]);
+        let dummy_path = DerivationPath::from_str("m/0")
+            .map_err(|e| format!("Failed to create dummy path: {}", e))?;
+        
+        let descriptor_info = DescriptorInfo {
+            fingerprint: dummy_fingerprint,
+            derivation_path: dummy_path,
+            xpub,
+            child_paths: vec![first_deriv, second_deriv], // Store both derivation indices
+            is_wildcard: false, // No wildcard for fixed derivation
+        };
+        
+        let full_match = caps.get(0).unwrap().as_str();
+        let parsed_descriptor = ParsedDescriptor {
+            original: full_match.to_string(),
+            info: descriptor_info,
+        };
+        
+        console_log!("Fixed double derivation match: '{}'", full_match);
+        descriptors.insert(full_match.to_string(), parsed_descriptor);
+    }
+    
     Ok(descriptors)
 }
 
 // Expand descriptor to actual public key
 fn expand_descriptor(descriptor: &ParsedDescriptor, child_index: u32) -> Result<String, String> {
-    // For now, we'll use the first child path or index 0
-    let child_num = if !descriptor.info.child_paths.is_empty() {
-        descriptor.info.child_paths[0]
+    let secp = Secp256k1::verification_only();
+    
+    // Handle different derivation patterns
+    let final_key = if descriptor.info.child_paths.len() >= 2 && !descriptor.info.is_wildcard {
+        // Double derivation case: xpub/0/0
+        let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
+            .map_err(|e| format!("Invalid first child number: {}", e))?;
+        let second_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[1])
+            .map_err(|e| format!("Invalid second child number: {}", e))?;
+        
+        console_log!("Double derivation: {}/{}", descriptor.info.child_paths[0], descriptor.info.child_paths[1]);
+        descriptor.info.xpub
+            .derive_pub(&secp, &[first_child, second_child])
+            .map_err(|e| format!("Double key derivation failed: {}", e))?
     } else {
-        child_index
+        // Single derivation case: use first child path or provided index
+        let child_num = if !descriptor.info.child_paths.is_empty() {
+            descriptor.info.child_paths[0]
+        } else {
+            child_index
+        };
+        
+        let child_number = ChildNumber::from_normal_idx(child_num)
+            .map_err(|e| format!("Invalid child number: {}", e))?;
+        
+        console_log!("Single derivation: {}", child_num);
+        descriptor.info.xpub
+            .derive_pub(&secp, &[child_number])
+            .map_err(|e| format!("Single key derivation failed: {}", e))?
     };
     
-    // Create derivation path for child
-    let child_number = ChildNumber::from_normal_idx(child_num)
-        .map_err(|e| format!("Invalid child number: {}", e))?;
-    
-    // Derive the child key
-    let secp = Secp256k1::verification_only();
-    let child_key = descriptor.info.xpub
-        .derive_pub(&secp, &[child_number])
-        .map_err(|e| format!("Key derivation failed: {}", e))?;
-    
     // Return just the compressed public key (33 bytes = 66 hex chars)
-    let compressed_key = child_key.public_key.serialize();
+    let compressed_key = final_key.public_key.serialize();
     let hex_key = hex::encode(&compressed_key);
     console_log!("Derived key bytes: {} bytes", compressed_key.len());
     console_log!("Derived key hex: {} chars", hex_key.len());
@@ -279,26 +438,23 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
     let trimmed = expression.trim();
     console_log!("Trimmed expression: {}", trimmed);
     
-    // Check if expression contains descriptors and expand them
-    console_log!("Checking for descriptors in expression...");
-    console_log!("Contains [: {}", trimmed.contains("["));
-    console_log!("Contains tpub: {}", trimmed.contains("tpub"));
-    
-    let processed_expression = if trimmed.contains("[") && (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("ypub") || trimmed.contains("zpub")) {
-        console_log!("Detected descriptors in expression, parsing...");
-        let descriptors = parse_descriptors(trimmed)?;
-        console_log!("Found {} descriptors", descriptors.len());
-        replace_descriptors_with_keys(trimmed, &descriptors)?
+    // Wrap miniscript with appropriate descriptor based on context
+    let descriptor_expr = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("ypub") || trimmed.contains("zpub") {
+        match context {
+            "legacy" => format!("sh({})", trimmed),
+            "segwit" => format!("wsh({})", trimmed),
+            "taproot" => format!("tr({},{{}})", trimmed), // tr requires internal key and optional script
+            _ => trimmed.to_string()
+        }
     } else {
-        console_log!("No descriptors detected, using original expression");
         trimmed.to_string()
     };
     
-    console_log!("Processing expression: {}", processed_expression);
+    console_log!("Processing: {} -> {}", trimmed, descriptor_expr);
     
     match context {
         "legacy" => {
-            match processed_expression.parse::<Miniscript<PublicKey, Legacy>>() {
+            match trimmed.parse::<Miniscript<PublicKey, Legacy>>() {
                 Ok(ms) => {
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
@@ -323,7 +479,35 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
             }
         },
         "segwit" => {
-            match processed_expression.parse::<Miniscript<PublicKey, Segwitv0>>() {
+            if descriptor_expr.starts_with("wsh(") {
+                match descriptor_expr.parse::<Descriptor<DescriptorPublicKey>>() {
+                    Ok(desc) => {
+                        // Descriptor parsed successfully - this validates the syntax
+                        console_log!("Descriptor parsed successfully: {}", descriptor_expr);
+                        console_log!("Is multipath: {}", desc.is_multipath());
+                        console_log!("Has wildcard: {}", desc.has_wildcard());
+                        
+                        // Only return validation message for multipath or wildcard descriptors
+                        if desc.is_multipath() || desc.has_wildcard() {
+                            let validation_msg = "✅ Valid multipath/wildcard descriptor (cannot generate concrete script without derivation index)".to_string();
+                            Ok((validation_msg.clone(), validation_msg, None, 0, "Segwit v0 Descriptor".to_string()))
+                        } else {
+                            // For concrete descriptors, derive to get concrete keys  
+                            let derived_desc = desc.at_derivation_index(0).map_err(|e| format!("Derivation failed: {}", e))?;
+                            let script = derived_desc.script_pubkey();
+                            let script_hex = hex::encode(script.as_bytes());
+                            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+                            let script_size = script.len();
+                            
+                            let address = Some(Address::p2wsh(&script, Network::Bitcoin).to_string());
+                            
+                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string()))
+                        }
+                    }
+                    Err(e) => Err(format!("Descriptor parsing failed: {}", e))
+                }
+            } else {
+                match trimmed.parse::<Miniscript<PublicKey, Segwitv0>>() {
                 Ok(ms) => {
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
@@ -342,10 +526,11 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                         Err(format!("Segwit v0 parsing failed: {}", e))
                     }
                 }
+                }
             }
         },
         "taproot" => {
-            match processed_expression.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+            match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
                 Ok(ms) => {
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
@@ -378,21 +563,11 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
 
     let trimmed = policy.trim();
     
-    // Check if policy contains descriptors and expand them
-    let processed_policy = if trimmed.contains("[") && (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("ypub") || trimmed.contains("zpub")) {
-        console_log!("Detected descriptors in policy, parsing...");
-        let descriptors = parse_descriptors(trimmed)?;
-        console_log!("Found {} descriptors in policy", descriptors.len());
-        replace_descriptors_with_keys(trimmed, &descriptors)?
-    } else {
-        trimmed.to_string()
-    };
-    
-    console_log!("Processing policy: {}", processed_policy);
+    console_log!("Processing policy directly: {}", trimmed);
     
     match context {
         "legacy" => {
-            match processed_policy.parse::<Concrete<PublicKey>>() {
+            match trimmed.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
                     match concrete_policy.compile::<Legacy>() {
                         Ok(ms) => {
@@ -430,7 +605,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             }
         },
         "segwit" => {
-            match processed_policy.parse::<Concrete<PublicKey>>() {
+            match trimmed.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
                     match concrete_policy.compile::<Segwitv0>() {
                         Ok(ms) => {
@@ -465,7 +640,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             }
         },
         "taproot" => {
-            match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
+            match trimmed.parse::<Concrete<XOnlyPublicKey>>() {
                 Ok(concrete_policy) => {
                     match concrete_policy.compile::<Tap>() {
                         Ok(ms) => {
