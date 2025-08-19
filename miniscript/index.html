@@ -1023,6 +1023,56 @@
                 </p>
             </div>
         </details>
+
+        <details style="margin-bottom: 20px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">💡 Tips & Quick Help</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
+                <div style="display: grid; gap: 15px;">
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">🔑 Missing key variables?</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            If compilation of one of the examples fails with "pubkey string should be 66 or 130 digits" (or similar), check if key variables exist by clicking the 🏷️ button to view key content. If no keys are defined, go to "Key variables" section and press "Restore defaults" to restore Alice, Bob, Charlie, etc.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">🧹 Clean up text:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            The 🧹 button removes extra whitespace and formatting from pasted expressions that prevent them from compiling successfully.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">💾 Save/Load expressions:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            Save frequently used policies/expressions with the 💾 Save button. Saved items appear in their respective sections for quick reloading.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">🎲 Generate test keys:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            Use the 🎲 Generate button in Key variables to create random test keys appropriate for your selected script context (xpub, compressed for Legacy/Segwit, X-only for Taproot). 
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">🔄 Context auto-detection:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            Script context automatically switches based on key types: compressed keys (66 chars) → Legacy/Segwit, X-only keys (64 chars) → Taproot.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">📋 Local storage:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            All data (keys, saved expressions) persists locally in your browser. No server - everything stays private. Use public keys only!
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">🌐 Network detection:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            Testnet keys (tpub) automatically generate testnet addresses, mainnet keys (xpub) generate mainnet addresses.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </details>
         
         </div>
         
