@@ -2119,7 +2119,12 @@ window.generateKey = function() {
 
 // Global function to load examples
 window.loadExample = function(example) {
-    document.getElementById('expression-input').textContent = example;
+    const expressionInput = document.getElementById('expression-input');
+    expressionInput.textContent = example;
+    
+    // Clear the "last highlighted text" to force re-highlighting
+    delete expressionInput.dataset.lastHighlightedText;
+    
     if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
         window.compiler.highlightMiniscriptSyntax();
     }
@@ -2163,7 +2168,12 @@ window.loadExample = function(example) {
 window.loadPolicyExample = function(example) {
     console.log('🚀 loadPolicyExample (from script.js) called with:', example);
     
-    document.getElementById('policy-input').textContent = example;
+    const policyInput = document.getElementById('policy-input');
+    policyInput.textContent = example;
+    
+    // Clear the "last highlighted text" to force re-highlighting
+    delete policyInput.dataset.lastHighlightedText;
+    
     document.getElementById('expression-input').innerHTML = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
