@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, translate_hash_fail, ToPublicKey};
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1};
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
@@ -46,6 +46,59 @@ extern "C" {
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+// Translator for converting DescriptorPublicKey to PublicKey
+struct DescriptorKeyTranslator {
+    secp: Secp256k1<bitcoin::secp256k1::VerifyOnly>,
+}
+
+impl DescriptorKeyTranslator {
+    fn new() -> Self {
+        Self {
+            secp: Secp256k1::verification_only(),
+        }
+    }
+}
+
+impl Translator<DescriptorPublicKey, PublicKey, ()> for DescriptorKeyTranslator {
+    fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<PublicKey, ()> {
+        // Derive the key at index 0 to get a concrete key
+        match pk.clone().at_derivation_index(0) {
+            Ok(definite_key) => Ok(definite_key.to_public_key()),
+            Err(_) => Err(())
+        }
+    }
+    
+    translate_hash_fail!(DescriptorPublicKey, PublicKey, ());
+}
+
+// Translator for converting DescriptorPublicKey to XOnlyPublicKey (for Taproot)
+struct XOnlyKeyTranslator {
+    secp: Secp256k1<bitcoin::secp256k1::VerifyOnly>,
+}
+
+impl XOnlyKeyTranslator {
+    fn new() -> Self {
+        Self {
+            secp: Secp256k1::verification_only(),
+        }
+    }
+}
+
+impl Translator<DescriptorPublicKey, XOnlyPublicKey, ()> for XOnlyKeyTranslator {
+    fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<XOnlyPublicKey, ()> {
+        // Derive the key at index 0 to get a concrete key, then convert to X-only
+        match pk.clone().at_derivation_index(0) {
+            Ok(definite_key) => {
+                let full_pk = definite_key.to_public_key();
+                Ok(XOnlyPublicKey::from(full_pk))
+            },
+            Err(_) => Err(())
+        }
+    }
+    
+    translate_hash_fail!(DescriptorPublicKey, XOnlyPublicKey, ());
 }
 
 // Parse HD wallet descriptors from miniscript expressions
@@ -579,10 +632,18 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
     
     console_log!("Processing policy directly: {}", trimmed);
     
-    match context {
-        "legacy" => {
-            match trimmed.parse::<Concrete<PublicKey>>() {
-                Ok(concrete_policy) => {
+    // First try parsing with DescriptorPublicKey to support xpub descriptors
+    match trimmed.parse::<Concrete<DescriptorPublicKey>>() {
+        Ok(descriptor_policy) => {
+            // Translate DescriptorPublicKey to PublicKey using our translator
+            let mut translator = DescriptorKeyTranslator::new();
+            let concrete_policy = match descriptor_policy.translate_pk(&mut translator) {
+                Ok(policy) => policy,
+                Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
+            };
+            
+            match context {
+                "legacy" => {
                     match concrete_policy.compile::<Legacy>() {
                         Ok(ms) => {
                             let script = ms.encode();
@@ -598,29 +659,10 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             
                             Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str))
                         }
-                        Err(e) => {
-                            let error_msg = format!("{}", e);
-                            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                                Err(format!("Legacy compilation failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
-                            } else {
-                                Err(format!("Legacy compilation failed: {}", e))
-                            }
-                        }
+                        Err(e) => Err(format!("Legacy compilation failed: {}", e))
                     }
-                }
-                Err(e) => {
-                    let error_msg = format!("{}", e);
-                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                        Err(format!("Policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
-                    } else {
-                        Err(format!("Policy parsing failed: {}", e))
-                    }
-                }
-            }
-        },
-        "segwit" => {
-            match trimmed.parse::<Concrete<PublicKey>>() {
-                Ok(concrete_policy) => {
+                },
+                "segwit" => {
                     match concrete_policy.compile::<Segwitv0>() {
                         Ok(ms) => {
                             let script = ms.encode();
@@ -633,30 +675,18 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             
                             Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str))
                         }
-                        Err(e) => {
-                            let error_msg = format!("{}", e);
-                            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                                Err(format!("Segwit v0 compilation failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
-                            } else {
-                                Err(format!("Segwit v0 compilation failed: {}", e))
-                            }
-                        }
+                        Err(e) => Err(format!("Segwit v0 compilation failed: {}", e))
                     }
-                }
-                Err(e) => {
-                    let error_msg = format!("{}", e);
-                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                        Err(format!("Segwit v0 policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
-                    } else {
-                        Err(format!("Policy parsing failed: {}", e))
-                    }
-                }
-            }
-        },
-        "taproot" => {
-            match trimmed.parse::<Concrete<XOnlyPublicKey>>() {
-                Ok(concrete_policy) => {
-                    match concrete_policy.compile::<Tap>() {
+                },
+                "taproot" => {
+                    // For Taproot, we need XOnlyPublicKey, so create a separate translator
+                    let mut xonly_translator = XOnlyKeyTranslator::new();
+                    let xonly_policy = match descriptor_policy.translate_pk(&mut xonly_translator) {
+                        Ok(policy) => policy,
+                        Err(_) => return Err("Failed to translate descriptor keys to X-only keys".to_string())
+                    };
+                    
+                    match xonly_policy.compile::<Tap>() {
                         Ok(ms) => {
                             let script = ms.encode();
                             let script_hex = hex::encode(script.as_bytes());
@@ -664,32 +694,124 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let script_size = script.len();
                             let miniscript_str = ms.to_string();
                             
-                            // Generate Taproot address
                             let address = generate_taproot_address(&script, network);
                             
                             Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str))
                         }
+                        Err(e) => Err(format!("Taproot compilation failed: {}", e))
+                    }
+                },
+                _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
+            }
+        }
+        Err(_) => {
+            // Fallback to original PublicKey parsing for simple keys
+            match context {
+                "legacy" => {
+                    match trimmed.parse::<Concrete<PublicKey>>() {
+                        Ok(policy) => {
+                            match policy.compile::<Legacy>() {
+                                Ok(ms) => {
+                                    let script = ms.encode();
+                                    let script_hex = hex::encode(script.as_bytes());
+                                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+                                    let script_size = script.len();
+                                    let miniscript_str = ms.to_string();
+                                    
+                                    let address = match Address::p2sh(&script, network) {
+                                        Ok(addr) => Some(addr.to_string()),
+                                        Err(_) => None,
+                                    };
+                                    
+                                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str))
+                                }
+                                Err(e) => Err(format!("Legacy compilation failed: {}", e))
+                            }
+                        }
                         Err(e) => {
                             let error_msg = format!("{}", e);
-                            if error_msg.contains("malformed public key") {
-                                Err(format!("Taproot compilation failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
+                            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                                Err(format!("Legacy policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
                             } else {
-                                Err(format!("Taproot compilation failed: {}", e))
+                                Err(format!("Policy parsing failed: {}", e))
                             }
                         }
                     }
-                }
-                Err(e) => {
-                    let error_msg = format!("{}", e);
-                    if error_msg.contains("malformed public key") {
-                        Err(format!("Taproot policy parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
-                    } else {
-                        Err(format!("Policy parsing failed: {}", e))
+                },
+                "segwit" => {
+                    match trimmed.parse::<Concrete<PublicKey>>() {
+                        Ok(policy) => {
+                            match policy.compile::<Segwitv0>() {
+                                Ok(ms) => {
+                                    let script = ms.encode();
+                                    let script_hex = hex::encode(script.as_bytes());
+                                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+                                    let script_size = script.len();
+                                    let miniscript_str = ms.to_string();
+                                    
+                                    let address = Some(Address::p2wsh(&script, network).to_string());
+                                    
+                                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str))
+                                }
+                                Err(e) => {
+                                    let error_msg = format!("{}", e);
+                                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                                        Err(format!("Segwit v0 compilation failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
+                                    } else {
+                                        Err(format!("Segwit v0 compilation failed: {}", e))
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            let error_msg = format!("{}", e);
+                            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                                Err(format!("Segwit v0 policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
+                            } else {
+                                Err(format!("Policy parsing failed: {}", e))
+                            }
+                        }
                     }
-                }
+                },
+                "taproot" => {
+                    match trimmed.parse::<Concrete<XOnlyPublicKey>>() {
+                        Ok(policy) => {
+                            match policy.compile::<Tap>() {
+                                Ok(ms) => {
+                                    let script = ms.encode();
+                                    let script_hex = hex::encode(script.as_bytes());
+                                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+                                    let script_size = script.len();
+                                    let miniscript_str = ms.to_string();
+                                    
+                                    // Generate Taproot address
+                                    let address = generate_taproot_address(&script, network);
+                                    
+                                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str))
+                                }
+                                Err(e) => {
+                                    let error_msg = format!("{}", e);
+                                    if error_msg.contains("malformed public key") {
+                                        Err(format!("Taproot compilation failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
+                                    } else {
+                                        Err(format!("Taproot compilation failed: {}", e))
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            let error_msg = format!("{}", e);
+                            if error_msg.contains("malformed public key") {
+                                Err(format!("Taproot policy parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
+                            } else {
+                                Err(format!("Policy parsing failed: {}", e))
+                            }
+                        }
+                    }
+                },
+                _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
             }
-        },
-        _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
+        }
     }
 }
 
