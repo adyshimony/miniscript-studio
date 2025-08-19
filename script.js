@@ -119,13 +119,20 @@ class MiniscriptCompiler {
             }
             // Handle undo/redo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                console.log('Miniscript: Triggering undo');
+                console.log('Miniscript: Triggering undo (Ctrl+Z)');
                 e.preventDefault();
                 e.stopPropagation();
                 this.undo('miniscript');
                 return false;
-            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-                console.log('Miniscript: Triggering redo');
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'Z' && e.shiftKey) {
+                // Capital Z indicates Shift+Z
+                console.log('Miniscript: Triggering redo (Ctrl+Shift+Z)');
+                e.preventDefault();
+                e.stopPropagation();
+                this.redo('miniscript');
+                return false;
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                console.log('Miniscript: Triggering redo (Ctrl+Y)');
                 e.preventDefault();
                 e.stopPropagation();
                 this.redo('miniscript');
@@ -151,6 +158,18 @@ class MiniscriptCompiler {
             // Only log when ctrl/cmd is pressed
             if (e.ctrlKey || e.metaKey) {
                 console.log(`Policy keydown: key=${e.key}, ctrl=${e.ctrlKey}, meta=${e.metaKey}, shift=${e.shiftKey}`);
+                if (e.key === 'z') {
+                    console.log('Z key pressed with modifiers:', {
+                        ctrl: e.ctrlKey,
+                        meta: e.metaKey,
+                        shift: e.shiftKey,
+                        isUndo: !e.shiftKey,
+                        isRedo: e.shiftKey
+                    });
+                }
+                if (e.key === 'y') {
+                    console.log('Y key pressed with modifiers - this should be redo');
+                }
             }
             
             if (e.ctrlKey && e.key === 'Enter') {
@@ -158,13 +177,20 @@ class MiniscriptCompiler {
             }
             // Handle undo/redo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                console.log('Policy: Triggering undo');
+                console.log('Policy: Triggering undo (Ctrl+Z)');
                 e.preventDefault();
                 e.stopPropagation();
                 this.undo('policy');
                 return false;
-            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-                console.log('Policy: Triggering redo');
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'Z' && e.shiftKey) {
+                // Capital Z indicates Shift+Z
+                console.log('Policy: Triggering redo (Ctrl+Shift+Z)');
+                e.preventDefault();
+                e.stopPropagation();
+                this.redo('policy');
+                return false;
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                console.log('Policy: Triggering redo (Ctrl+Y)');
                 e.preventDefault();
                 e.stopPropagation();
                 this.redo('policy');
@@ -184,7 +210,7 @@ class MiniscriptCompiler {
                 this.undo('policy');
                 return false;
             } else if (e.inputType === 'historyRedo') {
-                console.log('Intercepting browser redo on policy input');
+                console.log('Intercepting browser redo on policy input (right-click menu)');
                 e.preventDefault();
                 this.redo('policy');
                 return false;
@@ -715,7 +741,19 @@ class MiniscriptCompiler {
             } else {
                 this.highlightMiniscriptSyntax();
             }
+            
             this.isUndoing = false;
+            
+            // Set cursor to end of content
+            setTimeout(() => {
+                element.focus();
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(element);
+                range.collapse(false); // Collapse to end
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }, 100);
             return;
         }
         
@@ -743,9 +781,26 @@ class MiniscriptCompiler {
         }
         
         this.isUndoing = false;
+        
+        // Update context menu state first, then set cursor
+        setTimeout(() => {
+            this.updateContextMenuState();
+            
+            // Set cursor to end of content after context menu update
+            setTimeout(() => {
+                element.focus();
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(element);
+                range.collapse(false); // Collapse to end
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }, 10);
+        }, 50);
     }
 
     redo(type) {
+        console.log(`Redo called for ${type}`);
         const element = type === 'policy' ? 
             document.getElementById('policy-input') : 
             document.getElementById('expression-input');
@@ -753,7 +808,11 @@ class MiniscriptCompiler {
         const undoStack = this.undoStacks[type];
         const redoStack = this.redoStacks[type];
         
+        console.log(`Redo stack:`, redoStack);
+        console.log(`Redo stack length: ${redoStack.length}`);
+        
         if (redoStack.length === 0) {
+            console.log('No redo history available');
             return;
         }
         
@@ -776,6 +835,60 @@ class MiniscriptCompiler {
         }
         
         this.isUndoing = false;
+        
+        // Update context menu state first, then set cursor
+        setTimeout(() => {
+            this.updateContextMenuState();
+            
+            // Set cursor to end of content after context menu update
+            setTimeout(() => {
+                element.focus();
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(element);
+                range.collapse(false); // Collapse to end
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }, 10);
+        }, 50);
+    }
+
+    updateContextMenuState() {
+        // Enable/disable browser context menu redo based on our redo stacks
+        const policyElement = document.getElementById('policy-input');
+        const miniscriptElement = document.getElementById('expression-input');
+        
+        // Check if we have redo history
+        const policyHasRedo = this.redoStacks.policy.length > 0;
+        const miniscriptHasRedo = this.redoStacks.miniscript.length > 0;
+        
+        // Create invisible browser undo history to enable context menu
+        if (policyHasRedo) {
+            this.enableContextMenuRedo(policyElement);
+        }
+        if (miniscriptHasRedo) {
+            this.enableContextMenuRedo(miniscriptElement);
+        }
+    }
+    
+    enableContextMenuRedo(element) {
+        // Trick: Create a tiny invisible change that can be undone to enable redo in context menu
+        const originalContent = element.innerHTML;
+        
+        // Temporarily disable our event listeners
+        const wasUndoing = this.isUndoing;
+        this.isUndoing = true;
+        
+        // Make a tiny invisible change
+        element.innerHTML = originalContent + '<span style="display:none;"></span>';
+        
+        // Use execCommand to create browser undo history
+        document.execCommand('insertText', false, '');
+        document.execCommand('undo');
+        
+        // Restore original content and listeners
+        element.innerHTML = originalContent;
+        this.isUndoing = wasUndoing;
     }
 
     restoreCursor(element, offset) {
