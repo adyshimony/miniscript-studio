@@ -657,9 +657,9 @@
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
                     <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
-                        <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                        <button onclick="showPolicyDescription('or'); loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
-                        <button onclick="showPolicyDescription('and'); loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
+                        <button onclick="try { console.log('CLICKED Single key'); console.log('About to call loadPolicyExample'); window.loadPolicyExample('pk(Alice)'); console.log('Called loadPolicyExample'); console.log('SUCCESS'); } catch(e) { console.error('ERROR:', e); }" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
+                        <button onclick="console.log('CLICKED OR keys'); loadPolicyExample('or(pk(Alice),pk(Bob))'); showPolicyDescription('or')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
+                        <button onclick="console.log('CLICKED AND keys'); loadPolicyExample('and(pk(Alice),pk(Bob))'); showPolicyDescription('and')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
                         <button onclick="showPolicyDescription('threshold'); loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
                         <button onclick="showPolicyDescription('timelock'); loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
                         <button onclick="showPolicyDescription('xonly'); loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
@@ -1316,10 +1316,26 @@
         };
 
         window.loadExample = function(example) {
-            document.getElementById('expression-input').value = example;
+            const expressionInput = document.getElementById('expression-input');
+            
+            // Set the content
+            expressionInput.textContent = example;
+            
+            // Clear results
             document.getElementById('results').innerHTML = '';
             if (window.compiler && window.compiler.clearMiniscriptMessages) {
                 window.compiler.clearMiniscriptMessages();
+            }
+            
+            // Trigger syntax highlighting
+            if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+                window.compiler.highlightMiniscriptSyntax();
+            }
+            
+            // ALWAYS save the loaded example to undo stack
+            if (window.compiler && window.compiler.saveState) {
+                window.compiler.saveState('miniscript', true); // Force save the loaded example
+                console.log('Loaded example:', example.substring(0, 30) + '...');
             }
             
             // Auto-detect context based on key formats in the example (only if compiler is ready)
@@ -1337,10 +1353,25 @@
         };
 
         window.loadPolicyExample = function(example) {
-            document.getElementById('policy-input').value = example;
-            document.getElementById('expression-input').value = '';
-            document.getElementById('results').innerHTML = '';
-            document.getElementById('policy-errors').innerHTML = '';
+            console.log('🚀 STEP 1: loadPolicyExample called with:', example);
+            
+            try {
+                const policyInput = document.getElementById('policy-input');
+                console.log('🚀 STEP 2: got policyInput element');
+                
+                policyInput.textContent = example;
+                console.log('🚀 STEP 3: set textContent to:', example);
+                
+                if (window.compiler && window.compiler.saveState) {
+                    console.log('🚀 STEP 4: calling saveState');
+                    window.compiler.saveState('policy', true);
+                    console.log('🚀 STEP 5: saveState completed');
+                } else {
+                    console.log('🚀 STEP 4: compiler or saveState not available');
+                }
+            } catch (error) {
+                console.error('🚀 ERROR in loadPolicyExample:', error);
+            }
             
             // Auto-detect context based on key formats in the example (only if compiler is ready)
             if (window.compiler && window.compiler.detectContextFromExpression) {

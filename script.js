@@ -5,6 +5,19 @@ class MiniscriptCompiler {
     constructor() {
         this.wasm = null;
         this.keyVariables = new Map();
+        this.undoStacks = {
+            policy: [],
+            miniscript: []
+        };
+        this.redoStacks = {
+            policy: [],
+            miniscript: []
+        };
+        this.isUndoing = false;
+        this.saveStateTimeouts = {
+            policy: null,
+            miniscript: null
+        };
         this.init();
     }
 
@@ -17,6 +30,15 @@ class MiniscriptCompiler {
             this.loadSavedPolicies();
             this.loadKeyVariables();
             this.setupReplaceKeysCheckbox();
+            
+            // Initialize undo stacks with initial state
+            setTimeout(() => {
+                console.log('Initializing undo stacks');
+                this.saveState('policy');
+                this.saveState('miniscript');
+                console.log('Policy undo stack:', this.undoStacks.policy);
+                console.log('Miniscript undo stack:', this.undoStacks.miniscript);
+            }, 100);
         } catch (error) {
             console.error('Failed to initialize WASM module:', error);
             this.showError('Failed to load compiler module. Please refresh the page.');
@@ -87,10 +109,29 @@ class MiniscriptCompiler {
 
         // Enter key in textarea compiles
         document.getElementById('expression-input').addEventListener('keydown', (e) => {
+            // Only log when ctrl/cmd is pressed
+            if (e.ctrlKey || e.metaKey) {
+                console.log(`Miniscript keydown: key=${e.key}, ctrl=${e.ctrlKey}, meta=${e.metaKey}, shift=${e.shiftKey}`);
+            }
+            
             if (e.ctrlKey && e.key === 'Enter') {
                 this.compileExpression();
             }
-        });
+            // Handle undo/redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                console.log('Miniscript: Triggering undo');
+                e.preventDefault();
+                e.stopPropagation();
+                this.undo('miniscript');
+                return false;
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                console.log('Miniscript: Triggering redo');
+                e.preventDefault();
+                e.stopPropagation();
+                this.redo('miniscript');
+                return false;
+            }
+        }, true); // Use capture phase
 
         // Enter key in save input saves
         document.getElementById('save-name').addEventListener('keydown', (e) => {
@@ -107,35 +148,134 @@ class MiniscriptCompiler {
 
         // Enter key in policy input compiles
         document.getElementById('policy-input').addEventListener('keydown', (e) => {
+            // Only log when ctrl/cmd is pressed
+            if (e.ctrlKey || e.metaKey) {
+                console.log(`Policy keydown: key=${e.key}, ctrl=${e.ctrlKey}, meta=${e.metaKey}, shift=${e.shiftKey}`);
+            }
+            
             if (e.ctrlKey && e.key === 'Enter') {
                 this.compilePolicy();
             }
-        });
+            // Handle undo/redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                console.log('Policy: Triggering undo');
+                e.preventDefault();
+                e.stopPropagation();
+                this.undo('policy');
+                return false;
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                console.log('Policy: Triggering redo');
+                e.preventDefault();
+                e.stopPropagation();
+                this.redo('policy');
+                return false;
+            }
+        }, true); // Use capture phase
 
         // Policy input syntax highlighting
         const policyInput = document.getElementById('policy-input');
+        let policyHighlightTimeout = null;
+        
+        // Prevent default undo/redo on contenteditable
+        policyInput.addEventListener('beforeinput', (e) => {
+            if (e.inputType === 'historyUndo') {
+                console.log('Intercepting browser undo on policy input');
+                e.preventDefault();
+                this.undo('policy');
+                return false;
+            } else if (e.inputType === 'historyRedo') {
+                console.log('Intercepting browser redo on policy input');
+                e.preventDefault();
+                this.redo('policy');
+                return false;
+            } else if (e.inputType.includes('delete') || e.inputType.includes('insert')) {
+                // Save state before destructive operations
+                if (!this.isUndoing) {
+                    this.saveState('policy');
+                }
+            }
+        });
+        
         policyInput.addEventListener('input', () => {
-            this.highlightPolicySyntax();
+            // Save state for undo if not currently undoing (debounced)
+            if (!this.isUndoing) {
+                if (this.saveStateTimeouts.policy) {
+                    clearTimeout(this.saveStateTimeouts.policy);
+                }
+                this.saveStateTimeouts.policy = setTimeout(() => {
+                    this.saveState('policy');
+                }, 300); // Save state after 300ms of no input
+            }
+            // Debounce syntax highlighting to preserve undo history
+            if (policyHighlightTimeout) {
+                clearTimeout(policyHighlightTimeout);
+            }
+            policyHighlightTimeout = setTimeout(() => {
+                this.highlightPolicySyntax();
+            }, 500); // Delay highlighting by 500ms
         });
         
         policyInput.addEventListener('paste', (e) => {
             // Handle paste event to maintain highlighting
-            setTimeout(() => {
+            if (policyHighlightTimeout) {
+                clearTimeout(policyHighlightTimeout);
+            }
+            policyHighlightTimeout = setTimeout(() => {
                 this.highlightPolicySyntax();
-            }, 0);
+            }, 500);
         });
 
         // Miniscript input syntax highlighting
         const expressionInput = document.getElementById('expression-input');
+        let miniscriptHighlightTimeout = null;
+        
+        // Prevent default undo/redo on contenteditable
+        expressionInput.addEventListener('beforeinput', (e) => {
+            if (e.inputType === 'historyUndo') {
+                console.log('Intercepting browser undo on miniscript input');
+                e.preventDefault();
+                this.undo('miniscript');
+                return false;
+            } else if (e.inputType === 'historyRedo') {
+                console.log('Intercepting browser redo on miniscript input');
+                e.preventDefault();
+                this.redo('miniscript');
+                return false;
+            } else if (e.inputType.includes('delete') || e.inputType.includes('insert')) {
+                // Save state before destructive operations
+                if (!this.isUndoing) {
+                    this.saveState('miniscript');
+                }
+            }
+        });
+        
         expressionInput.addEventListener('input', () => {
-            this.highlightMiniscriptSyntax();
+            // Save state for undo if not currently undoing (debounced)
+            if (!this.isUndoing) {
+                if (this.saveStateTimeouts.miniscript) {
+                    clearTimeout(this.saveStateTimeouts.miniscript);
+                }
+                this.saveStateTimeouts.miniscript = setTimeout(() => {
+                    this.saveState('miniscript');
+                }, 300); // Save state after 300ms of no input
+            }
+            // Debounce syntax highlighting to preserve undo history
+            if (miniscriptHighlightTimeout) {
+                clearTimeout(miniscriptHighlightTimeout);
+            }
+            miniscriptHighlightTimeout = setTimeout(() => {
+                this.highlightMiniscriptSyntax();
+            }, 500); // Delay highlighting by 500ms
         });
         
         expressionInput.addEventListener('paste', (e) => {
             // Handle paste event to maintain highlighting
-            setTimeout(() => {
+            if (miniscriptHighlightTimeout) {
+                clearTimeout(miniscriptHighlightTimeout);
+            }
+            miniscriptHighlightTimeout = setTimeout(() => {
                 this.highlightMiniscriptSyntax();
-            }, 0);
+            }, 500);
         });
 
         // Add key button
@@ -379,6 +519,11 @@ class MiniscriptCompiler {
         const policyInput = document.getElementById('policy-input');
         const text = policyInput.textContent || '';
         
+        // Only apply highlighting if the text content has actually changed
+        if (policyInput.dataset.lastHighlightedText === text) {
+            return;
+        }
+        
         // Save cursor position as offset from start of text
         const selection = window.getSelection();
         let caretOffset = 0;
@@ -393,10 +538,16 @@ class MiniscriptCompiler {
         
         // Apply syntax highlighting
         const highlightedHTML = this.applySyntaxHighlighting(text);
-        policyInput.innerHTML = highlightedHTML;
         
-        // Restore cursor position
-        this.restoreCursor(policyInput, caretOffset);
+        // Only update HTML if it actually changed
+        if (policyInput.innerHTML !== highlightedHTML) {
+            policyInput.innerHTML = highlightedHTML;
+            // Restore cursor position
+            this.restoreCursor(policyInput, caretOffset);
+        }
+        
+        // Store the last highlighted text
+        policyInput.dataset.lastHighlightedText = text;
     }
 
     applySyntaxHighlighting(text) {
@@ -428,6 +579,11 @@ class MiniscriptCompiler {
         const expressionInput = document.getElementById('expression-input');
         const text = expressionInput.textContent || '';
         
+        // Only apply highlighting if the text content has actually changed
+        if (expressionInput.dataset.lastHighlightedText === text) {
+            return;
+        }
+        
         // Save cursor position as offset from start of text
         const selection = window.getSelection();
         let caretOffset = 0;
@@ -442,10 +598,16 @@ class MiniscriptCompiler {
         
         // Apply syntax highlighting
         const highlightedHTML = this.applyMiniscriptSyntaxHighlighting(text);
-        expressionInput.innerHTML = highlightedHTML;
         
-        // Restore cursor position
-        this.restoreCursor(expressionInput, caretOffset);
+        // Only update HTML if it actually changed
+        if (expressionInput.innerHTML !== highlightedHTML) {
+            expressionInput.innerHTML = highlightedHTML;
+            // Restore cursor position
+            this.restoreCursor(expressionInput, caretOffset);
+        }
+        
+        // Store the last highlighted text
+        expressionInput.dataset.lastHighlightedText = text;
     }
 
     applyMiniscriptSyntaxHighlighting(text) {
@@ -489,6 +651,131 @@ class MiniscriptCompiler {
             .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
             // Commas
             .replace(/,/g, '<span class="syntax-comma">$&</span>');
+    }
+
+    saveState(type, force = false) {
+        const element = type === 'policy' ? 
+            document.getElementById('policy-input') : 
+            document.getElementById('expression-input');
+        
+        const currentContent = element.textContent || '';
+        const undoStack = this.undoStacks[type];
+        
+        // Don't save if content hasn't changed (unless forced)
+        if (!force && undoStack.length > 0 && undoStack[undoStack.length - 1] === currentContent) {
+            console.log(`Not saving state for ${type}: content unchanged`);
+            return;
+        }
+        
+        if (force) {
+            console.log(`🔥 FORCED saving state for ${type}: "${currentContent.substring(0, 50)}..." (stack size will be: ${undoStack.length + 1})`);
+        } else {
+            console.log(`Saving state for ${type}: "${currentContent.substring(0, 50)}..." (stack size will be: ${undoStack.length + 1})`);
+        }
+        
+        // Add to undo stack
+        undoStack.push(currentContent);
+        
+        console.log(`Current undo stack for ${type}:`, undoStack.map(s => s.substring(0, 20) + '...'));
+        
+        // Limit undo stack size to 50 states
+        if (undoStack.length > 50) {
+            undoStack.shift();
+        }
+        
+        // Clear redo stack when new content is added
+        this.redoStacks[type] = [];
+    }
+
+    undo(type) {
+        console.log(`Undo called for ${type}`);
+        const element = type === 'policy' ? 
+            document.getElementById('policy-input') : 
+            document.getElementById('expression-input');
+        
+        const undoStack = this.undoStacks[type];
+        const redoStack = this.redoStacks[type];
+        
+        console.log(`Undo stack:`, undoStack);
+        console.log(`Undo stack length: ${undoStack.length}`);
+        
+        if (undoStack.length === 0) {
+            console.log('No undo history available');
+            return;
+        }
+        
+        if (undoStack.length === 1) {
+            // Only initial state in stack, restore it
+            const initialState = undoStack[0];
+            console.log(`Restoring to initial state: "${initialState}"`);
+            this.isUndoing = true;
+            element.textContent = initialState;
+            if (type === 'policy') {
+                this.highlightPolicySyntax();
+            } else {
+                this.highlightMiniscriptSyntax();
+            }
+            this.isUndoing = false;
+            return;
+        }
+        
+        // Current state goes to redo stack
+        const currentContent = element.textContent || '';
+        redoStack.push(currentContent);
+        
+        // Remove current state from undo stack
+        undoStack.pop();
+        
+        // Get previous state (now the last item)
+        const previousContent = undoStack[undoStack.length - 1] || '';
+        
+        console.log(`Restoring content: "${previousContent.substring(0, 50)}..."`);
+        
+        // Apply previous state
+        this.isUndoing = true;
+        element.textContent = previousContent;
+        
+        // Apply syntax highlighting
+        if (type === 'policy') {
+            this.highlightPolicySyntax();
+        } else {
+            this.highlightMiniscriptSyntax();
+        }
+        
+        this.isUndoing = false;
+    }
+
+    redo(type) {
+        const element = type === 'policy' ? 
+            document.getElementById('policy-input') : 
+            document.getElementById('expression-input');
+        
+        const undoStack = this.undoStacks[type];
+        const redoStack = this.redoStacks[type];
+        
+        if (redoStack.length === 0) {
+            return;
+        }
+        
+        // Save current state to undo stack
+        const currentContent = element.textContent || '';
+        undoStack.push(currentContent);
+        
+        // Get next state
+        const nextContent = redoStack.pop();
+        
+        // Apply next state
+        this.isUndoing = true;
+        element.textContent = nextContent;
+        
+        // Apply syntax highlighting
+        if (type === 'policy') {
+            this.highlightPolicySyntax();
+        } else {
+            this.highlightMiniscriptSyntax();
+        }
+        
+        this.isUndoing = false;
     }
 
     restoreCursor(element, offset) {
@@ -1761,13 +2048,26 @@ window.loadExample = function(example) {
 
 // Global function to load policy examples
 window.loadPolicyExample = function(example) {
+    console.log('🚀 loadPolicyExample (from script.js) called with:', example);
+    
     document.getElementById('policy-input').textContent = example;
-    if (window.compiler && window.compiler.highlightPolicySyntax) {
-        window.compiler.highlightPolicySyntax();
-    }
     document.getElementById('expression-input').innerHTML = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
+    
+    if (window.compiler && window.compiler.highlightPolicySyntax) {
+        window.compiler.highlightPolicySyntax();
+    }
+    
+    // SAVE STATE FOR UNDO
+    if (window.compiler && window.compiler.saveState) {
+        console.log('🚀 Saving policy state for undo');
+        window.compiler.saveState('policy', true);
+        window.compiler.saveState('miniscript', true);
+        console.log('🚀 State saved successfully');
+    } else {
+        console.log('🚀 Compiler or saveState not available');
+    }
     
     // Update policy toggle button state based on loaded content
     if (window.compiler && window.compiler.containsKeyNames) {
