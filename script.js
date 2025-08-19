@@ -325,10 +325,48 @@ class MiniscriptCompiler {
 
     showPolicyError(message) {
         const policyErrorsDiv = document.getElementById('policy-errors');
+        let additionalHelp = '';
+        
+        // Check if this is a missing key variable error
+        const keyLengthMatch = message.match(/pubkey string should be (?:66|130) (?:or \d+ )?digits(?: long)?, got: (\d+)/);
+        if (keyLengthMatch) {
+            const gotLength = parseInt(keyLengthMatch[1]);
+            // Check if this looks like a key name (short length, likely under 20 chars)
+            if (gotLength < 20) {
+                // Try to find what key name might be missing from the policy
+                const policyText = document.getElementById('policy-input').textContent || '';
+                // Common key names that match this length
+                const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey'];
+                const missingKey = commonKeys.find(key => key.length === gotLength && policyText.includes(key));
+                
+                if (missingKey) {
+                    additionalHelp = `
+                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
+                            <strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
+                            <br>→ Check the <strong>Key variables</strong> section to see if it exists
+                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys (Alice, Bob, Charlie, etc.)
+                            <br>→ Or add it manually with a valid 66-character public key
+                        </div>
+                    `;
+                } else if (gotLength <= 15) {
+                    // Generic help for short strings that look like variable names
+                    additionalHelp = `
+                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
+                            <strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
+                            <br>→ Check the <strong>Key variables</strong> section
+                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys
+                            <br>→ Or define your custom key with a valid 66-character public key
+                        </div>
+                    `;
+                }
+            }
+        }
+        
         policyErrorsDiv.innerHTML = `
             <div class="result-box error" style="margin: 0;">
                 <h4>❌ Policy error</h4>
                 <div style="margin-top: 10px;">${message}</div>
+                ${additionalHelp}
             </div>
         `;
     }
@@ -977,10 +1015,48 @@ class MiniscriptCompiler {
 
     showMiniscriptError(message) {
         const messagesDiv = document.getElementById('miniscript-messages');
+        let additionalHelp = '';
+        
+        // Check if this is a missing key variable error (same logic as policy errors)
+        const keyLengthMatch = message.match(/pubkey string should be (?:66|130) (?:or \d+ )?digits(?: long)?, got: (\d+)/);
+        if (keyLengthMatch) {
+            const gotLength = parseInt(keyLengthMatch[1]);
+            // Check if this looks like a key name (short length, likely under 20 chars)
+            if (gotLength < 20) {
+                // Try to find what key name might be missing from the expression
+                const expressionText = document.getElementById('expression-input').textContent || '';
+                // Common key names that match this length
+                const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey'];
+                const missingKey = commonKeys.find(key => key.length === gotLength && expressionText.includes(key));
+                
+                if (missingKey) {
+                    additionalHelp = `
+                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
+                            <strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
+                            <br>→ Check the <strong>Key variables</strong> section to see if it exists
+                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys (Alice, Bob, Charlie, etc.)
+                            <br>→ Or add it manually with a valid 66-character public key
+                        </div>
+                    `;
+                } else if (gotLength <= 15) {
+                    // Generic help for short strings that look like variable names
+                    additionalHelp = `
+                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
+                            <strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
+                            <br>→ Check the <strong>Key variables</strong> section
+                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys
+                            <br>→ Or define your custom key with a valid 66-character public key
+                        </div>
+                    `;
+                }
+            }
+        }
+        
         messagesDiv.innerHTML = `
             <div class="result-box error" style="margin: 0;">
                 <h4>❌ Miniscript error</h4>
                 <div style="margin-top: 10px;">${message}</div>
+                ${additionalHelp}
             </div>
         `;
     }
