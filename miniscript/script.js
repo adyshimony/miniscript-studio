@@ -867,12 +867,12 @@ class MiniscriptCompiler {
         this.keyVariables.set('Frank', '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
         this.keyVariables.set('Lara', '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
         
-        // X-only keys (for Taproot)
-        this.keyVariables.set('David', 'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
-        this.keyVariables.set('Helen', 'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
-        this.keyVariables.set('Ivan', 'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
-        this.keyVariables.set('Julia', '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
-        this.keyVariables.set('Karl', '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
+        // X-only keys (for Taproot) - unique keys, not related to compressed keys above
+        this.keyVariables.set('David', '0b432b2677937381aef05bb02a66ecd012773062cf3fa2549e44f58ed2401710');
+        this.keyVariables.set('Helen', '5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc');
+        this.keyVariables.set('Ivan', '6aebca40ba255960a3178d6d861a54dba813d0b813fde7b5a5082628087264da');
+        this.keyVariables.set('Julia', 'c90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b14e5c9');
+        this.keyVariables.set('Karl', 'dd308afec5777e13121fa72b9cc1b7cc0139715309b086c960e18fd969774eb8');
         
         // Complex descriptor keys
         this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/1/1');
@@ -1119,18 +1119,39 @@ class MiniscriptCompiler {
 
     replaceKeysWithNames(text) {
         let processedText = text;
-        for (const [name, value] of this.keyVariables) {
-            // Simple string replacement - no word boundaries for hex keys
-            processedText = processedText.split(value).join(name);
+        // Sort by key length (descending) to replace longer keys first
+        // This prevents partial matches with shorter keys
+        const sortedVariables = Array.from(this.keyVariables.entries())
+            .sort((a, b) => b[1].length - a[1].length);
+        
+        // Two-pass replacement to avoid collisions
+        // First pass: Replace keys with unique temporary markers
+        const tempMarkers = new Map();
+        let tempIndex = 0;
+        for (const [name, value] of sortedVariables) {
+            const marker = `__TEMP_KEY_${tempIndex}__`;
+            tempMarkers.set(marker, name);
+            processedText = processedText.split(value).join(marker);
+            tempIndex++;
         }
+        
+        // Second pass: Replace markers with actual names
+        for (const [marker, name] of tempMarkers) {
+            processedText = processedText.split(marker).join(name);
+        }
+        
         return processedText;
     }
 
     replaceNamesWithKeys(text) {
         let processedText = text;
-        for (const [name, value] of this.keyVariables) {
+        // Sort by name length (descending) to replace longer names first
+        const sortedVariables = Array.from(this.keyVariables.entries())
+            .sort((a, b) => b[0].length - a[0].length);
+        
+        for (const [name, value] of sortedVariables) {
             // Use word boundaries for variable names to avoid partial matches
-            const regex = new RegExp('\\b' + name + '\\b', 'g');
+            const regex = new RegExp('\\b' + this.escapeRegex(name) + '\\b', 'g');
             processedText = processedText.replace(regex, value);
         }
         return processedText;
