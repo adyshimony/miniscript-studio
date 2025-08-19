@@ -1745,6 +1745,12 @@ window.showPolicyDescription = function(exampleId) {
             useCase: 'Demonstrates Taproot X-only public keys (64 characters). More efficient and private.',
             security: '💡 Taproot provides better privacy and efficiency'
         },
+        'testnet_xpub': {
+            title: '📄 Testnet Extended Public Key',
+            conditions: '🔓 TestnetKey: HD wallet extended public key (testnet)',
+            useCase: 'Demonstrates policy compilation with extended public keys (xpub/tpub). The compiler derives concrete keys from the descriptor.',
+            security: '💡 HD wallets allow deterministic key generation from a single seed'
+        },
         'corporate': {
             title: '📄 Corporate Wallet Policy',
             conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2025',
@@ -2044,6 +2050,12 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 David: Immediate spending (Taproot context)',
             useCase: 'Demonstrates Taproot X-only public keys (64 characters). More efficient and private.',
             security: '💡 Taproot provides better privacy and efficiency'
+        },
+        'testnet_xpub': {
+            title: '📄 Testnet Extended Public Key',
+            conditions: '🔓 TestnetKey: HD wallet extended public key (testnet)',
+            useCase: 'Demonstrates policy compilation with extended public keys (xpub/tpub). The compiler derives concrete keys from the descriptor.',
+            security: '💡 HD wallets allow deterministic key generation from a single seed'
         },
         'corporate': {
             title: '📄 Corporate Wallet Policy',
