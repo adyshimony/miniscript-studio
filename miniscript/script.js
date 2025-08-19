@@ -18,6 +18,8 @@ class MiniscriptCompiler {
             policy: null,
             miniscript: null
         };
+        this.lastSuggestedKeyName = null; // Track auto-suggested names
+        this.isGeneratingKey = false; // Flag to prevent clearing suggestion during generation
         this.init();
     }
 
@@ -315,6 +317,15 @@ class MiniscriptCompiler {
         document.getElementById('key-name-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 document.getElementById('key-value-input').focus();
+            }
+        });
+
+        // Track when user manually edits the key name input
+        document.getElementById('key-name-input').addEventListener('input', (e) => {
+            // If user types anything manually, clear the last suggested name
+            // so future generate calls will suggest new names
+            if (!this.isGeneratingKey) {
+                this.lastSuggestedKeyName = null;
             }
         });
 
@@ -936,6 +947,7 @@ class MiniscriptCompiler {
 
     generateKey() {
         console.log('Generate key button clicked!');
+        this.isGeneratingKey = true; // Set flag to prevent clearing suggestion
         
         // Get selected key type from radio buttons
         const selectedType = document.querySelector('input[name="keyType"]:checked')?.value || 'compressed';
@@ -1065,29 +1077,41 @@ class MiniscriptCompiler {
             console.error('Could not find key-value-input element');
         }
         
-        // Set a descriptive name based on key type if name input is empty
+        // Set a descriptive name based on key type
         const nameInput = document.getElementById('key-name-input');
-        if (nameInput && !nameInput.value.trim()) {
-            const typeLabels = {
-                'compressed': 'CompressedKey',
-                'xonly': 'XOnlyKey', 
-                'xpub': 'ExtendedKey',
-                'tpub': 'TestnetKey'
-            };
+        if (nameInput) {
+            const currentName = nameInput.value.trim();
             
-            const baseLabel = typeLabels[selectedType] || 'Key';
-            let counter = 1;
-            let keyName = baseLabel;
+            // Update name if: 
+            // 1. Input is empty, OR
+            // 2. Current name matches our last suggested name (user didn't edit it)
+            const shouldUpdateName = !currentName || currentName === this.lastSuggestedKeyName;
             
-            // Find next available number if name already exists
-            while (this.keyVariables.has(keyName)) {
-                counter++;
-                keyName = `${baseLabel}${counter}`;
+            if (shouldUpdateName) {
+                const typeLabels = {
+                    'compressed': 'CompressedKey',
+                    'xonly': 'XOnlyKey', 
+                    'xpub': 'ExtendedKey',
+                    'tpub': 'TestnetKey'
+                };
+                
+                const baseLabel = typeLabels[selectedType] || 'Key';
+                let counter = 1;
+                let keyName = baseLabel;
+                
+                // Find next available number if name already exists
+                while (this.keyVariables.has(keyName)) {
+                    counter++;
+                    keyName = `${baseLabel}${counter}`;
+                }
+                
+                nameInput.value = keyName;
+                this.lastSuggestedKeyName = keyName; // Remember this suggestion
+                nameInput.focus();
             }
-            
-            nameInput.value = keyName;
-            nameInput.focus();
         }
+        
+        this.isGeneratingKey = false; // Clear flag after generation
     }
 
     generateCompressedPublicKey(privateKey) {
