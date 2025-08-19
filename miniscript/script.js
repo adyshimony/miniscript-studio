@@ -1259,20 +1259,27 @@ class MiniscriptCompiler {
 
     addDefaultKeys() {
         // Default keys used in examples
-        // Compressed keys (for Legacy/Segwit)
-        this.keyVariables.set('Alice', '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
-        this.keyVariables.set('Bob', '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
-        this.keyVariables.set('Charlie', '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
-        this.keyVariables.set('Eva', '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
-        this.keyVariables.set('Frank', '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
-        this.keyVariables.set('Lara', '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
-        
-        // X-only keys (for Taproot) - unique keys, not related to compressed keys above
-        this.keyVariables.set('David', '0b432b2677937381aef05bb02a66ecd012773062cf3fa2549e44f58ed2401710');
-        this.keyVariables.set('Helen', '5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc');
-        this.keyVariables.set('Ivan', '6aebca40ba255960a3178d6d861a54dba813d0b813fde7b5a5082628087264da');
-        this.keyVariables.set('Julia', 'c90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b14e5c9');
-        this.keyVariables.set('Karl', 'dd308afec5777e13121fa72b9cc1b7cc0139715309b086c960e18fd969774eb8');
+        // Taproot keys (x-only, derived from compressed keys by removing first byte)
+        this.keyVariables.set('Alice', '7b6107de2fa37ee8a7b7ec8a09150253ee790e68a5b1c7c8d70b62f9460b212b');
+        this.keyVariables.set('Bob', 'aa19804f3a0026a9bc5e1ae9aff62228fc352a598d746369a4aad706861e49a5');
+        this.keyVariables.set('Charlie', '0648e520b470bcdfb67fa6aa2b5d81e55f5ac8960d6e171e10e7459bb626eae3');
+        this.keyVariables.set('Eva', '6683f5b5534965fbf2e2478a280186cef72a6f8d7832c527d8216fb614d572fc');
+        this.keyVariables.set('Frank', '91f9bc5725c6033c357dbffb7165fd4faa1db75564d3cca995970d5c4f3dee03');
+        this.keyVariables.set('Lara', '8856cd97f4f649bfc13b75a368556968694d2cd6596355198e05f8546499a6d5');
+        this.keyVariables.set('Helen', '96b6d68aefbcb7fd24c8847f98ec1d48bc24c3afd7d4fffda8ca3657ba6ab829');
+        this.keyVariables.set('Ivan', 'ad9b3c720375428bb4f1e894b900f196537895d3c83878bcac7f008be7deedc2');
+        this.keyVariables.set('Julia', 'd127f475aba7d9111ff69cc6858305d15e8912205cfa5dcc7a4c66a97ebb8174');
+        this.keyVariables.set('Karl', 'b2afcd04877595b269282f860135bb03c8706046b0a57b17f252cf66e35cce89');
+        this.keyVariables.set('David', 'fae4284884079a8134f553af138f5206584de24c44f2ba1b2d9215a32fc6b188');
+        this.keyVariables.set('Mike', '56e4fe860f0b41ac02cff0ae9f2e5793cf0555a1589a87136a011b0f9ec4f0aa');
+        this.keyVariables.set('Nina', '96148664787a15b511653abcbb3eb0662f3b1fad2b9186b3293518bb376fdabd');
+        this.keyVariables.set('Oliver', '5cbe6cf97a05ee1422894ecc58a6199e829a88b70cf22421ec74dcf420980425');
+        this.keyVariables.set('Paul', 'b94f572ae2124b79e96c173724b39336842f40d1a2c89e4366ae845856b61f0d');
+        this.keyVariables.set('Quinn', '610aa231cb960498e7ae63a9b7fb284703fe218c9435b3e41ff201afbf792611');
+        this.keyVariables.set('Rachel', 'a41a30de408e52d6f73f3a1e2825b46da80900ee4a8f789a0c08f354c51d0427');
+        this.keyVariables.set('Sam', '99361bd582b0fe7f6a516ef1ccd97b965478f8599a31480b5141bef88454a799');
+        this.keyVariables.set('Tina', '4ff13ec58e776d56d1cc6e67982d61e3094091df5fde5426afa6c5de4a8b213f');
+        this.keyVariables.set('Uma', '88baff530c110b44efd596c11d839002c420b73b4fbdd2fd25858b5f0a4831d2');
         
         // Complex descriptor keys
         this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/1/1');
@@ -1290,7 +1297,7 @@ class MiniscriptCompiler {
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 14 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, David, Helen, Ivan, Julia, Karl, TestnetKey, MainnetKey, RangeKey. Continue?')) {
+        if (confirm('This will restore 24 default Taproot key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKeys). Continue?')) {
             this.addDefaultKeys();
         }
     }
