@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, translate_hash_fail, ToPublicKey};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey};
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1};
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
@@ -70,7 +70,22 @@ impl Translator<DescriptorPublicKey, PublicKey, ()> for DescriptorKeyTranslator 
         }
     }
     
-    translate_hash_fail!(DescriptorPublicKey, PublicKey, ());
+    // Implement hash functions to pass through unchanged
+    fn sha256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Sha256) -> Result<<PublicKey as miniscript::MiniscriptKey>::Sha256, ()> {
+        Ok(*hash)
+    }
+
+    fn hash256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash256) -> Result<<PublicKey as miniscript::MiniscriptKey>::Hash256, ()> {
+        Ok(*hash)
+    }
+
+    fn ripemd160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Ripemd160) -> Result<<PublicKey as miniscript::MiniscriptKey>::Ripemd160, ()> {
+        Ok(*hash)
+    }
+
+    fn hash160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash160) -> Result<<PublicKey as miniscript::MiniscriptKey>::Hash160, ()> {
+        Ok(*hash)
+    }
 }
 
 // Translator for converting DescriptorPublicKey to XOnlyPublicKey (for Taproot)
@@ -98,7 +113,22 @@ impl Translator<DescriptorPublicKey, XOnlyPublicKey, ()> for XOnlyKeyTranslator 
         }
     }
     
-    translate_hash_fail!(DescriptorPublicKey, XOnlyPublicKey, ());
+    // Implement hash functions to pass through unchanged
+    fn sha256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Sha256) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Sha256, ()> {
+        Ok(*hash)
+    }
+
+    fn hash256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash256) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Hash256, ()> {
+        Ok(*hash)
+    }
+
+    fn ripemd160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Ripemd160) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Ripemd160, ()> {
+        Ok(*hash)
+    }
+
+    fn hash160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash160) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Hash160, ()> {
+        Ok(*hash)
+    }
 }
 
 // Parse HD wallet descriptors from miniscript expressions
