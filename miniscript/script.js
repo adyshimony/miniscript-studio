@@ -2352,6 +2352,18 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
             useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
             security: '💡 Cooperative control with individual fallback'
+        },
+        'hodl': {
+            title: '📄 HODL Wallet Policy',
+            conditions: '🔓 Alice: Immediate spending (9x probability weight)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year',
+            useCase: 'Long-term savings wallet. Alice has normal access, but requires family consensus after 1 year if Alice is unavailable.',
+            security: '💡 Designed to discourage frequent spending while providing family recovery'
+        },
+        'timelocked_thresh': {
+            title: '📄 Timelocked Multisig Policy',
+            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2025)',
+            useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
+            security: '💡 Prevents any spending before the specified date, even with valid signatures'
         }
     };
     
@@ -2487,12 +2499,40 @@ window.showMiniscriptDescription = function(exampleId) {
             useCase: 'BIP389 multipath descriptors for generating multiple related addresses.',
             technical: '💡 <1;0> creates two derivation paths: .../1/* and .../0/*'
         },
+        'pkh': {
+            title: '⚙️ Pay-to-pubkey-hash',
+            structure: 'pkh(Alice) → Hash-based key reference',
+            bitcoinScript: 'Compiles to: DUP HASH160 <Alice_hash> EQUALVERIFY CHECKSIG',
+            useCase: 'Similar to P2PKH addresses. More private as public key is hidden until spending.',
+            technical: '💡 Classic Bitcoin pattern - reveals pubkey only when spending'
+        },
+        'wrap': {
+            title: '⚙️ Wrapped Key Fragment',
+            structure: 'c:pk_k(Alice) → Check-wrapper around key fragment',
+            bitcoinScript: 'Compiles with CHECKSIG wrapper for type correctness',
+            useCase: 'Demonstrates miniscript wrapper system for fragment composition.',
+            technical: '💡 c: wrapper converts signature to boolean, pk_k pushes key'
+        },
+        'or_i': {
+            title: '⚙️ OR with If-Else',
+            structure: 'or_i(pk(Alice),pk(Bob)) → IF Alice ELSE Bob ENDIF',
+            bitcoinScript: 'Compiles to: IF <Alice> CHECKSIG ELSE <Bob> CHECKSIG ENDIF',
+            useCase: 'Conditional execution - cleaner than boolean OR for some use cases.',
+            technical: '💡 Uses IF/ELSE opcodes instead of boolean operations'
+        },
+        'after': {
+            title: '⚙️ Absolute Timelock',
+            structure: 'and_v(v:pk(Alice),after(1735689600)) → Alice + absolute time',
+            bitcoinScript: 'Verifies Alice signature and checks absolute timestamp',
+            useCase: 'Alice can only spend after specific date (Jan 1, 2025). Useful for scheduled payments.',
+            technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
+        },
         'vault_complex': {
-            title: '🏦 Complex Multi-Signature Vault',
-            structure: 'or_i(or_i(or_i(or_i(and_v(...), and_v(...)), and_v(...)), and_v(...)), and_v(...))',
-            bitcoinScript: 'Hierarchical vault with multiple timelock conditions and threshold signatures',
-            useCase: 'Enterprise Bitcoin custody with progressive security layers: Immediate 2-of-2 multisig for daily operations, degrading to 3-of-5 threshold after 2 months, 2-of-4 after 4 months, 2-of-3 after 6 months, and finally 2-of-2 emergency recovery after 8 months. Each timelock represents realistic business continuity scenarios: normal operations, executive departure, key compromise recovery, and long-term succession planning.',
-            technical: '💡 Implements time-based degraded multisig: starts restrictive (requires specific key pairs), becomes more permissive with longer delays. Uses nested or_i for multiple spending paths, thresh() for m-of-n signatures, and pkh() for key hash verification. Critical for institutional custody where immediate spending needs tight control but recovery scenarios need flexibility.'
+            title: '⚙️ Complex Multi-tier Vault System',
+            structure: 'Nested or_i structure with multiple timelock tiers and threshold conditions',
+            bitcoinScript: 'Highly complex conditional execution with multiple spending paths and delays',
+            useCase: 'Advanced vault system with multiple security tiers and time delays. Shows miniscript power for complex custody solutions.',
+            technical: '💡 Demonstrates deep nesting capabilities and multiple conditional spending paths'
         }
     };
     
@@ -2658,6 +2698,18 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
             useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
             security: '💡 Cooperative control with individual fallback'
+        },
+        'hodl': {
+            title: '📄 HODL Wallet Policy',
+            conditions: '🔓 Alice: Immediate spending (9x probability weight)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year',
+            useCase: 'Long-term savings wallet. Alice has normal access, but requires family consensus after 1 year if Alice is unavailable.',
+            security: '💡 Designed to discourage frequent spending while providing family recovery'
+        },
+        'timelocked_thresh': {
+            title: '📄 Timelocked Multisig Policy',
+            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2025)',
+            useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
+            security: '💡 Prevents any spending before the specified date, even with valid signatures'
         }
     };
     
@@ -2792,12 +2844,40 @@ window.showMiniscriptDescription = function(exampleId) {
             useCase: 'BIP389 multipath descriptors for generating multiple related addresses.',
             technical: '💡 <1;0> creates two derivation paths: .../1/* and .../0/*'
         },
+        'pkh': {
+            title: '⚙️ Pay-to-pubkey-hash',
+            structure: 'pkh(Alice) → Hash-based key reference',
+            bitcoinScript: 'Compiles to: DUP HASH160 <Alice_hash> EQUALVERIFY CHECKSIG',
+            useCase: 'Similar to P2PKH addresses. More private as public key is hidden until spending.',
+            technical: '💡 Classic Bitcoin pattern - reveals pubkey only when spending'
+        },
+        'wrap': {
+            title: '⚙️ Wrapped Key Fragment',
+            structure: 'c:pk_k(Alice) → Check-wrapper around key fragment',
+            bitcoinScript: 'Compiles with CHECKSIG wrapper for type correctness',
+            useCase: 'Demonstrates miniscript wrapper system for fragment composition.',
+            technical: '💡 c: wrapper converts signature to boolean, pk_k pushes key'
+        },
+        'or_i': {
+            title: '⚙️ OR with If-Else',
+            structure: 'or_i(pk(Alice),pk(Bob)) → IF Alice ELSE Bob ENDIF',
+            bitcoinScript: 'Compiles to: IF <Alice> CHECKSIG ELSE <Bob> CHECKSIG ENDIF',
+            useCase: 'Conditional execution - cleaner than boolean OR for some use cases.',
+            technical: '💡 Uses IF/ELSE opcodes instead of boolean operations'
+        },
+        'after': {
+            title: '⚙️ Absolute Timelock',
+            structure: 'and_v(v:pk(Alice),after(1735689600)) → Alice + absolute time',
+            bitcoinScript: 'Verifies Alice signature and checks absolute timestamp',
+            useCase: 'Alice can only spend after specific date (Jan 1, 2025). Useful for scheduled payments.',
+            technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
+        },
         'vault_complex': {
-            title: '🏦 Complex Multi-Signature Vault',
-            structure: 'or_i(or_i(or_i(or_i(and_v(...), and_v(...)), and_v(...)), and_v(...)), and_v(...))',
-            bitcoinScript: 'Hierarchical vault with multiple timelock conditions and threshold signatures',
-            useCase: 'Enterprise Bitcoin custody with progressive security layers: Immediate 2-of-2 multisig for daily operations, degrading to 3-of-5 threshold after 2 months, 2-of-4 after 4 months, 2-of-3 after 6 months, and finally 2-of-2 emergency recovery after 8 months. Each timelock represents realistic business continuity scenarios: normal operations, executive departure, key compromise recovery, and long-term succession planning.',
-            technical: '💡 Implements time-based degraded multisig: starts restrictive (requires specific key pairs), becomes more permissive with longer delays. Uses nested or_i for multiple spending paths, thresh() for m-of-n signatures, and pkh() for key hash verification. Critical for institutional custody where immediate spending needs tight control but recovery scenarios need flexibility.'
+            title: '⚙️ Complex Multi-tier Vault System',
+            structure: 'Nested or_i structure with multiple timelock tiers and threshold conditions',
+            bitcoinScript: 'Highly complex conditional execution with multiple spending paths and delays',
+            useCase: 'Advanced vault system with multiple security tiers and time delays. Shows miniscript power for complex custody solutions.',
+            technical: '💡 Demonstrates deep nesting capabilities and multiple conditional spending paths'
         }
     };
     

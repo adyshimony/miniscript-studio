@@ -657,9 +657,9 @@
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
                     <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
-                        <button onclick="try { console.log('CLICKED Single key'); console.log('About to call loadPolicyExample'); window.loadPolicyExample('pk(Alice)'); console.log('Called loadPolicyExample'); console.log('SUCCESS'); } catch(e) { console.error('ERROR:', e); }" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                        <button onclick="console.log('CLICKED OR keys'); loadPolicyExample('or(pk(Alice),pk(Bob))'); showPolicyDescription('or')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
-                        <button onclick="console.log('CLICKED AND keys'); loadPolicyExample('and(pk(Alice),pk(Bob))'); showPolicyDescription('and')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
+                        <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
+                        <button onclick="showPolicyDescription('or'); loadPolicyExample('or(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
+                        <button onclick="showPolicyDescription('and'); loadPolicyExample('and(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
                         <button onclick="showPolicyDescription('threshold'); loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
                         <button onclick="showPolicyDescription('timelock'); loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
                         <button onclick="showPolicyDescription('xonly'); loadPolicyExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
@@ -670,8 +670,8 @@
                         <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eva),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
                         <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eva)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
                         <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
-                        <button onclick="showPolicyDescription('inheritance'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Helen),pk(Ivan),pk(Julia)),older(26280)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: Inheritance</button>
-                        <button onclick="showPolicyDescription('delayed'); loadPolicyExample('or(and(pk(Julia),pk(Karl)),and(pk(David),older(144)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Taproot: 2-of-2 OR Delayed</button>
+                        <button onclick="showPolicyDescription('hodl'); loadPolicyExample('or(9@pk(Alice),and(thresh(3,pk(Bob),pk(Charlie),pk(Eva),pk(Frank)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">HODL Wallet</button>
+                        <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1735689600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
                     </div>
                 </div>
                 
@@ -757,12 +757,12 @@
                 <div class="examples-buttons" style="flex: 1; min-width: 0;">
                     <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="miniscript-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="miniscript-buttons-start">
-                        <button onclick="showMiniscriptDescription('single'); loadExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                        <button onclick="showMiniscriptDescription('and'); loadExample('and_v(v:pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-2 AND</button>
-                        <button onclick="showMiniscriptDescription('or'); loadExample('or_b(pk(Alice),s:pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
+                        <button onclick="showMiniscriptDescription('pkh'); loadExample('pkh(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Pay-to-pubkey-hash</button>
+                        <button onclick="showMiniscriptDescription('wrap'); loadExample('c:pk_k(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Wrapped key</button>
+                        <button onclick="showMiniscriptDescription('or_i'); loadExample('or_i(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR with if-else</button>
                         <button onclick="showMiniscriptDescription('complex'); loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
                         <button onclick="showMiniscriptDescription('timelock'); loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
-                        <button onclick="showMiniscriptDescription('xonly'); loadExample('pk(David)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (X-only)</button>
+                        <button onclick="showMiniscriptDescription('after'); loadExample('and_v(v:pk(Alice),after(1735689600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Absolute timelock</button>
                     </div>
                     <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
@@ -1162,7 +1162,7 @@
                 'recovery': {
                     title: '📄 Emergency Recovery Policy',
                     conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week)',
-                    useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
+                    useCase: 'Personal wallet with family emergency recovery. Alice has daily control. If Alice is unavailable, any 2 of her trusted contacts (family/friends) can recover funds after 1 week delay. The 95@ weight tells the compiler Alice path is used 95% of the time.',
                     security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
                 },
                 'twofa': {
@@ -1182,6 +1182,24 @@
                     conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
                     useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
                     security: '💡 Cooperative control with individual fallback'
+                },
+                'testnet_xpub': {
+                    title: '📄 Testnet Extended Public Key',
+                    conditions: '🔓 TestnetKey: Immediate spending (testnet context)',
+                    useCase: 'Demonstrates testnet xpub usage for development and testing. Shows HD wallet integration with Bitcoin testnet.',
+                    security: '💡 Always use testnet for development - never mainnet keys in testing'
+                },
+                'hodl': {
+                    title: '📄 HODL Wallet Policy',
+                    conditions: '🔓 Alice: Immediate spending (9x probability weight)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year',
+                    useCase: 'Long-term savings wallet. Alice has normal access, but requires family consensus after 1 year if Alice is unavailable.',
+                    security: '💡 Designed to discourage frequent spending while providing family recovery'
+                },
+                'timelocked_thresh': {
+                    title: '📄 Timelocked Multisig Policy',
+                    conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2025)',
+                    useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
+                    security: '💡 Prevents any spending before the specified date, even with valid signatures'
                 }
             };
             
@@ -1287,6 +1305,69 @@
                     bitcoinScript: 'Julia immediate OR Karl after 144 blocks',
                     useCase: 'Julia can spend immediately, Karl can spend after 1-day cooling period.',
                     technical: '💡 Demonstrates Taproot miniscript with short timelock'
+                },
+                'pkh': {
+                    title: '⚙️ Pay-to-pubkey-hash',
+                    structure: 'pkh(Alice) → Hash-based key reference',
+                    bitcoinScript: 'Compiles to: DUP HASH160 <Alice_hash> EQUALVERIFY CHECKSIG',
+                    useCase: 'Similar to P2PKH addresses. More private as public key is hidden until spending.',
+                    technical: '💡 Classic Bitcoin pattern - reveals pubkey only when spending'
+                },
+                'wrap': {
+                    title: '⚙️ Wrapped Key Fragment',
+                    structure: 'c:pk_k(Alice) → Check-wrapper around key fragment',
+                    bitcoinScript: 'Compiles with CHECKSIG wrapper for type correctness',
+                    useCase: 'Demonstrates miniscript wrapper system for fragment composition.',
+                    technical: '💡 c: wrapper converts signature to boolean, pk_k pushes key'
+                },
+                'or_i': {
+                    title: '⚙️ OR with If-Else',
+                    structure: 'or_i(pk(Alice),pk(Bob)) → IF Alice ELSE Bob ENDIF',
+                    bitcoinScript: 'Compiles to: IF <Alice> CHECKSIG ELSE <Bob> CHECKSIG ENDIF',
+                    useCase: 'Conditional execution - cleaner than boolean OR for some use cases.',
+                    technical: '💡 Uses IF/ELSE opcodes instead of boolean operations'
+                },
+                'after': {
+                    title: '⚙️ Absolute Timelock',
+                    structure: 'and_v(v:pk(Alice),after(1735689600)) → Alice + absolute time',
+                    bitcoinScript: 'Verifies Alice signature and checks absolute timestamp',
+                    useCase: 'Alice can only spend after specific date (Jan 1, 2025). Useful for scheduled payments.',
+                    technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
+                },
+                'htlc_time': {
+                    title: '⚙️ Time-based Hash Time Locked Contract',
+                    structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
+                    bitcoinScript: 'Alice AND (Bob OR (hash preimage + timelock))',
+                    useCase: 'Payment channel or atomic swap. Alice + Bob for cooperation, or Alice + secret after delay if Bob is unresponsive.',
+                    technical: '💡 Classic HTLC pattern with time-based fallback for atomic swaps'
+                },
+                'htlc_hash': {
+                    title: '⚙️ Hash-based Hash Time Locked Contract',
+                    structure: 'or_d(pk(Alice),and_v(v:hash160(...),and_v(v:pk(Bob),older(144))))',
+                    bitcoinScript: 'Alice immediate OR (hash preimage + Bob + timelock)',
+                    useCase: 'Alternative HTLC structure. Alice can claim immediately, or Bob can claim with hash preimage after delay.',
+                    technical: '💡 Reversed HTLC - recipient has immediate access, sender needs proof + time'
+                },
+                'full_descriptor': {
+                    title: '⚙️ Full HD Wallet Descriptor',
+                    structure: 'pk(MainnetKey) → Complete extended public key with derivation',
+                    bitcoinScript: 'Uses mainnet xpub with full derivation path and fingerprint',
+                    useCase: 'Production wallet integration showing complete HD wallet descriptor format with derivation paths.',
+                    technical: '💡 Demonstrates xpub format: [fingerprint/path]xpub.../derivation'
+                },
+                'range_descriptor': {
+                    title: '⚙️ Multipath Range Descriptor',
+                    structure: 'pk(RangeKey) → HD key with multipath range <1;0>/*',
+                    bitcoinScript: 'Uses ranged derivation for multiple address generation',
+                    useCase: 'Advanced HD wallet pattern for generating ranges of addresses from single descriptor. Used in wallet software.',
+                    technical: '💡 <1;0>/* creates two derivation paths: /1/* and /0/* for change and receive addresses'
+                },
+                'vault_complex': {
+                    title: '⚙️ Complex Multi-tier Vault System',
+                    structure: 'Nested or_i structure with multiple timelock tiers and threshold conditions',
+                    bitcoinScript: 'Highly complex conditional execution with multiple spending paths and delays',
+                    useCase: 'Advanced vault system with multiple security tiers and time delays. Shows miniscript power for complex custody solutions.',
+                    technical: '💡 Demonstrates deep nesting capabilities and multiple conditional spending paths'
                 }
             };
             
