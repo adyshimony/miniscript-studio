@@ -2882,11 +2882,51 @@ window.removeMiniscriptExtraChars = function() {
     
     // Remove spaces, carriage returns, and newlines
     const cleanedExpression = expression.replace(/[\s\r\n]/g, '');
+    
+    // Only update if there's actually a change
+    if (cleanedExpression === expression) {
+        // No changes needed - just show feedback
+        const button = event.target.closest('button');
+        if (button) {
+            const originalText = button.textContent;
+            button.textContent = '✅';
+            button.title = 'Already clean!';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.title = 'Remove extra characters';
+            }, 1000);
+        }
+        return;
+    }
+    
+    // Preserve cursor position and update content
+    const selection = window.getSelection();
+    const cursorPos = selection.rangeCount > 0 ? selection.getRangeAt(0).startOffset : 0;
+    
     expressionInput.textContent = cleanedExpression;
+    
+    // Save state for undo
+    if (window.compiler && window.compiler.saveState) {
+        window.compiler.saveState('miniscript');
+    }
     
     // Update syntax highlighting
     if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
         window.compiler.highlightMiniscriptSyntax();
+    }
+    
+    // Restore cursor position
+    try {
+        const range = document.createRange();
+        const textNode = expressionInput.firstChild || expressionInput;
+        const newPos = Math.min(cursorPos, cleanedExpression.length);
+        range.setStart(textNode, newPos);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    } catch (e) {
+        // If restoring cursor fails, just focus
+        expressionInput.focus();
     }
     
     // Show feedback
@@ -2914,11 +2954,51 @@ window.removePolicyExtraChars = function() {
     
     // Remove spaces, carriage returns, and newlines
     const cleanedPolicy = policy.replace(/[\s\r\n]/g, '');
+    
+    // Only update if there's actually a change
+    if (cleanedPolicy === policy) {
+        // No changes needed - just show feedback
+        const button = event.target.closest('button');
+        if (button) {
+            const originalText = button.textContent;
+            button.textContent = '✅';
+            button.title = 'Already clean!';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.title = 'Remove extra characters';
+            }, 1000);
+        }
+        return;
+    }
+    
+    // Preserve cursor position and update content
+    const selection = window.getSelection();
+    const cursorPos = selection.rangeCount > 0 ? selection.getRangeAt(0).startOffset : 0;
+    
     policyInput.textContent = cleanedPolicy;
+    
+    // Save state for undo
+    if (window.compiler && window.compiler.saveState) {
+        window.compiler.saveState('policy');
+    }
     
     // Update syntax highlighting
     if (window.compiler && window.compiler.highlightPolicySyntax) {
         window.compiler.highlightPolicySyntax();
+    }
+    
+    // Restore cursor position
+    try {
+        const range = document.createRange();
+        const textNode = policyInput.firstChild || policyInput;
+        const newPos = Math.min(cursorPos, cleanedPolicy.length);
+        range.setStart(textNode, newPos);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    } catch (e) {
+        // If restoring cursor fails, just focus
+        policyInput.focus();
     }
     
     // Show feedback
