@@ -638,6 +638,9 @@
                     <button id="policy-key-names-toggle" onclick="togglePolicyKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🏷️
                     </button>
+                    <button id="extract-policy-keys-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Extract keys from expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        🔑
+                    </button>
                     <button onclick="removePolicyExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🧹
                     </button>
@@ -737,6 +740,9 @@
                 <div style="display: flex; align-items: center; gap: 0px;">
                     <button id="key-names-toggle" onclick="toggleKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🏷️
+                    </button>
+                    <button id="extract-keys-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Extract keys from expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        🔑
                     </button>
                     <button onclick="removeMiniscriptExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🧹
@@ -1035,6 +1041,12 @@
                         </p>
                     </div>
                     <div class="tip-item">
+                        <strong style="color: var(--text-color);">🔑 Extract keys to variables:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            Use the 🔑 button to automatically detect keys in your expression and convert them to reusable variables. For descriptors, you can choose between extracting the full descriptor or just the embedded key.
+                        </p>
+                    </div>
+                    <div class="tip-item">
                         <strong style="color: var(--text-color);">🧹 Clean up text:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             The 🧹 button removes extra whitespace and formatting from pasted expressions that prevent them from compiling successfully.
@@ -1105,6 +1117,25 @@
             <div class="button-group" style="margin-top: 20px;">
                 <button id="confirm-save-policy" class="primary-btn">Save</button>
                 <button id="cancel-save-policy" class="secondary-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="extract-keys-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3>🔑 Extract Keys from Expression</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 10px;">Found keys in your expression. Select which ones to extract:</p>
+            <div id="extract-error-message" style="display: none; background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); padding: 10px; border-radius: 4px; margin-bottom: 10px; font-size: 14px;"></div>
+            <div class="button-group" style="margin-bottom: 10px; justify-content: flex-start;">
+                <button id="select-all-keys" class="secondary-btn" style="font-size: 12px; padding: 4px 10px;">Select All</button>
+                <button id="deselect-all-keys" class="secondary-btn" style="font-size: 12px; padding: 4px 10px;">Deselect All</button>
+            </div>
+            <div id="extract-keys-list" style="max-height: 400px; overflow-y: auto;">
+                <!-- Key extraction items will be added here dynamically -->
+            </div>
+            <div class="button-group" style="margin-top: 20px;">
+                <button id="confirm-extract" class="primary-btn">Extract Selected</button>
+                <button id="cancel-extract" class="secondary-btn">Cancel</button>
             </div>
         </div>
     </div>

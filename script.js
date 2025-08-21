@@ -78,6 +78,15 @@ class MiniscriptCompiler {
             this.clearExpression();
         });
 
+        // Extract keys buttons
+        document.getElementById('extract-policy-keys-btn').addEventListener('click', () => {
+            this.extractKeysFromPolicy();
+        });
+
+        document.getElementById('extract-keys-btn').addEventListener('click', () => {
+            this.extractKeysFromMiniscript();
+        });
+
         // Save modal buttons
         document.getElementById('confirm-save').addEventListener('click', () => {
             this.saveExpression();
@@ -96,6 +105,23 @@ class MiniscriptCompiler {
             this.hideSavePolicyModal();
         });
 
+        // Extract keys modal buttons
+        document.getElementById('confirm-extract').addEventListener('click', () => {
+            this.confirmExtractKeys();
+        });
+
+        document.getElementById('cancel-extract').addEventListener('click', () => {
+            this.hideExtractModal();
+        });
+
+        document.getElementById('select-all-keys').addEventListener('click', () => {
+            this.selectAllKeys(true);
+        });
+
+        document.getElementById('deselect-all-keys').addEventListener('click', () => {
+            this.selectAllKeys(false);
+        });
+
         // Close modal when clicking outside
         document.getElementById('save-modal').addEventListener('click', (e) => {
             if (e.target.id === 'save-modal') {
@@ -106,6 +132,12 @@ class MiniscriptCompiler {
         document.getElementById('save-policy-modal').addEventListener('click', (e) => {
             if (e.target.id === 'save-policy-modal') {
                 this.hideSavePolicyModal();
+            }
+        });
+
+        document.getElementById('extract-keys-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'extract-keys-modal') {
+                this.hideExtractModal();
             }
         });
 
@@ -1327,15 +1359,15 @@ class MiniscriptCompiler {
         this.keyVariables.set('Karl', 'b2afcd04877595b269282f860135bb03c8706046b0a57b17f252cf66e35cce89');
         
         // Complex descriptor keys
-        this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/1/1');
+        this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/1');
         this.keyVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
-        this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<1;0>/*');
+        this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<1;0>/*');
         
         // Vault keys for complex multi-signature examples
-        this.keyVariables.set('VaultKey1', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<6;7>/*');
-        this.keyVariables.set('VaultKey2', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<12;13>/*');
-        this.keyVariables.set('VaultKey3', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<16;17>/*');
-        this.keyVariables.set('VaultKey4', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<16;17>/*');
+        this.keyVariables.set('VaultKey1', '[7FBA5C83/48h/1h/123h/2h]tpubDCc4tcSBvj2WMGmeV5YePFJNYBaPwb5VWq3cG4KnGamVmFncD9Pai7RyCdCvZLmwizodR5DkKf5CsjyxQ2yXd77FBubErc142mYVu3AasqJ/<6;7>/*');
+        this.keyVariables.set('VaultKey2', '[CB6FE460/48h/1h/123h/2h]tpubDDUa4VEMvBzGPR5V6PKLGtApaVPqFBTGbr2NH2YgPF8G24EP6kqYhA7GBdGL8pAAyW97qeidMHJbeuVAfL5Th8z8CCLgs427P9nJYWC4C2j/<12;13>/*');
+        this.keyVariables.set('VaultKey3', '[9F996716/48h/1h/0h/2h]tpubDC8ne3Amvh6dPrBtkLb9H1CutNTmvYi4jKnt3bDFMXAkPB8bdGZMWtJAiGUPSkpqi49XWR16q7ZvcKfepcgApuYH1vqq72oNpyxE2gNqBod/<16;17>/*');
+        this.keyVariables.set('VaultKey4', '[0A4E923E/48h/1h/123h/2h]tpubDCQwZ5SRgzsiqpzkZjVsjLij3XnE4woshJPnUQDoU6Wc9NVy2zFMApMGftBwCe3t5UnGmqbL69EUu9P9ydZrwi2gEzxbYEQv16qiCzaujdB/<16;17>/*');
         
         this.saveKeyVariables();
         this.displayKeyVariables();
@@ -1359,6 +1391,404 @@ class MiniscriptCompiler {
             if (policyPanel) policyPanel.style.display = 'none';
             if (miniscriptPanel) miniscriptPanel.style.display = 'none';
         }
+    }
+
+    extractKeysFromPolicy() {
+        const policyInput = document.getElementById('policy-input');
+        const expression = policyInput.textContent || policyInput.innerText || '';
+        
+        if (!expression.trim()) {
+            this.showError('Please enter a policy expression first');
+            return;
+        }
+        
+        const keys = this.extractKeysFromExpression(expression);
+        if (keys.length === 0) {
+            this.showError('No keys found in the policy expression');
+            return;
+        }
+        
+        this.showExtractModal(keys, expression);
+    }
+
+    extractKeysFromMiniscript() {
+        const expressionInput = document.getElementById('expression-input');
+        const expression = expressionInput.textContent || expressionInput.innerText || '';
+        
+        if (!expression.trim()) {
+            this.showError('Please enter a miniscript expression first');
+            return;
+        }
+        
+        const keys = this.extractKeysFromExpression(expression);
+        if (keys.length === 0) {
+            this.showError('No keys found in the miniscript expression');
+            return;
+        }
+        
+        this.showExtractModal(keys, expression);
+    }
+
+    extractKeysFromExpression(expression) {
+        const keys = [];
+        const descriptorKeys = new Set(); // Track which keys are part of descriptors
+        
+        // First, find all full descriptors and their embedded keys
+        const descriptorPattern = /\[[0-9a-fA-F]{8}\/[0-9h'\/]+\][xt]pub[A-Za-z0-9]+(?:\/[0-9<>;*\/]+)?/g;
+        const descriptorMatches = expression.match(descriptorPattern);
+        
+        if (descriptorMatches) {
+            descriptorMatches.forEach(descriptor => {
+                // Skip if this descriptor is already a variable name we know
+                if (!this.keyVariables.has(descriptor)) {
+                    // Add the full descriptor
+                    keys.push({
+                        value: descriptor,
+                        type: 'descriptor',
+                        isDefault: true // Descriptors are selected by default
+                    });
+                    
+                    // Extract the embedded xpub/tpub key from this descriptor
+                    const embeddedKeyMatch = descriptor.match(/[xt]pub[A-Za-z0-9]+/);
+                    if (embeddedKeyMatch) {
+                        const embeddedKey = embeddedKeyMatch[0];
+                        descriptorKeys.add(embeddedKey);
+                        
+                        // Also add the embedded key as an option (unselected by default)
+                        if (!this.keyVariables.has(embeddedKey)) {
+                            keys.push({
+                                value: embeddedKey,
+                                type: 'embedded',
+                                isDefault: false, // Embedded keys are NOT selected by default
+                                parentDescriptor: descriptor
+                            });
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Then find individual keys that are not part of descriptors
+        const individualKeyPatterns = [
+            // X-only keys (64 hex chars)
+            /\b[0-9a-fA-F]{64}\b/g,
+            // Compressed keys (66 hex chars starting with 02 or 03)
+            /\b0[23][0-9a-fA-F]{64}\b/g,
+            // Uncompressed keys (130 hex chars starting with 04)
+            /\b04[0-9a-fA-F]{128}\b/g,
+            // xpub keys
+            /\bxpub[A-Za-z0-9]{107,108}\b/g,
+            // tpub keys
+            /\btpub[A-Za-z0-9]{107,108}\b/g
+        ];
+        
+        for (const pattern of individualKeyPatterns) {
+            const matches = expression.match(pattern);
+            if (matches) {
+                matches.forEach(key => {
+                    // Skip if this key is already a variable name we know
+                    // or if it's already been added as part of a descriptor
+                    if (!this.keyVariables.has(key) && !descriptorKeys.has(key)) {
+                        keys.push({
+                            value: key,
+                            type: 'individual',
+                            isDefault: true // Individual keys are selected by default
+                        });
+                    }
+                });
+            }
+        }
+        
+        return keys;
+    }
+
+    suggestKeyName(keyValue, existingNames = []) {
+        // Determine key type
+        let prefix = 'Key';
+        if (keyValue.startsWith('xpub')) {
+            prefix = 'MainnetKey';
+        } else if (keyValue.startsWith('tpub')) {
+            prefix = 'TestnetKey';
+        } else if (keyValue.length === 64) {
+            prefix = 'TaprootKey';
+        } else if (keyValue.length === 66 && (keyValue.startsWith('02') || keyValue.startsWith('03'))) {
+            prefix = 'Key';
+        } else if (keyValue.includes('[') && keyValue.includes(']')) {
+            prefix = 'DescriptorKey';
+        }
+        
+        // Find a unique name
+        let counter = 1;
+        let suggestedName = prefix + counter;
+        
+        while (this.keyVariables.has(suggestedName) || existingNames.includes(suggestedName)) {
+            counter++;
+            suggestedName = prefix + counter;
+        }
+        
+        return suggestedName;
+    }
+
+    showExtractModal(keys, originalExpression) {
+        const modal = document.getElementById('extract-keys-modal');
+        const listDiv = document.getElementById('extract-keys-list');
+        const errorDiv = document.getElementById('extract-error-message');
+        
+        // Hide error message initially
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+        
+        // Store extraction data for later use
+        this.extractionData = {
+            keys: keys,
+            originalExpression: originalExpression,
+            mappings: []
+        };
+        
+        // Check for existing keys
+        const existingKeys = [];
+        keys.forEach(keyObj => {
+            // Check if this exact key value already exists in variables
+            for (const [name, value] of this.keyVariables) {
+                if (value === keyObj.value) {
+                    existingKeys.push({ key: keyObj.value, name: name });
+                    break;
+                }
+            }
+        });
+        
+        // Clear and populate the list
+        listDiv.innerHTML = '';
+        
+        keys.forEach((keyObj, index) => {
+            const key = keyObj.value;
+            const existingVar = existingKeys.find(e => e.key === key);
+            const isExisting = !!existingVar;
+            const suggestedName = isExisting ? existingVar.name : this.suggestKeyName(key, this.extractionData.mappings.map(m => m.name));
+            this.extractionData.mappings.push({ key: key, name: suggestedName });
+            
+            // Determine key type for display
+            let keyType = 'Unknown';
+            let keyClass = '';
+            if (key.startsWith('xpub')) {
+                keyType = 'xpub';
+                keyClass = 'xpub';
+            } else if (key.startsWith('tpub')) {
+                keyType = 'tpub';
+                keyClass = 'tpub';
+            } else if (key.length === 64) {
+                keyType = 'X-only';
+                keyClass = 'xonly';
+            } else if (key.length === 66 && (key.startsWith('02') || key.startsWith('03'))) {
+                keyType = 'Compressed';
+                keyClass = 'compressed';
+            } else if (key.includes('[') && key.includes(']')) {
+                keyType = 'Descriptor';
+                keyClass = 'descriptor';
+            }
+            
+            // Special handling for embedded keys
+            let specialNote = '';
+            if (keyObj.type === 'embedded') {
+                specialNote = `<span style="color: var(--text-muted); font-size: 11px; margin-left: 10px;">📦 Embedded in descriptor</span>`;
+            }
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = 'margin-bottom: 15px; padding: 10px; background: var(--secondary-bg); border-radius: 8px; border: 1px solid var(--border-color);';
+            
+            const warningText = isExisting ? `<span style="color: var(--warning-color); font-size: 11px; margin-left: 10px;">⚠️ Already exists as "${existingVar.name}"</span>` : '';
+            
+            // Determine checkbox state: checked if not existing AND is default selection
+            const shouldBeChecked = !isExisting && keyObj.isDefault;
+            
+            itemDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <input type="checkbox" 
+                           id="extract-checkbox-${index}" 
+                           ${shouldBeChecked ? 'checked' : ''}
+                           style="cursor: pointer;">
+                    <span class="key-badge ${keyClass}" style="font-size: 11px; padding: 3px 8px; background: var(--accent-color); color: white; border-radius: 4px;">${keyType}</span>
+                    <code style="font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${key.substring(0, 20)}...${key.substring(key.length - 10)}</code>
+                    ${warningText}${specialNote}
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label style="color: var(--text-secondary); min-width: 50px;">Name:</label>
+                    <input type="text" 
+                           id="extract-name-${index}" 
+                           value="${suggestedName}" 
+                           placeholder="Enter variable name"
+                           ${isExisting ? 'disabled' : ''}
+                           style="flex: 1; padding: 6px; background: ${isExisting ? 'var(--disabled-bg)' : 'var(--bg-color)'}; border: 1px solid var(--border-color); border-radius: 4px; color: ${isExisting ? 'var(--text-muted)' : 'var(--text-primary)'};">
+                </div>
+            `;
+            
+            listDiv.appendChild(itemDiv);
+        });
+        
+        // Show warning if some keys already exist
+        if (existingKeys.length > 0) {
+            errorDiv.style.display = 'block';
+            errorDiv.style.background = 'var(--warning-bg, #FEF3C7)';
+            errorDiv.style.borderColor = 'var(--warning-border, #F59E0B)';
+            errorDiv.style.color = 'var(--warning-text, #92400E)';
+            errorDiv.textContent = `⚠️ ${existingKeys.length} key${existingKeys.length > 1 ? 's' : ''} already exist${existingKeys.length > 1 ? '' : 's'} as variable${existingKeys.length > 1 ? 's' : ''}. They are unchecked by default.`;
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    hideExtractModal() {
+        document.getElementById('extract-keys-modal').style.display = 'none';
+        this.extractionData = null;
+    }
+
+    selectAllKeys(select) {
+        if (!this.extractionData) return;
+        
+        const { keys } = this.extractionData;
+        keys.forEach((keyObj, index) => {
+            const checkbox = document.getElementById(`extract-checkbox-${index}`);
+            const nameInput = document.getElementById(`extract-name-${index}`);
+            
+            // Only change checkbox state if the input is not disabled (not existing)
+            if (checkbox && !nameInput.disabled) {
+                checkbox.checked = select;
+            }
+        });
+    }
+
+    confirmExtractKeys() {
+        if (!this.extractionData) return;
+        
+        const { keys, originalExpression } = this.extractionData;
+        const errorDiv = document.getElementById('extract-error-message');
+        let updatedExpression = originalExpression;
+        let addedCount = 0;
+        let errors = [];
+        
+        // First, collect all selected keys and check for conflicts
+        const selectedKeys = [];
+        keys.forEach((keyObj, index) => {
+            const key = keyObj.value;
+            const checkbox = document.getElementById(`extract-checkbox-${index}`);
+            const nameInput = document.getElementById(`extract-name-${index}`);
+            
+            if (checkbox && checkbox.checked) {
+                const name = nameInput.value.trim();
+                
+                if (!name) {
+                    errors.push(`Key ${index + 1}: Name cannot be empty`);
+                    return;
+                }
+                
+                // Check if name already exists with different value
+                if (this.keyVariables.has(name) && this.keyVariables.get(name) !== key) {
+                    errors.push(`"${name}" already exists with a different key value`);
+                    return;
+                }
+                
+                // Check for duplicate names in current selection
+                const duplicate = selectedKeys.find(sk => sk.name === name);
+                if (duplicate && duplicate.key !== key) {
+                    errors.push(`Duplicate name "${name}" for different keys`);
+                    return;
+                }
+                
+                selectedKeys.push({ key, name, index });
+            }
+        });
+        
+        // If there are errors, show them and don't proceed
+        if (errors.length > 0) {
+            errorDiv.style.display = 'block';
+            errorDiv.style.background = 'var(--error-bg, #FED7D7)';
+            errorDiv.style.borderColor = 'var(--error-border, #F87171)';
+            errorDiv.style.color = 'var(--error-text, #991B1B)';
+            errorDiv.innerHTML = '❌ Cannot extract keys:<br>' + errors.join('<br>');
+            return;
+        }
+        
+        // No errors, proceed with extraction
+        // Sort by key length (longest first) to replace descriptors before embedded keys
+        selectedKeys.sort((a, b) => b.key.length - a.key.length);
+        
+        selectedKeys.forEach(({ key, name }) => {
+            // Add the key variable
+            this.keyVariables.set(name, key);
+            addedCount++;
+            
+            // Replace the key with the variable name in the expression
+            updatedExpression = updatedExpression.split(key).join(name);
+        });
+        
+        if (addedCount > 0) {
+            // Save the updated key variables
+            this.saveKeyVariables();
+            this.displayKeyVariables();
+            
+            // Update the expression in the input field
+            let updatedPolicy = false;
+            let updatedMiniscript = false;
+            
+            if (document.getElementById('policy-input').textContent || document.getElementById('policy-input').innerText) {
+                if (originalExpression === (document.getElementById('policy-input').textContent || document.getElementById('policy-input').innerText)) {
+                    document.getElementById('policy-input').textContent = updatedExpression;
+                    // Clear the highlighting cache and re-highlight
+                    delete document.getElementById('policy-input').dataset.lastHighlightedText;
+                    this.highlightPolicySyntax();
+                    updatedPolicy = true;
+                }
+            }
+            
+            if (document.getElementById('expression-input').textContent || document.getElementById('expression-input').innerText) {
+                if (originalExpression === (document.getElementById('expression-input').textContent || document.getElementById('expression-input').innerText)) {
+                    document.getElementById('expression-input').textContent = updatedExpression;
+                    // Clear the highlighting cache and re-highlight
+                    delete document.getElementById('expression-input').dataset.lastHighlightedText;
+                    this.highlightMiniscriptSyntax();
+                    updatedMiniscript = true;
+                }
+            }
+            
+            // Update toggle button states if expressions were updated
+            if (updatedPolicy) {
+                const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+                if (policyToggleBtn) {
+                    const containsKeyNames = this.containsKeyNames(updatedExpression);
+                    if (containsKeyNames) {
+                        policyToggleBtn.style.color = 'var(--success-border)';
+                        policyToggleBtn.title = 'Hide key names';
+                        policyToggleBtn.dataset.active = 'true';
+                    } else {
+                        policyToggleBtn.style.color = 'var(--text-secondary)';
+                        policyToggleBtn.title = 'Show key names';
+                        policyToggleBtn.dataset.active = 'false';
+                    }
+                }
+            }
+            
+            if (updatedMiniscript) {
+                const miniscriptToggleBtn = document.getElementById('key-names-toggle');
+                if (miniscriptToggleBtn) {
+                    const containsKeyNames = this.containsKeyNames(updatedExpression);
+                    if (containsKeyNames) {
+                        miniscriptToggleBtn.style.color = 'var(--success-border)';
+                        miniscriptToggleBtn.title = 'Hide key names';
+                        miniscriptToggleBtn.dataset.active = 'true';
+                    } else {
+                        miniscriptToggleBtn.style.color = 'var(--text-secondary)';
+                        miniscriptToggleBtn.title = 'Show key names';
+                        miniscriptToggleBtn.dataset.active = 'false';
+                    }
+                }
+            }
+            
+            this.showSuccess(`Extracted ${addedCount} key variable${addedCount > 1 ? 's' : ''}`);
+        } else {
+            this.showError('No keys were selected for extraction');
+        }
+        
+        this.hideExtractModal();
     }
 
     saveKeyVariables() {
@@ -1565,6 +1995,8 @@ class MiniscriptCompiler {
         console.log('Changed:', originalExpression !== expression);
         
         expressionInput.textContent = expression;
+        // Clear highlighting cache to ensure re-highlighting even if content didn't change
+        delete expressionInput.dataset.lastHighlightedText;
         this.highlightMiniscriptSyntax();
         console.log('=== handleReplaceKeysToggle END ===');
     }
@@ -1651,6 +2083,8 @@ class MiniscriptCompiler {
         console.log('Processed policy:', policy);
         
         policyInput.textContent = policy;
+        // Clear highlighting cache to ensure re-highlighting even if content didn't change
+        delete policyInput.dataset.lastHighlightedText;
         this.highlightPolicySyntax();
         console.log('=== handlePolicyReplaceKeysToggle END ===');
     }
