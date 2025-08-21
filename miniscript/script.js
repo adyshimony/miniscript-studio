@@ -487,6 +487,23 @@ class MiniscriptCompiler {
             console.log('Processed policy:', processedPolicy);
             console.log('Context:', context);
             
+            // Update the policy input display to show cleaned expression and reset format button
+            const policyInput = document.getElementById('policy-input');
+            const policyFormatButton = document.getElementById('policy-format-toggle');
+            
+            policyInput.textContent = cleanedPolicy;
+            
+            // Update policy format button state to reflect unformatted state
+            if (policyFormatButton) {
+                policyFormatButton.style.color = 'var(--text-secondary)';
+                policyFormatButton.title = 'Format expression with indentation';
+                policyFormatButton.dataset.formatted = 'false';
+            }
+            
+            // Re-apply policy syntax highlighting
+            delete policyInput.dataset.lastHighlightedText;
+            this.highlightPolicySyntax();
+            
             // Call the WASM function with context
             const result = compile_policy(processedPolicy, context);
             
@@ -1732,6 +1749,38 @@ class MiniscriptCompiler {
         this.highlightMiniscriptSyntax();
     }
 
+    togglePolicyFormat() {
+        const policyInput = document.getElementById('policy-input');
+        const button = document.getElementById('policy-format-toggle');
+        
+        if (!policyInput.textContent.trim()) {
+            this.showError('No policy expression to format');
+            return;
+        }
+        
+        const isCurrentlyFormatted = button.dataset.formatted === 'true';
+        
+        if (isCurrentlyFormatted) {
+            // Remove formatting (compact)
+            const compactExpression = this.compactPolicy(policyInput.textContent);
+            policyInput.textContent = compactExpression;
+            button.style.color = 'var(--text-secondary)';
+            button.title = 'Format expression with indentation';
+            button.dataset.formatted = 'false';
+        } else {
+            // Add formatting (indent)
+            const formattedExpression = this.formatPolicy(policyInput.textContent);
+            policyInput.textContent = formattedExpression;
+            button.style.color = 'var(--success-border)';
+            button.title = 'Remove formatting (compact)';
+            button.dataset.formatted = 'true';
+        }
+        
+        // Re-apply syntax highlighting
+        delete policyInput.dataset.lastHighlightedText;
+        this.highlightPolicySyntax();
+    }
+
     formatMiniscript(expression) {
         if (!expression || expression.length < 80) {
             return expression; // Don't format short expressions
@@ -1833,6 +1882,115 @@ class MiniscriptCompiler {
     }
 
     compactMiniscript(expression) {
+        // Remove extra whitespace and newlines, then clean completely
+        return this.cleanExpression(expression);
+    }
+
+    formatPolicy(expression) {
+        if (!expression || expression.length < 40) {
+            return expression; // Don't format short expressions
+        }
+        
+        // Clean the expression first
+        const cleanExpr = this.cleanExpression(expression);
+        
+        // Parse into tokens
+        const tokens = this.parsePolicyTokens(cleanExpr);
+        
+        // Format the tokens
+        return this.formatPolicyTokens(tokens);
+    }
+
+    parsePolicyTokens(expression) {
+        const tokens = [];
+        let i = 0;
+        let currentToken = '';
+        
+        while (i < expression.length) {
+            const char = expression[i];
+            
+            if (char === '(' || char === ')' || char === ',') {
+                // Push current token if it exists
+                if (currentToken.trim()) {
+                    tokens.push({ type: 'function', value: currentToken.trim() });
+                    currentToken = '';
+                }
+                // Push delimiter
+                tokens.push({ type: char === '(' ? 'open' : char === ')' ? 'close' : 'comma', value: char });
+            } else {
+                currentToken += char;
+            }
+            
+            i++;
+        }
+        
+        // Push final token if it exists
+        if (currentToken.trim()) {
+            tokens.push({ type: 'function', value: currentToken.trim() });
+        }
+        
+        return tokens;
+    }
+
+    formatPolicyTokens(tokens) {
+        let result = '';
+        let depth = 0;
+        const indent = (level) => '  '.repeat(level);
+        
+        // Functions that should format with multiple lines (policy operators)
+        const multiLineOperators = ['and', 'or', 'thresh', 'threshold', 'after', 'older'];
+        
+        console.log('Policy tokens:', tokens);
+        
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            const nextToken = tokens[i + 1];
+            const prevToken = tokens[i - 1];
+            
+            if (token.type === 'function') {
+                result += token.value;
+                
+            } else if (token.type === 'open') {
+                result += token.value;
+                depth++;
+                
+                // Check if the previous function should be multiline
+                const prevFunction = prevToken?.value || '';
+                const shouldBeMultiLine = multiLineOperators.some(op => 
+                    prevFunction === op || prevFunction.endsWith(':' + op) || prevFunction.includes('_' + op)
+                );
+                
+                console.log(`Policy: Processing open paren after function: "${prevFunction}", shouldBeMultiLine: ${shouldBeMultiLine}`);
+                
+                // Add newline and indent after opening paren for multiline functions
+                if (shouldBeMultiLine && nextToken?.type !== 'close') {
+                    result += '\n' + indent(depth);
+                }
+                
+            } else if (token.type === 'close') {
+                depth--;
+                
+                // Check if we need newline before closing paren
+                if (prevToken?.type === 'close') {
+                    result += '\n' + indent(depth);
+                }
+                
+                result += token.value;
+                
+            } else if (token.type === 'comma') {
+                result += token.value;
+                
+                // Add newline and indent after comma if we're in a multiline context
+                if (depth > 0 && nextToken) {
+                    result += '\n' + indent(depth);
+                }
+            }
+        }
+        
+        return result;
+    }
+
+    compactPolicy(expression) {
         // Remove extra whitespace and newlines, then clean completely
         return this.cleanExpression(expression);
     }
@@ -3784,6 +3942,14 @@ window.removePolicyExtraChars = function() {
     
     policyInput.textContent = cleanedPolicy;
     
+    // Reset format button state since expression is now cleaned/unformatted
+    const formatButton = document.getElementById('policy-format-toggle');
+    if (formatButton) {
+        formatButton.style.color = 'var(--text-secondary)';
+        formatButton.title = 'Format expression with indentation';
+        formatButton.dataset.formatted = 'false';
+    }
+    
     // Save state for undo
     if (window.compiler && window.compiler.saveState) {
         window.compiler.saveState('policy');
@@ -3864,4 +4030,12 @@ window.copyPolicyExpression = function() {
             button.style.color = 'var(--text-secondary)';
         }, 1500);
     });
+};
+
+window.togglePolicyFormat = function() {
+    if (window.compiler && typeof window.compiler.togglePolicyFormat === 'function') {
+        window.compiler.togglePolicyFormat();
+    } else {
+        console.error('Compiler or togglePolicyFormat method not available');
+    }
 };
