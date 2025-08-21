@@ -3434,10 +3434,10 @@ window.showMiniscriptDescription = function(exampleId) {
         },
         'vault_complex': {
             title: '⚙️ Complex Multi-tier Vault System',
-            structure: 'Nested or_i structure with multiple timelock tiers and threshold conditions',
-            bitcoinScript: 'Highly complex conditional execution with multiple spending paths and delays',
-            useCase: 'Advanced vault system with multiple security tiers and time delays. Shows miniscript power for complex custody solutions.',
-            technical: '💡 Demonstrates deep nesting capabilities and multiple conditional spending paths'
+            structure: '5-tier security vault with progressive timelock delays and threshold requirements',
+            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 immediate → 📅 Tier 1 (2 hrs): VaultKey3 OR 2-of-3 → 📅 Tier 2 (4 hrs): VaultKey4 OR 2-of-3 → 📅 Tier 3 (6 hrs): VaultKey2 OR 2-of-5 → 📅 Final (8 hrs): VaultKey1 OR TestnetKey',
+            useCase: 'Enterprise vault with escalating recovery paths. Each tier adds delay but reduces signature requirements. Emergency path for immediate access, progressively easier recovery over time.',
+            technical: '💡 Nested or_i creates priority order: most secure (immediate) to most accessible (delayed). Demonstrates complex custody with 5 distinct spending conditions.'
         }
     };
     
@@ -3779,10 +3779,10 @@ window.showMiniscriptDescription = function(exampleId) {
         },
         'vault_complex': {
             title: '⚙️ Complex Multi-tier Vault System',
-            structure: 'Nested or_i structure with multiple timelock tiers and threshold conditions',
-            bitcoinScript: 'Highly complex conditional execution with multiple spending paths and delays',
-            useCase: 'Advanced vault system with multiple security tiers and time delays. Shows miniscript power for complex custody solutions.',
-            technical: '💡 Demonstrates deep nesting capabilities and multiple conditional spending paths'
+            structure: '5-tier security vault with progressive timelock delays and threshold requirements',
+            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 immediate → 📅 Tier 1 (2 hrs): VaultKey3 OR 2-of-3 → 📅 Tier 2 (4 hrs): VaultKey4 OR 2-of-3 → 📅 Tier 3 (6 hrs): VaultKey2 OR 2-of-5 → 📅 Final (8 hrs): VaultKey1 OR TestnetKey',
+            useCase: 'Enterprise vault with escalating recovery paths. Each tier adds delay but reduces signature requirements. Emergency path for immediate access, progressively easier recovery over time.',
+            technical: '💡 Nested or_i creates priority order: most secure (immediate) to most accessible (delayed). Demonstrates complex custody with 5 distinct spending conditions.'
         }
     };
     
