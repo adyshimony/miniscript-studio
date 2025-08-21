@@ -2720,6 +2720,14 @@ class MiniscriptCompiler {
                 }
             }
             
+            // Reset format button state since loaded content is unformatted
+            const formatBtn = document.getElementById('format-miniscript-btn');
+            if (formatBtn) {
+                formatBtn.style.color = 'var(--text-secondary)';
+                formatBtn.title = 'Format expression with indentation';
+                formatBtn.dataset.formatted = 'false';
+            }
+            
             // Auto-detect context based on key formats in the expression
             const detectedContext = this.detectContextFromExpression(savedExpr.expression);
             const context = detectedContext || savedExpr.context || 'segwit';
@@ -2978,6 +2986,14 @@ class MiniscriptCompiler {
                 }
             }
             
+            // Reset policy format button state since loaded content is unformatted
+            const policyFormatBtn = document.getElementById('policy-format-toggle');
+            if (policyFormatBtn) {
+                policyFormatBtn.style.color = 'var(--text-secondary)';
+                policyFormatBtn.title = 'Format expression with indentation';
+                policyFormatBtn.dataset.formatted = 'false';
+            }
+            
             // Auto-detect context based on key formats in the policy
             const detectedContext = this.detectContextFromExpression(savedPolicy.expression);
             const context = detectedContext || savedPolicy.context || 'segwit';
@@ -3079,6 +3095,14 @@ window.loadExample = function(example) {
         }
     }
     
+    // Reset miniscript format button state since loaded content is unformatted
+    const formatBtn = document.getElementById('format-miniscript-btn');
+    if (formatBtn) {
+        formatBtn.style.color = 'var(--text-secondary)';
+        formatBtn.title = 'Format expression with indentation';
+        formatBtn.dataset.formatted = 'false';
+    }
+    
     // Auto-detect context based on key formats in the example (only if compiler is ready)
     if (window.compiler && window.compiler.detectContextFromExpression) {
         const detectedContext = window.compiler.detectContextFromExpression(example);
@@ -3136,6 +3160,14 @@ window.loadPolicyExample = function(example) {
                 policyToggleBtn.dataset.active = 'false';
             }
         }
+    }
+    
+    // Reset policy format button state since loaded content is unformatted
+    const policyFormatBtn = document.getElementById('policy-format-toggle');
+    if (policyFormatBtn) {
+        policyFormatBtn.style.color = 'var(--text-secondary)';
+        policyFormatBtn.title = 'Format expression with indentation';
+        policyFormatBtn.dataset.formatted = 'false';
     }
     
     // Auto-detect context based on key formats in the example (only if compiler is ready)
