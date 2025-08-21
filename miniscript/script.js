@@ -1464,40 +1464,53 @@ class MiniscriptCompiler {
     extractKeysFromExpression(expression) {
         const keys = [];
         const descriptorKeys = new Set(); // Track which keys are part of descriptors
+        const baseKeyGroups = new Map(); // Group descriptors by their base key
         
         // First, find all full descriptors and their embedded keys
         const descriptorPattern = /\[[0-9a-fA-F]{8}\/[0-9h'\/]+\][xt]pub[A-Za-z0-9]+(?:\/[0-9<>;*\/]+)?/g;
         const descriptorMatches = expression.match(descriptorPattern);
         
         if (descriptorMatches) {
+            // Group descriptors by their base key
             descriptorMatches.forEach(descriptor => {
-                // Skip if this descriptor is already a variable name we know
                 if (!this.keyVariables.has(descriptor)) {
-                    // Add the full descriptor
-                    keys.push({
-                        value: descriptor,
-                        type: 'descriptor',
-                        isDefault: true // Descriptors are selected by default
-                    });
-                    
-                    // Extract the embedded xpub/tpub key from this descriptor
                     const embeddedKeyMatch = descriptor.match(/[xt]pub[A-Za-z0-9]+/);
                     if (embeddedKeyMatch) {
-                        const embeddedKey = embeddedKeyMatch[0];
-                        descriptorKeys.add(embeddedKey);
-                        
-                        // Also add the embedded key as an option (unselected by default)
-                        if (!this.keyVariables.has(embeddedKey)) {
-                            keys.push({
-                                value: embeddedKey,
-                                type: 'embedded',
-                                isDefault: false, // Embedded keys are NOT selected by default
-                                parentDescriptor: descriptor
-                            });
+                        const baseKey = embeddedKeyMatch[0];
+                        if (!baseKeyGroups.has(baseKey)) {
+                            baseKeyGroups.set(baseKey, []);
                         }
+                        baseKeyGroups.get(baseKey).push(descriptor);
+                        descriptorKeys.add(baseKey);
                     }
                 }
             });
+            
+            // Add base keys first (unselected by default when there are multiple descriptors)
+            for (const [baseKey, descriptors] of baseKeyGroups) {
+                if (!this.keyVariables.has(baseKey)) {
+                    const hasMultipleDescriptors = descriptors.length > 1;
+                    keys.push({
+                        value: baseKey,
+                        type: 'base',
+                        isDefault: false, // Base keys are unselected by default
+                        descriptorCount: descriptors.length,
+                        parentDescriptors: descriptors
+                    });
+                }
+            }
+            
+            // Then add individual descriptors (selected by default)
+            for (const [baseKey, descriptors] of baseKeyGroups) {
+                descriptors.forEach(descriptor => {
+                    keys.push({
+                        value: descriptor,
+                        type: 'descriptor',
+                        isDefault: true, // Descriptors are selected by default
+                        baseKey: baseKey
+                    });
+                });
+            }
         }
         
         // Then find individual keys that are not part of descriptors
@@ -1599,30 +1612,43 @@ class MiniscriptCompiler {
             const suggestedName = isExisting ? existingVar.name : this.suggestKeyName(key, this.extractionData.mappings.map(m => m.name));
             this.extractionData.mappings.push({ key: key, name: suggestedName });
             
-            // Determine key type for display
+            // Determine key type for display based on the new structure
             let keyType = 'Unknown';
             let keyClass = '';
-            if (key.startsWith('xpub')) {
-                keyType = 'xpub';
-                keyClass = 'xpub';
-            } else if (key.startsWith('tpub')) {
-                keyType = 'tpub';
-                keyClass = 'tpub';
-            } else if (key.length === 64) {
-                keyType = 'X-only';
-                keyClass = 'xonly';
-            } else if (key.length === 66 && (key.startsWith('02') || key.startsWith('03'))) {
-                keyType = 'Compressed';
-                keyClass = 'compressed';
-            } else if (key.includes('[') && key.includes(']')) {
-                keyType = 'Descriptor';
-                keyClass = 'descriptor';
-            }
-            
-            // Special handling for embedded keys
             let specialNote = '';
-            if (keyObj.type === 'embedded') {
-                specialNote = `<span style="color: var(--text-muted); font-size: 11px; margin-left: 10px;">📦 Embedded in descriptor</span>`;
+            
+            if (keyObj.type === 'base') {
+                // Base key (tpub/xpub)
+                if (key.startsWith('xpub')) {
+                    keyType = 'Base xpub';
+                    keyClass = 'xpub';
+                } else if (key.startsWith('tpub')) {
+                    keyType = 'Base tpub';
+                    keyClass = 'tpub';
+                }
+                specialNote = `<span style="color: var(--text-muted); font-size: 11px; margin-left: 10px;">🔑 Used in ${keyObj.descriptorCount} descriptor${keyObj.descriptorCount > 1 ? 's' : ''}</span>`;
+            } else if (keyObj.type === 'descriptor') {
+                keyType = 'Full Descriptor';
+                keyClass = 'descriptor';
+                specialNote = `<span style="color: var(--text-muted); font-size: 11px; margin-left: 10px;">📋 Based on ${keyObj.baseKey.substring(0, 15)}...</span>`;
+            } else {
+                // Individual keys (legacy handling)
+                if (key.startsWith('xpub')) {
+                    keyType = 'xpub';
+                    keyClass = 'xpub';
+                } else if (key.startsWith('tpub')) {
+                    keyType = 'tpub';
+                    keyClass = 'tpub';
+                } else if (key.length === 64) {
+                    keyType = 'X-only';
+                    keyClass = 'xonly';
+                } else if (key.length === 66 && (key.startsWith('02') || key.startsWith('03'))) {
+                    keyType = 'Compressed';
+                    keyClass = 'compressed';
+                } else if (key.includes('[') && key.includes(']')) {
+                    keyType = 'Descriptor';
+                    keyClass = 'descriptor';
+                }
             }
             
             const itemDiv = document.createElement('div');
