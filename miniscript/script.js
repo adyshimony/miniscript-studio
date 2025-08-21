@@ -1782,8 +1782,8 @@ class MiniscriptCompiler {
     }
 
     formatMiniscript(expression) {
-        if (!expression || expression.length < 80) {
-            return expression; // Don't format short expressions
+        if (!expression) {
+            return expression; // Return empty expressions as-is
         }
         
         // Clean the expression first
@@ -1887,8 +1887,8 @@ class MiniscriptCompiler {
     }
 
     formatPolicy(expression) {
-        if (!expression || expression.length < 40) {
-            return expression; // Don't format short expressions
+        if (!expression) {
+            return expression; // Return empty expressions as-is
         }
         
         // Clean the expression first
@@ -1938,9 +1938,7 @@ class MiniscriptCompiler {
         const indent = (level) => '  '.repeat(level);
         
         // Functions that should format with multiple lines (policy operators)
-        const multiLineOperators = ['and', 'or', 'thresh', 'threshold', 'after', 'older'];
-        
-        console.log('Policy tokens:', tokens);
+        const multiLineOperators = ['and', 'or', 'thresh', 'threshold'];
         
         for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
@@ -1959,8 +1957,6 @@ class MiniscriptCompiler {
                 const shouldBeMultiLine = multiLineOperators.some(op => 
                     prevFunction === op || prevFunction.endsWith(':' + op) || prevFunction.includes('_' + op)
                 );
-                
-                console.log(`Policy: Processing open paren after function: "${prevFunction}", shouldBeMultiLine: ${shouldBeMultiLine}`);
                 
                 // Add newline and indent after opening paren for multiline functions
                 if (shouldBeMultiLine && nextToken?.type !== 'close') {
