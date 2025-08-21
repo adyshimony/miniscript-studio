@@ -122,6 +122,11 @@ class MiniscriptCompiler {
             this.selectAllKeys(false);
         });
 
+        // Format buttons
+        document.getElementById('format-miniscript-btn').addEventListener('click', () => {
+            this.toggleMiniscriptFormat();
+        });
+
         // Close modal when clicking outside
         document.getElementById('save-modal').addEventListener('click', (e) => {
             if (e.target.id === 'save-modal') {
@@ -393,8 +398,9 @@ class MiniscriptCompiler {
         compileBtn.disabled = true;
 
         try {
-            // Replace key variables in expression
-            const processedExpression = this.replaceKeyVariables(expression, context);
+            // Clean extra characters and replace key variables in expression
+            const cleanedExpression = this.cleanExpression(expression);
+            const processedExpression = this.replaceKeyVariables(cleanedExpression, context);
             
             // Call the WASM function with context
             const result = compile_miniscript(processedExpression, context);
@@ -404,6 +410,21 @@ class MiniscriptCompiler {
             compileBtn.disabled = false;
 
             if (result.success) {
+                // Update the input display to show cleaned expression and reset format button
+                const expressionInput = document.getElementById('expression-input');
+                const formatButton = document.getElementById('format-miniscript-btn');
+                
+                expressionInput.textContent = cleanedExpression;
+                
+                // Update format button state to reflect unformatted state
+                formatButton.style.color = 'var(--text-secondary)';
+                formatButton.title = 'Format expression with indentation';
+                formatButton.dataset.formatted = 'false';
+                
+                // Re-apply syntax highlighting
+                delete expressionInput.dataset.lastHighlightedText;
+                this.highlightMiniscriptSyntax();
+                
                 // Debug: Log all available fields
                 console.log('=== ALL COMPILATION RESULT FIELDS ===');
                 console.log('success:', result.success);
@@ -458,9 +479,11 @@ class MiniscriptCompiler {
         compilePolicyBtn.disabled = true;
 
         try {
-            // Replace key variables in policy
-            const processedPolicy = this.replaceKeyVariables(policy, context);
+            // Clean extra characters and replace key variables in policy
+            const cleanedPolicy = this.cleanExpression(policy);
+            const processedPolicy = this.replaceKeyVariables(cleanedPolicy, context);
             console.log('Original policy:', policy);
+            console.log('Cleaned policy:', cleanedPolicy);
             console.log('Processed policy:', processedPolicy);
             console.log('Context:', context);
             
@@ -473,7 +496,16 @@ class MiniscriptCompiler {
 
             if (result.success && result.compiled_miniscript) {
                 // Success: fill the miniscript field and show results
-                document.getElementById('expression-input').textContent = result.compiled_miniscript;
+                const expressionInput = document.getElementById('expression-input');
+                const formatButton = document.getElementById('format-miniscript-btn');
+                
+                expressionInput.textContent = result.compiled_miniscript;
+                
+                // Reset format button state since compiled miniscript is always clean/unformatted
+                formatButton.style.color = 'var(--text-secondary)';
+                formatButton.title = 'Format expression with indentation';
+                formatButton.dataset.formatted = 'false';
+                
                 this.highlightMiniscriptSyntax();
                 
                 // Check if the compiled miniscript contains key names (like ALICE, BOB) or hex keys
@@ -1642,6 +1674,217 @@ class MiniscriptCompiler {
         this.extractionData = null;
     }
 
+    toggleMiniscriptFormat() {
+        const expressionInput = document.getElementById('expression-input');
+        const button = document.getElementById('format-miniscript-btn');
+        
+        if (!expressionInput.textContent.trim()) {
+            this.showError('No miniscript expression to format');
+            return;
+        }
+        
+        const isCurrentlyFormatted = button.dataset.formatted === 'true';
+        
+        if (isCurrentlyFormatted) {
+            // Remove formatting (compact)
+            const compactExpression = this.compactMiniscript(expressionInput.textContent);
+            expressionInput.textContent = compactExpression;
+            button.style.color = 'var(--text-secondary)';
+            button.title = 'Format expression with indentation';
+            button.dataset.formatted = 'false';
+        } else {
+            // Add formatting (indent)
+            const formattedExpression = this.formatMiniscript(expressionInput.textContent);
+            expressionInput.textContent = formattedExpression;
+            button.style.color = 'var(--success-border)';
+            button.title = 'Remove formatting (compact)';
+            button.dataset.formatted = 'true';
+        }
+        
+        // Re-apply syntax highlighting
+        delete expressionInput.dataset.lastHighlightedText;
+        this.highlightMiniscriptSyntax();
+    }
+
+    formatMiniscript(expression) {
+        if (!expression || expression.length < 80) {
+            return expression; // Don't format short expressions
+        }
+        
+        // Clean the expression first
+        const cleanExpr = this.cleanExpression(expression);
+        
+        // Parse into tokens
+        const tokens = this.parseMiniscriptTokens(cleanExpr);
+        
+        // Format the tokens
+        return this.formatTokens(tokens);
+    }
+
+    parseMiniscriptTokens(expression) {
+        const tokens = [];
+        let i = 0;
+        let currentToken = '';
+        
+        while (i < expression.length) {
+            const char = expression[i];
+            
+            if (char === '(' || char === ')' || char === ',') {
+                // Push current token if it exists
+                if (currentToken.trim()) {
+                    tokens.push({ type: 'function', value: currentToken.trim() });
+                    currentToken = '';
+                }
+                // Push delimiter
+                tokens.push({ type: char === '(' ? 'open' : char === ')' ? 'close' : 'comma', value: char });
+            } else {
+                currentToken += char;
+            }
+            
+            i++;
+        }
+        
+        // Push final token if it exists
+        if (currentToken.trim()) {
+            tokens.push({ type: 'function', value: currentToken.trim() });
+        }
+        
+        return tokens;
+    }
+
+    formatTokens(tokens) {
+        let result = '';
+        let depth = 0;
+        const indent = (level) => '  '.repeat(level);
+        
+        // Functions that should format with multiple lines
+        const multiLineOperators = ['and', 'or', 'thresh', 'and_v', 'or_c', 'or_d', 'or_i', 'andor'];
+        
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            const nextToken = tokens[i + 1];
+            const prevToken = tokens[i - 1];
+            
+            if (token.type === 'function') {
+                result += token.value;
+                
+            } else if (token.type === 'open') {
+                result += token.value;
+                depth++;
+                
+                // Check if the previous function should be multiline
+                const prevFunction = prevToken?.value || '';
+                const shouldBeMultiLine = multiLineOperators.some(op => 
+                    prevFunction === op || prevFunction.endsWith(':' + op) || prevFunction.includes('_' + op)
+                );
+                
+                // Add newline and indent after opening paren for multiline functions
+                if (shouldBeMultiLine && nextToken?.type !== 'close') {
+                    result += '\n' + indent(depth);
+                }
+                
+            } else if (token.type === 'close') {
+                depth--;
+                
+                // Check if we need newline before closing paren
+                if (prevToken?.type === 'close') {
+                    result += '\n' + indent(depth);
+                }
+                
+                result += token.value;
+                
+            } else if (token.type === 'comma') {
+                result += token.value;
+                
+                // Add newline and indent after comma if we're in a multiline context
+                if (depth > 0 && nextToken) {
+                    result += '\n' + indent(depth);
+                }
+            }
+        }
+        
+        return result;
+    }
+
+    compactMiniscript(expression) {
+        // Remove extra whitespace and newlines, then clean completely
+        return this.cleanExpression(expression);
+    }
+
+    toggleScriptFormat(button, display) {
+        const script = display.value;
+        const isCurrentlyFormatted = button.dataset.formatted === 'true';
+        
+        if (isCurrentlyFormatted) {
+            // Remove formatting (compact)
+            const compactScript = this.compactScript(script);
+            display.value = compactScript;
+            button.style.color = 'var(--text-secondary)';
+            button.title = 'Format script with indentation';
+            button.dataset.formatted = 'false';
+        } else {
+            // Add formatting (indent)
+            const formattedScript = this.formatBitcoinScript(script);
+            display.value = formattedScript;
+            button.style.color = 'var(--success-border)';
+            button.title = 'Remove formatting (compact)';
+            button.dataset.formatted = 'true';
+        }
+    }
+
+    formatBitcoinScript(script) {
+        if (!script || script.length < 100) {
+            return script; // Don't format short scripts
+        }
+        
+        const opcodes = script.split(/\s+/);
+        let result = '';
+        let depth = 0;
+        const indent = (level) => '  '.repeat(level);
+        
+        for (let i = 0; i < opcodes.length; i++) {
+            const opcode = opcodes[i];
+            
+            // Control flow operators
+            if (opcode === 'OP_IF' || opcode === 'OP_NOTIF') {
+                result += indent(depth) + opcode + '\n';
+                depth++;
+            } else if (opcode === 'OP_ELSE') {
+                result += indent(depth - 1) + opcode + '\n';
+            } else if (opcode === 'OP_ENDIF') {
+                depth--;
+                result += indent(depth) + opcode + '\n';
+            } else {
+                // Regular opcodes
+                if (result && !result.endsWith('\n')) {
+                    result += ' ';
+                }
+                result += opcode;
+                
+                // Add newline after certain opcodes for readability
+                if (opcode.includes('OP_CHECKSIG') || opcode.includes('OP_CHECKMULTISIG') || 
+                    opcode === 'OP_EQUALVERIFY' || opcode === 'OP_VERIFY') {
+                    result += '\n';
+                    if (i < opcodes.length - 1) {
+                        result += indent(depth);
+                    }
+                }
+            }
+        }
+        
+        return result.trim();
+    }
+
+    compactScript(script) {
+        // Remove extra whitespace and newlines
+        return script.replace(/\s+/g, ' ').trim();
+    }
+
+    cleanExpression(text) {
+        // Remove spaces, carriage returns, and newlines (same logic as removeExtraChars)
+        return text.replace(/[\s\r\n]/g, '');
+    }
+
     selectAllKeys(select) {
         if (!this.extractionData) return;
         
@@ -1843,10 +2086,15 @@ class MiniscriptCompiler {
             scriptAsmDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="margin: 0;">⚡ Bitcoin script (ASM)</h4>
-                    <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; font-weight: normal;">
-                        <input type="checkbox" id="hide-pushbytes" ${document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 'checked' : ''} style="margin: 0;">
-                        Hide pushbytes
-                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button id="format-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Format script with indentation" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            📐
+                        </button>
+                        <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; font-weight: normal;">
+                            <input type="checkbox" id="hide-pushbytes" ${document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 'checked' : ''} style="margin: 0;">
+                            Hide pushbytes
+                        </label>
+                    </div>
                 </div>
                 <textarea readonly id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${currentAsm}</textarea>
             `;
@@ -1854,8 +2102,19 @@ class MiniscriptCompiler {
             // Add event listener for checkbox
             const checkbox = scriptAsmDiv.querySelector('#hide-pushbytes');
             const display = scriptAsmDiv.querySelector('#script-asm-display');
+            const formatButton = scriptAsmDiv.querySelector('#format-script-btn');
+            
             checkbox.addEventListener('change', () => {
                 display.value = checkbox.checked ? simplifiedAsm : result.script_asm;
+                // Reset format state when toggling hide-pushbytes
+                formatButton.dataset.formatted = 'false';
+                formatButton.style.color = 'var(--text-secondary)';
+                formatButton.title = 'Format script with indentation';
+            });
+            
+            // Add event listener for format button
+            formatButton.addEventListener('click', () => {
+                this.toggleScriptFormat(formatButton, display);
             });
             
             resultsDiv.appendChild(scriptAsmDiv);
@@ -3418,6 +3677,14 @@ window.removeMiniscriptExtraChars = function() {
     const cursorPos = selection.rangeCount > 0 ? selection.getRangeAt(0).startOffset : 0;
     
     expressionInput.textContent = cleanedExpression;
+    
+    // Reset format button state since expression is now cleaned/unformatted
+    const formatButton = document.getElementById('format-miniscript-btn');
+    if (formatButton) {
+        formatButton.style.color = 'var(--text-secondary)';
+        formatButton.title = 'Format expression with indentation';
+        formatButton.dataset.formatted = 'false';
+    }
     
     // Save state for undo
     if (window.compiler && window.compiler.saveState) {
