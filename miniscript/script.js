@@ -2260,32 +2260,57 @@ class MiniscriptCompiler {
             scriptAsmDiv.className = 'result-box info';
             
             const simplifiedAsm = this.simplifyAsm(result.script_asm);
-            const currentAsm = document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 
+            const currentAsm = document.getElementById('hide-pushbytes-btn') && document.getElementById('hide-pushbytes-btn').dataset.active === 'true' ? 
                 simplifiedAsm : result.script_asm;
                 
             scriptAsmDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="margin: 0;">⚡ Bitcoin script (ASM)</h4>
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 0px;">
                         <button id="format-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Format script with indentation" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             📐
                         </button>
-                        <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; font-weight: normal;">
-                            <input type="checkbox" id="hide-pushbytes" ${document.getElementById('hide-pushbytes') && document.getElementById('hide-pushbytes').checked ? 'checked' : ''} style="margin: 0;">
-                            Hide pushbytes
-                        </label>
+                        <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Hide pushbytes" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            🔍
+                        </button>
                     </div>
                 </div>
                 <textarea readonly id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${currentAsm}</textarea>
             `;
             
-            // Add event listener for checkbox
-            const checkbox = scriptAsmDiv.querySelector('#hide-pushbytes');
+            // Add event listener for toggle button
+            const toggleButton = scriptAsmDiv.querySelector('#hide-pushbytes-btn');
             const display = scriptAsmDiv.querySelector('#script-asm-display');
             const formatButton = scriptAsmDiv.querySelector('#format-script-btn');
             
-            checkbox.addEventListener('change', () => {
-                display.value = checkbox.checked ? simplifiedAsm : result.script_asm;
+            // Initialize toggle button state based on previous state if any
+            const previousState = document.getElementById('hide-pushbytes-btn') && document.getElementById('hide-pushbytes-btn').dataset.active === 'true';
+            if (previousState) {
+                toggleButton.style.color = 'var(--success-border)';
+                toggleButton.title = 'Show pushbytes';
+                toggleButton.dataset.active = 'true';
+                display.value = simplifiedAsm;
+            } else {
+                toggleButton.dataset.active = 'false';
+            }
+            
+            toggleButton.addEventListener('click', () => {
+                const isCurrentlyHiding = toggleButton.dataset.active === 'true';
+                
+                if (isCurrentlyHiding) {
+                    // Show pushbytes
+                    display.value = result.script_asm;
+                    toggleButton.style.color = 'var(--text-secondary)';
+                    toggleButton.title = 'Hide pushbytes';
+                    toggleButton.dataset.active = 'false';
+                } else {
+                    // Hide pushbytes
+                    display.value = simplifiedAsm;
+                    toggleButton.style.color = 'var(--success-border)';
+                    toggleButton.title = 'Show pushbytes';
+                    toggleButton.dataset.active = 'true';
+                }
+                
                 // Reset format state when toggling hide-pushbytes
                 formatButton.dataset.formatted = 'false';
                 formatButton.style.color = 'var(--text-secondary)';
