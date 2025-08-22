@@ -2124,34 +2124,52 @@ class MiniscriptCompiler {
         let result = '';
         let depth = 0;
         const indent = (level) => '  '.repeat(level); // 2 spaces per level
+        let currentLineLength = 0;
+        const MAX_LINE_LENGTH = 80; // Target line length for wrapping
         
         for (let i = 0; i < opcodes.length; i++) {
             const opcode = opcodes[i];
             const nextOpcode = i < opcodes.length - 1 ? opcodes[i + 1] : null;
+            const prevOpcode = i > 0 ? opcodes[i - 1] : null;
             
-            // Control flow operators that need special handling
+            // Special case: OP_IFDUP should NOT cause a block increase by itself
+            // Only OP_IF and OP_NOTIF should increase depth
             if (opcode === 'OP_IF' || opcode === 'OP_NOTIF') {
-                // IF/NOTIF go on the same line as preceding ops, then newline after
+                // IF/NOTIF can stay on same line or go on new line based on context
                 if (result && !result.endsWith('\n')) {
                     result += ' ';
                 }
-                result += opcode + '\n';
+                result += opcode;
+                
+                // Always start new block after IF/NOTIF
+                result += '\n';
                 depth++;
-                // Next line needs indentation
-                if (nextOpcode && nextOpcode !== 'OP_ELSE' && nextOpcode !== 'OP_ENDIF') {
-                    result += indent(depth);
+                result += indent(depth);
+                currentLineLength = indent(depth).length;
+                
+            } else if (opcode === 'OP_IFDUP') {
+                // IFDUP stays on same line, doesn't create new block by itself
+                if (result && !result.endsWith('\n')) {
+                    result += ' ';
+                    currentLineLength += 1;
                 }
+                result += opcode;
+                currentLineLength += opcode.length;
+                
             } else if (opcode === 'OP_ELSE') {
                 // ELSE goes on its own line at the previous depth
                 depth--;
                 if (!result.endsWith('\n')) {
                     result += '\n';
                 }
-                result += indent(depth) + opcode + '\n';
+                result += indent(depth) + opcode;
                 depth++;
-                // Next line needs indentation
                 if (nextOpcode && nextOpcode !== 'OP_ENDIF') {
-                    result += indent(depth);
+                    result += '\n' + indent(depth);
+                    currentLineLength = indent(depth).length;
+                } else {
+                    result += '\n';
+                    currentLineLength = 0;
                 }
             } else if (opcode === 'OP_ENDIF') {
                 // ENDIF goes on its own line at the previous depth
@@ -2160,25 +2178,42 @@ class MiniscriptCompiler {
                     result += '\n';
                 }
                 result += indent(depth) + opcode;
-                // Only add newline if there are more opcodes and next is not another ENDIF
+                // Add newline if there are more opcodes
                 if (nextOpcode) {
                     result += '\n';
-                    // If next opcode is not a control flow, add indentation
-                    if (nextOpcode !== 'OP_ENDIF' && nextOpcode !== 'OP_ELSE') {
+                    if (depth > 0) {
                         result += indent(depth);
+                        currentLineLength = indent(depth).length;
+                    } else {
+                        currentLineLength = 0;
                     }
                 }
             } else {
-                // Regular opcodes - add space if not at start of line
-                if (result && !result.endsWith('\n') && !result.endsWith(' ')) {
-                    result += ' ';
-                }
-                result += opcode;
+                // Regular opcodes - handle line wrapping based on logical breaks
+                const opcodeLength = opcode.length;
                 
-                // Check if next opcode is a control flow that should go on new line
-                if (nextOpcode && (nextOpcode === 'OP_ELSE' || nextOpcode === 'OP_ENDIF')) {
-                    // Don't add anything, let the control flow handle the newline
+                // Logical break points based on your target pattern:
+                // 1. After OP_TOALTSTACK (end of complete sequence)
+                // 2. After OP_CHECKSIG when line is long and not followed by OP_TOALTSTACK
+                // 3. When line would be too long (80+ chars)
+                const shouldBreak = depth > 0 && (
+                    (currentLineLength > 0 && currentLineLength + opcodeLength + 1 > MAX_LINE_LENGTH) ||
+                    (prevOpcode === 'OP_TOALTSTACK') ||
+                    (prevOpcode === 'OP_CHECKSIG' && nextOpcode !== 'OP_TOALTSTACK' && currentLineLength > 70)
+                );
+                
+                if (shouldBreak && currentLineLength > indent(depth).length) {
+                    // Add newline and indent for continuation
+                    result += '\n' + indent(depth);
+                    currentLineLength = indent(depth).length;
+                } else if (result && !result.endsWith('\n') && !result.endsWith(' ')) {
+                    // Add space between opcodes on same line
+                    result += ' ';
+                    currentLineLength += 1;
                 }
+                
+                result += opcode;
+                currentLineLength += opcodeLength;
             }
         }
         
