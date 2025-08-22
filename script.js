@@ -516,7 +516,13 @@ class MiniscriptCompiler {
                 const expressionInput = document.getElementById('expression-input');
                 const formatButton = document.getElementById('format-miniscript-btn');
                 
-                expressionInput.textContent = result.compiled_miniscript;
+                // Replace keys with names in the compiled miniscript if we have key variables
+                let displayMiniscript = result.compiled_miniscript;
+                if (this.keyVariables.size > 0) {
+                    displayMiniscript = this.replaceKeysWithNames(result.compiled_miniscript);
+                }
+                
+                expressionInput.textContent = displayMiniscript;
                 
                 // Reset format button state since compiled miniscript is always clean/unformatted
                 formatButton.style.color = 'var(--text-secondary)';
@@ -525,17 +531,16 @@ class MiniscriptCompiler {
                 
                 this.highlightMiniscriptSyntax();
                 
-                // Check if the compiled miniscript contains key names (like ALICE, BOB) or hex keys
-                const containsKeyNames = this.containsKeyNames(result.compiled_miniscript);
-                
-                // Set toggle button state based on content
+                // Always set toggle button to "Hide Key Names" state after compilation if we replaced keys
                 const toggleBtn = document.getElementById('key-names-toggle');
                 if (toggleBtn) {
-                    if (containsKeyNames) {
+                    if (this.keyVariables.size > 0 && displayMiniscript !== result.compiled_miniscript) {
+                        // We replaced keys with names, so show "Hide Key Names" state
                         toggleBtn.style.color = 'var(--success-border)';
                         toggleBtn.title = 'Hide key names';
                         toggleBtn.dataset.active = 'true';
                     } else {
+                        // No replacements made or no key variables
                         toggleBtn.style.color = 'var(--text-secondary)';
                         toggleBtn.title = 'Show key names';
                         toggleBtn.dataset.active = 'false';
