@@ -924,8 +924,11 @@ pub fn lift_to_policy(miniscript: &str) -> JsValue {
 
 fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
     let mut builder = Builder::new();
+    let parts: Vec<&str> = asm.split_whitespace().collect();
+    let mut i = 0;
     
-    for part in asm.split_whitespace() {
+    while i < parts.len() {
+        let part = parts[i];
         match part.to_uppercase().as_str() {
             // Basic opcodes
             "OP_0" | "OP_FALSE" | "OP_PUSHNUM_0" => builder = builder.push_opcode(opcodes::all::OP_PUSHBYTES_0),
@@ -995,13 +998,28 @@ fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
             // Handle OP_PUSHBYTES_* opcodes - these should be followed by hex data
             pushbytes if pushbytes.starts_with("OP_PUSHBYTES_") => {
                 // OP_PUSHBYTES_33 means "push next 33 bytes"
-                // We'll just treat it as an opcode for now and let the bitcoin crate handle it
-                if let Ok(opcode_num) = pushbytes.strip_prefix("OP_PUSHBYTES_").unwrap().parse::<u8>() {
-                    if opcode_num <= 75 {
-                        let opcode = Opcode::from(opcode_num);
-                        builder = builder.push_opcode(opcode);
+                if let Ok(expected_size) = pushbytes.strip_prefix("OP_PUSHBYTES_").unwrap().parse::<usize>() {
+                    if expected_size <= 75 {
+                        // Get the next token which should be the hex data
+                        if i + 1 < parts.len() {
+                            let hex_data = parts[i + 1];
+                            if hex_data.len() % 2 == 0 && hex_data.chars().all(|c| c.is_ascii_hexdigit()) {
+                                let bytes = hex::decode(hex_data).map_err(|_| "Invalid hex data after OP_PUSHBYTES")?;
+                                if bytes.len() == expected_size {
+                                    let push_bytes = PushBytesBuf::try_from(bytes).map_err(|_| "Invalid push bytes")?;
+                                    builder = builder.push_slice(push_bytes);
+                                    i += 1; // Skip the next token since we consumed it
+                                } else {
+                                    return Err(format!("OP_PUSHBYTES_{} expects {} bytes, got {} bytes", expected_size, expected_size, bytes.len()));
+                                }
+                            } else {
+                                return Err(format!("Expected hex data after {}, got: {}", pushbytes, hex_data));
+                            }
+                        } else {
+                            return Err(format!("Missing hex data after {}", pushbytes));
+                        }
                     } else {
-                        return Err(format!("Invalid pushbytes size: {}", opcode_num));
+                        return Err(format!("Invalid pushbytes size: {}", expected_size));
                     }
                 } else {
                     return Err(format!("Invalid OP_PUSHBYTES format: {}", pushbytes));
@@ -1024,6 +1042,7 @@ fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
                 }
             }
         }
+        i += 1; // Move to next token
     }
     
     Ok(builder.into_script())

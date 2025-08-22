@@ -2039,12 +2039,18 @@ class MiniscriptCompiler {
         try {
             console.log('Lifting Bitcoin script:', asmScript);
             
-            // Clean push bytes from ASM before lifting (remove OP_PUSHBYTES_* tokens)
-            const cleanedAsm = this.simplifyAsm(asmScript);
-            console.log('Cleaned ASM for lifting:', cleanedAsm);
+            // Lift ASM to Miniscript with pushbytes intact (no more auto-cleaning)
+            const miniscriptResult = lift_to_miniscript(asmScript);
             
-            // Step 1: Lift ASM to Miniscript
-            const miniscriptResult = lift_to_miniscript(cleanedAsm);
+            // Fallback to cleaned ASM (commented out - testing new parser)
+            /*
+            if (!miniscriptResult.success) {
+                console.log('Failed with pushbytes, trying cleaned ASM...');
+                const cleanedAsm = this.simplifyAsm(asmScript);
+                console.log('Cleaned ASM for lifting:', cleanedAsm);
+                miniscriptResult = lift_to_miniscript(cleanedAsm);
+            }
+            */
             
             if (miniscriptResult.success && miniscriptResult.miniscript) {
                 // Fill miniscript textarea
