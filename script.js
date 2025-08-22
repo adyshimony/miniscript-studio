@@ -2437,7 +2437,7 @@ class MiniscriptCompiler {
                             📐
                         </button>
                         <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Hide pushbytes" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                            🔍
+                            👁️
                         </button>
                         <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             ⬆️
