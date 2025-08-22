@@ -5,7 +5,7 @@ use miniscript::policy::Liftable;
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf};
 use bitcoin::blockdata::script::{Builder, PushBytesBuf};
 use bitcoin::blockdata::opcodes;
-use bitcoin::opcodes::Opcode;
+// use bitcoin::opcodes::Opcode; // Commented out - not needed after fixing parse_asm_to_script
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
 use std::str::FromStr;
@@ -1126,6 +1126,8 @@ where
     for<'a> Ctx::Key: std::fmt::Display + std::str::FromStr,
     <Ctx::Key as std::str::FromStr>::Err: std::fmt::Display,
 {
+    console_log!("Attempting to lift script to miniscript...");
+    
     // Try to parse the script as a miniscript
     match Miniscript::<Ctx::Key, Ctx>::parse(script) {
         Ok(ms) => {
@@ -1150,6 +1152,7 @@ fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
     // Try Legacy context first
     match trimmed.parse::<Miniscript<PublicKey, Legacy>>() {
         Ok(ms) => {
+            console_log!("Attempting to lift miniscript to policy (Legacy)");
             match ms.lift() {
                 Ok(policy) => {
                     let policy_string = policy.to_string();
@@ -1165,6 +1168,7 @@ fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
     // Try Segwit context
     match trimmed.parse::<Miniscript<PublicKey, Segwitv0>>() {
         Ok(ms) => {
+            console_log!("Attempting to lift miniscript to policy (Segwit)");
             match ms.lift() {
                 Ok(policy) => {
                     let policy_string = policy.to_string();
@@ -1180,6 +1184,7 @@ fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
     // Try Taproot context with XOnlyPublicKey
     match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         Ok(ms) => {
+            console_log!("Attempting to lift miniscript to policy (Taproot)");
             match ms.lift() {
                 Ok(policy) => {
                     let policy_string = policy.to_string();
@@ -1192,7 +1197,7 @@ fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
         Err(e) => console_log!("Taproot miniscript parsing failed: {}", e),
     }
     
-    Err("Cannot lift this miniscript to policy in any context (Legacy, Segwit, Taproot)".to_string())
+    Err("Cannot lift this miniscript to policy in any context (Legacy, Segwit, Taproot). The miniscript may not be liftable or may have parsing issues.".to_string())
 }
 
 

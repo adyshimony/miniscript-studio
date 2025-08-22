@@ -20,9 +20,13 @@ MINISCRIPT COMPILER PROJECT - SESSION GUIDE (UPDATED)
 
   🔧 WASM BUILD COMMAND
 
-  IMPORTANT: After ANY Rust changes in src/, you MUST run:
-  wasm-pack build --target web
+  ⚠️ IMPORTANT: ONLY USER RUNS WASM BUILD - NOT CLAUDE ⚠️
 
+  After ANY Rust changes in src/, USER must run:
+  wasm-pack build --target web
+  cp -r pkg/* miniscript/pkg/
+
+  Claude should TELL user when to run WASM build, never run it directly.
   This builds the WASM module that powers the compiler. Without running this,
   Rust changes won't take effect in the browser!
 
@@ -66,13 +70,13 @@ MINISCRIPT COMPILER PROJECT - SESSION GUIDE (UPDATED)
   - Use: Alice or Alice\\'s or avoid apostrophes entirely
   - Always check for syntax errors in browser console
 
-  🚀 LIFT FUNCTIONALITY (UPDATED!)
+  🚀 LIFT FUNCTIONALITY (FIXED!)
 
   What it does:
   - Lift button (⬆️) in ASM script editor
   - Converts Bitcoin scripts to Miniscript and Policy
   - Supports both hex and ASM formats
-  - Auto-cleans pushbytes before lifting
+  - NO MORE auto-cleaning! Now works with pushbytes intact
 
   Current Implementation:
   // In src/lib.rs
@@ -81,18 +85,19 @@ MINISCRIPT COMPILER PROJECT - SESSION GUIDE (UPDATED)
   #[wasm_bindgen]
   pub fn lift_to_policy(miniscript: &str) -> JsValue
 
-  // ASM parser supports all major opcodes including:
+  // Fixed ASM parser properly handles OP_PUSHBYTES_X followed by hex data
+  // Supports all major opcodes including:
   // OP_PUSHNUM_0-16, OP_CSV, OP_CLTV, OP_IFDUP, OP_PUSHBYTES_*, etc.
 
-  JavaScript Auto-Cleaning:
-  // Before sending to Rust, auto-clean using existing simplifyAsm():
-  const cleanedAsm = this.simplifyAsm(asmScript);
-  const miniscriptResult = lift_to_miniscript(cleanedAsm);
+  JavaScript Changes:
+  // NO MORE auto-cleaning! Sends ASM with pushbytes intact:
+  const miniscriptResult = lift_to_miniscript(asmScript);
 
   Enhanced Error Reporting:
   - Now shows specific rust-miniscript library errors for each context
   - Format: "Cannot lift... Errors: Legacy: [error]; Segwit: [error];
   Taproot: [error]"
+  - Better console logging for debugging lift operations
 
   User Experience:
   1. User compiles policy/miniscript → gets ASM output
@@ -172,15 +177,40 @@ MINISCRIPT COMPILER PROJECT - SESSION GUIDE (UPDATED)
   bitcoin = "0.32"
   miniscript = { version = "12.0", features = ["compiler", "std"] }
 
-  Recent Fixes:
-  - Added OP_PUSHNUM_* support (0-16)
-  - Added OP_CSV and OP_CLTV short forms
-  - Added OP_PUSHBYTES_* handling (0-75)
-  - Enhanced error reporting from rust-miniscript library
-  - Auto-cleaning integration with existing simplifyAsm()
-  - Policy compilation now auto-shows key names in miniscript
+  Recent Fixes (Latest Session):
+  - ✅ FIXED: ASM parser now correctly handles OP_PUSHBYTES_X data sequences
+  - ✅ REMOVED: Auto-cleaning before lift (now works with pushbytes intact)
+  - ✅ IMPROVED: Better error messages and console logging for lift operations
+  - ✅ ENHANCED: ASM script formatting with proper line wrapping and indentation
+  - ✅ ADDED: Copy button for Bitcoin script results (👁️ icon for hide pushbytes)
+  - ✅ FIXED: Policy compilation now auto-shows key names in miniscript result
+  
+  📋 PENDING UX IMPROVEMENTS (Next Session Tasks)
+
+  1. **Clear Policy Behavior**
+     - Modify clear policy to only clear the policy field, leave miniscript intact
+
+  2. **ASM Script Enhancements** 
+     - Add "Show key names" toggle button to ASM script section
+     - Make ASM script editor visible before compilation (currently only shows after)
+
+  3. **Key Management Improvements**
+     - Auto-generate key variables when user pastes expressions with names (not just raw keys)
+     - Detect patterns like `Alice`, `Bob`, etc. in pasted text and suggest key creation
+
+  4. **Error Messages & Tips**
+     - Better error message positioning and visibility  
+     - Auto-clear error messages when appropriate
+     - Update and expand help tips throughout interface
+
+  5. **Address Generation**
+     - Add testnet/mainnet selection for address generation
+
+  6. **Repository Separation** 
+     - Split into two repos: Miniscript compiler standalone + personal site separate
 
   ---
   Remember: The user gets frustrated when you forget the copy step, 
   forget the WASM build step, or make things overly complicated! 
   The lift functionality is now robust and provides detailed feedback.
+  USER RUNS WASM BUILD - NOT CLAUDE!
