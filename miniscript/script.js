@@ -2123,34 +2123,61 @@ class MiniscriptCompiler {
         const opcodes = script.split(/\s+/);
         let result = '';
         let depth = 0;
-        const indent = (level) => '  '.repeat(level);
+        const indent = (level) => '  '.repeat(level); // 2 spaces per level
         
         for (let i = 0; i < opcodes.length; i++) {
             const opcode = opcodes[i];
+            const nextOpcode = i < opcodes.length - 1 ? opcodes[i + 1] : null;
             
-            // Control flow operators
+            // Control flow operators that need special handling
             if (opcode === 'OP_IF' || opcode === 'OP_NOTIF') {
+                // IF/NOTIF go on the same line as preceding ops, then newline after
+                if (result && !result.endsWith('\n')) {
+                    result += ' ';
+                }
+                result += opcode + '\n';
+                depth++;
+                // Next line needs indentation
+                if (nextOpcode && nextOpcode !== 'OP_ELSE' && nextOpcode !== 'OP_ENDIF') {
+                    result += indent(depth);
+                }
+            } else if (opcode === 'OP_ELSE') {
+                // ELSE goes on its own line at the previous depth
+                depth--;
+                if (!result.endsWith('\n')) {
+                    result += '\n';
+                }
                 result += indent(depth) + opcode + '\n';
                 depth++;
-            } else if (opcode === 'OP_ELSE') {
-                result += indent(depth - 1) + opcode + '\n';
+                // Next line needs indentation
+                if (nextOpcode && nextOpcode !== 'OP_ENDIF') {
+                    result += indent(depth);
+                }
             } else if (opcode === 'OP_ENDIF') {
+                // ENDIF goes on its own line at the previous depth
                 depth--;
-                result += indent(depth) + opcode + '\n';
+                if (!result.endsWith('\n')) {
+                    result += '\n';
+                }
+                result += indent(depth) + opcode;
+                // Only add newline if there are more opcodes and next is not another ENDIF
+                if (nextOpcode) {
+                    result += '\n';
+                    // If next opcode is not a control flow, add indentation
+                    if (nextOpcode !== 'OP_ENDIF' && nextOpcode !== 'OP_ELSE') {
+                        result += indent(depth);
+                    }
+                }
             } else {
-                // Regular opcodes
-                if (result && !result.endsWith('\n')) {
+                // Regular opcodes - add space if not at start of line
+                if (result && !result.endsWith('\n') && !result.endsWith(' ')) {
                     result += ' ';
                 }
                 result += opcode;
                 
-                // Add newline after certain opcodes for readability
-                if (opcode.includes('OP_CHECKSIG') || opcode.includes('OP_CHECKMULTISIG') || 
-                    opcode === 'OP_EQUALVERIFY' || opcode === 'OP_VERIFY') {
-                    result += '\n';
-                    if (i < opcodes.length - 1) {
-                        result += indent(depth);
-                    }
+                // Check if next opcode is a control flow that should go on new line
+                if (nextOpcode && (nextOpcode === 'OP_ELSE' || nextOpcode === 'OP_ENDIF')) {
+                    // Don't add anything, let the control flow handle the newline
                 }
             }
         }
@@ -2159,7 +2186,8 @@ class MiniscriptCompiler {
     }
 
     compactScript(script) {
-        // Remove extra whitespace and newlines
+        // First, normalize all whitespace (including newlines and indentation) to single spaces
+        // This ensures opcodes are properly separated
         return script.replace(/\s+/g, ' ').trim();
     }
 
@@ -2378,6 +2406,9 @@ class MiniscriptCompiler {
                         </button>
                         <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             ⬆️
+                        </button>
+                        <button id="copy-script-btn" onclick="copyBitcoinScript()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy Bitcoin script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            📋
                         </button>
                     </div>
                 </div>
@@ -4182,6 +4213,56 @@ window.copyPolicyExpression = function() {
         console.error('Failed to copy:', err);
         // Fallback for older browsers
         policyInput.select();
+        document.execCommand('copy');
+        
+        // Visual feedback for fallback
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
+    });
+};
+
+window.copyBitcoinScript = function() {
+    const scriptDisplay = document.getElementById('script-asm-display');
+    
+    if (!scriptDisplay) {
+        alert('No Bitcoin script to copy');
+        return;
+    }
+    
+    const script = scriptDisplay.value.trim();
+    
+    if (!script) {
+        alert('No Bitcoin script to copy');
+        return;
+    }
+    
+    // Find the button for visual feedback
+    const button = event.target.closest('button');
+    const originalTitle = button.title;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(script).then(() => {
+        // Visual feedback - temporarily change button
+        button.textContent = '✅';
+        button.title = 'Copied!';
+        button.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            button.textContent = '📋';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 1500);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        // Fallback for older browsers
+        scriptDisplay.select();
         document.execCommand('copy');
         
         // Visual feedback for fallback
