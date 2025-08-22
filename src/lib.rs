@@ -1,7 +1,11 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey};
-use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1};
+use miniscript::policy::Liftable;
+use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf};
+use bitcoin::blockdata::script::{Builder, PushBytesBuf};
+use bitcoin::blockdata::opcodes;
+use bitcoin::opcodes::Opcode;
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
 use std::str::FromStr;
@@ -865,6 +869,313 @@ fn generate_taproot_address(_script: &bitcoin::Script, network: Network) -> Opti
         Err(_) => None
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct LiftResult {
+    pub success: bool,
+    pub error: Option<String>,
+    pub miniscript: Option<String>,
+    pub policy: Option<String>,
+}
+
+#[wasm_bindgen]
+pub fn lift_to_miniscript(bitcoin_script: &str) -> JsValue {
+    console_log!("Lifting Bitcoin script to miniscript: {}", bitcoin_script);
+    
+    let result = match perform_lift_to_miniscript(bitcoin_script) {
+        Ok(miniscript) => LiftResult {
+            success: true,
+            error: None,
+            miniscript: Some(miniscript),
+            policy: None,
+        },
+        Err(e) => LiftResult {
+            success: false,
+            error: Some(e),
+            miniscript: None,
+            policy: None,
+        }
+    };
+    
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
+#[wasm_bindgen]
+pub fn lift_to_policy(miniscript: &str) -> JsValue {
+    console_log!("Lifting miniscript to policy: {}", miniscript);
+    
+    let result = match perform_lift_to_policy(miniscript) {
+        Ok(policy) => LiftResult {
+            success: true,
+            error: None,
+            miniscript: None,
+            policy: Some(policy),
+        },
+        Err(e) => LiftResult {
+            success: false,
+            error: Some(e),
+            miniscript: None,
+            policy: None,
+        }
+    };
+    
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
+fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
+    let mut builder = Builder::new();
+    
+    for part in asm.split_whitespace() {
+        match part.to_uppercase().as_str() {
+            // Basic opcodes
+            "OP_0" | "OP_FALSE" | "OP_PUSHNUM_0" => builder = builder.push_opcode(opcodes::all::OP_PUSHBYTES_0),
+            "OP_1" | "OP_TRUE" | "OP_PUSHNUM_1" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_1),
+            "OP_2" | "OP_PUSHNUM_2" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_2),
+            "OP_3" | "OP_PUSHNUM_3" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_3),
+            "OP_4" | "OP_PUSHNUM_4" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_4),
+            "OP_5" | "OP_PUSHNUM_5" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_5),
+            "OP_6" | "OP_PUSHNUM_6" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_6),
+            "OP_7" | "OP_PUSHNUM_7" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_7),
+            "OP_8" | "OP_PUSHNUM_8" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_8),
+            "OP_9" | "OP_PUSHNUM_9" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_9),
+            "OP_10" | "OP_PUSHNUM_10" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_10),
+            "OP_11" | "OP_PUSHNUM_11" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_11),
+            "OP_12" | "OP_PUSHNUM_12" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_12),
+            "OP_13" | "OP_PUSHNUM_13" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_13),
+            "OP_14" | "OP_PUSHNUM_14" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_14),
+            "OP_15" | "OP_PUSHNUM_15" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_15),
+            "OP_16" | "OP_PUSHNUM_16" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_16),
+            
+            // Common opcodes
+            "OP_DUP" => builder = builder.push_opcode(opcodes::all::OP_DUP),
+            "OP_HASH160" => builder = builder.push_opcode(opcodes::all::OP_HASH160),
+            "OP_HASH256" => builder = builder.push_opcode(opcodes::all::OP_HASH256),
+            "OP_SHA256" => builder = builder.push_opcode(opcodes::all::OP_SHA256),
+            "OP_RIPEMD160" => builder = builder.push_opcode(opcodes::all::OP_RIPEMD160),
+            "OP_EQUAL" => builder = builder.push_opcode(opcodes::all::OP_EQUAL),
+            "OP_EQUALVERIFY" => builder = builder.push_opcode(opcodes::all::OP_EQUALVERIFY),
+            "OP_CHECKSIG" => builder = builder.push_opcode(opcodes::all::OP_CHECKSIG),
+            "OP_CHECKSIGVERIFY" => builder = builder.push_opcode(opcodes::all::OP_CHECKSIGVERIFY),
+            "OP_CHECKMULTISIG" => builder = builder.push_opcode(opcodes::all::OP_CHECKMULTISIG),
+            "OP_CHECKMULTISIGVERIFY" => builder = builder.push_opcode(opcodes::all::OP_CHECKMULTISIGVERIFY),
+            "OP_CHECKLOCKTIMEVERIFY" | "OP_CLTV" => builder = builder.push_opcode(opcodes::all::OP_CLTV),
+            "OP_CHECKSEQUENCEVERIFY" | "OP_CSV" => builder = builder.push_opcode(opcodes::all::OP_CSV),
+            
+            // Control flow
+            "OP_IF" => builder = builder.push_opcode(opcodes::all::OP_IF),
+            "OP_NOTIF" => builder = builder.push_opcode(opcodes::all::OP_NOTIF),
+            "OP_ELSE" => builder = builder.push_opcode(opcodes::all::OP_ELSE),
+            "OP_ENDIF" => builder = builder.push_opcode(opcodes::all::OP_ENDIF),
+            "OP_VERIFY" => builder = builder.push_opcode(opcodes::all::OP_VERIFY),
+            "OP_RETURN" => builder = builder.push_opcode(opcodes::all::OP_RETURN),
+            
+            // Stack operations
+            "OP_SIZE" => builder = builder.push_opcode(opcodes::all::OP_SIZE),
+            "OP_SWAP" => builder = builder.push_opcode(opcodes::all::OP_SWAP),
+            "OP_DROP" => builder = builder.push_opcode(opcodes::all::OP_DROP),
+            "OP_OVER" => builder = builder.push_opcode(opcodes::all::OP_OVER),
+            "OP_PICK" => builder = builder.push_opcode(opcodes::all::OP_PICK),
+            "OP_ROLL" => builder = builder.push_opcode(opcodes::all::OP_ROLL),
+            "OP_ROT" => builder = builder.push_opcode(opcodes::all::OP_ROT),
+            "OP_2DUP" => builder = builder.push_opcode(opcodes::all::OP_2DUP),
+            "OP_2DROP" => builder = builder.push_opcode(opcodes::all::OP_2DROP),
+            "OP_NIP" => builder = builder.push_opcode(opcodes::all::OP_NIP),
+            "OP_TUCK" => builder = builder.push_opcode(opcodes::all::OP_TUCK),
+            "OP_FROMALTSTACK" => builder = builder.push_opcode(opcodes::all::OP_FROMALTSTACK),
+            "OP_TOALTSTACK" => builder = builder.push_opcode(opcodes::all::OP_TOALTSTACK),
+            "OP_IFDUP" => builder = builder.push_opcode(opcodes::all::OP_IFDUP),
+            
+            // Arithmetic
+            "OP_ADD" => builder = builder.push_opcode(opcodes::all::OP_ADD),
+            "OP_SUB" => builder = builder.push_opcode(opcodes::all::OP_SUB),
+            "OP_BOOLAND" => builder = builder.push_opcode(opcodes::all::OP_BOOLAND),
+            "OP_BOOLOR" => builder = builder.push_opcode(opcodes::all::OP_BOOLOR),
+            "OP_NOT" => builder = builder.push_opcode(opcodes::all::OP_NOT),
+            
+            // Handle OP_PUSHBYTES_* opcodes - these should be followed by hex data
+            pushbytes if pushbytes.starts_with("OP_PUSHBYTES_") => {
+                // OP_PUSHBYTES_33 means "push next 33 bytes"
+                // We'll just treat it as an opcode for now and let the bitcoin crate handle it
+                if let Ok(opcode_num) = pushbytes.strip_prefix("OP_PUSHBYTES_").unwrap().parse::<u8>() {
+                    if opcode_num <= 75 {
+                        let opcode = Opcode::from(opcode_num);
+                        builder = builder.push_opcode(opcode);
+                    } else {
+                        return Err(format!("Invalid pushbytes size: {}", opcode_num));
+                    }
+                } else {
+                    return Err(format!("Invalid OP_PUSHBYTES format: {}", pushbytes));
+                }
+            },
+            
+            // If it looks like hex data, treat it as a data push
+            hex_data if hex_data.len() > 2 && hex_data.len() % 2 == 0 && hex_data.chars().all(|c| c.is_ascii_hexdigit()) => {
+                let bytes = hex::decode(hex_data).map_err(|_| "Invalid hex in ASM")?;
+                let push_bytes = PushBytesBuf::try_from(bytes).map_err(|_| "Invalid push bytes")?;
+                builder = builder.push_slice(push_bytes);
+            },
+            
+            // Try to parse as number
+            num_str => {
+                if let Ok(num) = num_str.parse::<i64>() {
+                    builder = builder.push_int(num);
+                } else {
+                    return Err(format!("Unsupported opcode or invalid data: {}", part));
+                }
+            }
+        }
+    }
+    
+    Ok(builder.into_script())
+}
+
+// Previous complex parser - commented out
+/*
+fn parse_asm_to_script_old(asm: &str) -> Result<ScriptBuf, String> {
+    // ... old implementation
+}
+*/
+
+
+fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
+    if bitcoin_script.trim().is_empty() {
+        return Err("Empty Bitcoin script".to_string());
+    }
+    
+    let trimmed = bitcoin_script.trim();
+    console_log!("Processing Bitcoin script ASM: {}", trimmed);
+    
+    // For ASM input, we need to convert it to a script
+    // For simplicity, let's try to parse the hex directly if it looks like hex
+    // Or handle some common ASM patterns
+    
+    let script = if trimmed.len() % 2 == 0 && trimmed.chars().all(|c| c.is_ascii_hexdigit()) {
+        // Looks like hex, try to decode as script bytes
+        match hex::decode(trimmed) {
+            Ok(bytes) => ScriptBuf::from_bytes(bytes),
+            Err(_) => return Err("Invalid hex script".to_string()),
+        }
+    } else {
+        // Try to parse as ASM
+        match parse_asm_to_script(trimmed) {
+            Ok(script) => script,
+            Err(e) => return Err(format!("Failed to parse ASM: {}", e)),
+        }
+    };
+    
+    console_log!("Successfully parsed Bitcoin script, length: {} bytes", script.len());
+    
+    let mut errors = Vec::new();
+    
+    // Try to lift the script to miniscript for different contexts
+    // Start with Legacy context
+    match try_lift_script_to_miniscript::<miniscript::Legacy>(script.as_script()) {
+        Ok(ms) => return Ok(ms),
+        Err(e) => {
+            let err_msg = format!("Legacy: {}", e);
+            console_log!("Legacy lift failed: {}", e);
+            errors.push(err_msg);
+        }
+    }
+    
+    // Try Segwit context
+    match try_lift_script_to_miniscript::<miniscript::Segwitv0>(script.as_script()) {
+        Ok(ms) => return Ok(ms),
+        Err(e) => {
+            let err_msg = format!("Segwit: {}", e);
+            console_log!("Segwit lift failed: {}", e);
+            errors.push(err_msg);
+        }
+    }
+    
+    // Try Taproot context  
+    match try_lift_script_to_miniscript::<miniscript::Tap>(script.as_script()) {
+        Ok(ms) => return Ok(ms),
+        Err(e) => {
+            let err_msg = format!("Taproot: {}", e);
+            console_log!("Taproot lift failed: {}", e);
+            errors.push(err_msg);
+        }
+    }
+    
+    Err(format!("Cannot lift this Bitcoin script to miniscript in any context. Errors: {}", errors.join("; ")))
+}
+
+fn try_lift_script_to_miniscript<Ctx>(script: &bitcoin::Script) -> Result<String, String> 
+where 
+    Ctx: miniscript::ScriptContext,
+    for<'a> Ctx::Key: std::fmt::Display + std::str::FromStr,
+    <Ctx::Key as std::str::FromStr>::Err: std::fmt::Display,
+{
+    // Try to parse the script as a miniscript
+    match Miniscript::<Ctx::Key, Ctx>::parse(script) {
+        Ok(ms) => {
+            let ms_string = ms.to_string();
+            console_log!("Successfully lifted to miniscript: {}", ms_string);
+            Ok(ms_string)
+        }
+        Err(e) => Err(format!("Script lift failed: {}", e))
+    }
+}
+
+fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
+    if miniscript.trim().is_empty() {
+        return Err("Empty miniscript".to_string());
+    }
+    
+    let trimmed = miniscript.trim();
+    console_log!("Processing miniscript for policy lift: {}", trimmed);
+    
+    // Try to parse the miniscript and lift it to policy using concrete implementations
+    
+    // Try Legacy context first
+    match trimmed.parse::<Miniscript<PublicKey, Legacy>>() {
+        Ok(ms) => {
+            match ms.lift() {
+                Ok(policy) => {
+                    let policy_string = policy.to_string();
+                    console_log!("Successfully lifted miniscript to policy (Legacy): {}", policy_string);
+                    return Ok(policy_string);
+                }
+                Err(e) => console_log!("Legacy miniscript->policy lift failed: {}", e),
+            }
+        }
+        Err(e) => console_log!("Legacy miniscript parsing failed: {}", e),
+    }
+    
+    // Try Segwit context
+    match trimmed.parse::<Miniscript<PublicKey, Segwitv0>>() {
+        Ok(ms) => {
+            match ms.lift() {
+                Ok(policy) => {
+                    let policy_string = policy.to_string();
+                    console_log!("Successfully lifted miniscript to policy (Segwit): {}", policy_string);
+                    return Ok(policy_string);
+                }
+                Err(e) => console_log!("Segwit miniscript->policy lift failed: {}", e),
+            }
+        }
+        Err(e) => console_log!("Segwit miniscript parsing failed: {}", e),
+    }
+    
+    // Try Taproot context with XOnlyPublicKey
+    match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            match ms.lift() {
+                Ok(policy) => {
+                    let policy_string = policy.to_string();
+                    console_log!("Successfully lifted miniscript to policy (Taproot): {}", policy_string);
+                    return Ok(policy_string);
+                }
+                Err(e) => console_log!("Taproot miniscript->policy lift failed: {}", e),
+            }
+        }
+        Err(e) => console_log!("Taproot miniscript parsing failed: {}", e),
+    }
+    
+    Err("Cannot lift this miniscript to policy in any context (Legacy, Segwit, Taproot)".to_string())
+}
+
 
 #[wasm_bindgen(start)]
 pub fn main() {

@@ -1,5 +1,5 @@
-import init, { compile_miniscript, compile_policy } from './pkg/miniscript_wasm.js';
-// Cache buster - updated 2025-01-18 v2
+import init, { compile_miniscript, compile_policy, lift_to_miniscript, lift_to_policy } from './pkg/miniscript_wasm.js';
+// Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
     constructor() {
@@ -2012,6 +2012,104 @@ class MiniscriptCompiler {
         }
     }
 
+    liftBitcoinScript(button, display) {
+        const asmScript = display.value.trim();
+        
+        if (!asmScript) {
+            this.showError('No Bitcoin script to lift');
+            return;
+        }
+        
+        if (!this.wasm) {
+            this.showError('Compiler not ready, please wait and try again.');
+            return;
+        }
+        
+        // Show loading state
+        const originalText = button.textContent;
+        button.textContent = '⏳';
+        button.disabled = true;
+        button.title = 'Lifting...';
+        
+        try {
+            console.log('Lifting Bitcoin script:', asmScript);
+            
+            // Clean push bytes from ASM before lifting (remove OP_PUSHBYTES_* tokens)
+            const cleanedAsm = this.simplifyAsm(asmScript);
+            console.log('Cleaned ASM for lifting:', cleanedAsm);
+            
+            // Step 1: Lift ASM to Miniscript
+            const miniscriptResult = lift_to_miniscript(cleanedAsm);
+            
+            if (miniscriptResult.success && miniscriptResult.miniscript) {
+                // Fill miniscript textarea
+                const expressionInput = document.getElementById('expression-input');
+                expressionInput.textContent = miniscriptResult.miniscript;
+                
+                // Reset miniscript format button state
+                const miniscriptFormatBtn = document.getElementById('format-miniscript-btn');
+                if (miniscriptFormatBtn) {
+                    miniscriptFormatBtn.style.color = 'var(--text-secondary)';
+                    miniscriptFormatBtn.title = 'Format expression with indentation';
+                    miniscriptFormatBtn.dataset.formatted = 'false';
+                }
+                
+                // Re-apply miniscript syntax highlighting
+                delete expressionInput.dataset.lastHighlightedText;
+                this.highlightMiniscriptSyntax();
+                
+                console.log('Step 1 success - Miniscript:', miniscriptResult.miniscript);
+                
+                // Step 2: Try to lift Miniscript to Policy
+                try {
+                    const policyResult = lift_to_policy(miniscriptResult.miniscript);
+                    
+                    if (policyResult.success && policyResult.policy) {
+                        // Fill policy textarea
+                        const policyInput = document.getElementById('policy-input');
+                        policyInput.textContent = policyResult.policy;
+                        
+                        // Reset policy format button state
+                        const policyFormatBtn = document.getElementById('policy-format-toggle');
+                        if (policyFormatBtn) {
+                            policyFormatBtn.style.color = 'var(--text-secondary)';
+                            policyFormatBtn.title = 'Format expression with indentation';
+                            policyFormatBtn.dataset.formatted = 'false';
+                        }
+                        
+                        // Re-apply policy syntax highlighting
+                        delete policyInput.dataset.lastHighlightedText;
+                        this.highlightPolicySyntax();
+                        
+                        console.log('Step 2 success - Policy:', policyResult.policy);
+                        this.showSuccess('✅ Lifted to both Policy and Miniscript!');
+                    } else {
+                        // Only miniscript worked
+                        document.getElementById('policy-input').textContent = '';
+                        console.log('Step 2 partial - Policy lift failed:', policyResult.error);
+                        this.showInfo('✅ Lifted to Miniscript (Policy conversion not possible for this script)');
+                    }
+                } catch (policyError) {
+                    // Policy lift failed, but miniscript succeeded
+                    document.getElementById('policy-input').textContent = '';
+                    console.log('Policy lift error:', policyError);
+                    this.showInfo('✅ Lifted to Miniscript (Policy conversion not possible for this script)');
+                }
+            } else {
+                console.log('Miniscript lift failed:', miniscriptResult.error);
+                this.showMiniscriptError(`Cannot lift Bitcoin script: ${miniscriptResult.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Lift error:', error);
+            this.showMiniscriptError(`Lift failed: ${error.message}`);
+        } finally {
+            // Reset button
+            button.textContent = originalText;
+            button.disabled = false;
+            button.title = 'Lift to Miniscript and Policy';
+        }
+    }
+
     formatBitcoinScript(script) {
         if (!script || script.length < 100) {
             return script; // Don't format short scripts
@@ -2273,9 +2371,12 @@ class MiniscriptCompiler {
                         <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Hide pushbytes" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             🔍
                         </button>
+                        <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            ⬆️
+                        </button>
                     </div>
                 </div>
-                <textarea readonly id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${currentAsm}</textarea>
+                <textarea id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--bg-color); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${currentAsm}</textarea>
             `;
             
             // Add event listener for toggle button
@@ -2320,6 +2421,12 @@ class MiniscriptCompiler {
             // Add event listener for format button
             formatButton.addEventListener('click', () => {
                 this.toggleScriptFormat(formatButton, display);
+            });
+            
+            // Add event listener for lift button
+            const liftButton = scriptAsmDiv.querySelector('#lift-script-btn');
+            liftButton.addEventListener('click', () => {
+                this.liftBitcoinScript(liftButton, display);
             });
             
             resultsDiv.appendChild(scriptAsmDiv);
