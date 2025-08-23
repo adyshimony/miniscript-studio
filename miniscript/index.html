@@ -102,6 +102,15 @@
             color: var(--text-color);
             box-sizing: border-box;
         }
+
+        /* Make editable inputs brighter to show they're editable */
+        #policy-input,
+        #expression-input,
+        #key-name-input,
+        #key-value-input,
+        #script-asm-display {
+            filter: brightness(1.3);
+        }
         
         #policy-input:focus, #expression-input:focus {
             outline: none;

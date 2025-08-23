@@ -2847,7 +2847,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-hex-display" style="width: 100%; min-height: 60px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.script}</textarea>
+                <textarea id="script-hex-display" style="width: 100%; min-height: 60px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);">${result.script}</textarea>
             `;
             
             // Add event listeners for the buttons
@@ -2930,7 +2930,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--bg-color); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${currentAsm}</textarea>
+                <textarea id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--bg-color); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);">${currentAsm}</textarea>
             `;
             
             // Add event listener for toggle button
