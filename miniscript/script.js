@@ -31,6 +31,8 @@ class MiniscriptCompiler {
             this.loadSavedExpressions();
             this.loadSavedPolicies();
             this.loadKeyVariables();
+            // Initialize empty results sections on page load
+            this.initializeEmptyResults();
             this.setupReplaceKeysCheckbox();
             
             // Initialize undo stacks with initial state
@@ -573,7 +575,7 @@ class MiniscriptCompiler {
     clearPolicy() {
         document.getElementById('policy-input').innerHTML = '';
         document.getElementById('expression-input').innerHTML = '';
-        document.getElementById('results').innerHTML = '';
+        this.initializeEmptyResults();
         this.clearPolicyErrors();
         this.clearMiniscriptMessages(); // Clear the success message too
         
@@ -2812,6 +2814,110 @@ class MiniscriptCompiler {
     }
 
 
+    initializeEmptyResults() {
+        const resultsDiv = document.getElementById('results');
+        if (resultsDiv.innerHTML.trim() !== '') {
+            // Results already displayed, don't initialize empty
+            return;
+        }
+        
+        // Show empty script hex section
+        const scriptDiv = document.createElement('div');
+        scriptDiv.className = 'result-box info';
+        scriptDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0;">📜 Script HEX</h4>
+                <div style="display: flex; align-items: center; gap: 0px;">
+                    <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        ⬆️
+                    </button>
+                    <button id="copy-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy hex script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        📋
+                    </button>
+                </div>
+            </div>
+            <textarea id="script-hex-display" placeholder="Hex script will appear here after compilation, or paste your own and lift it..." style="width: 100%; min-height: 60px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);"></textarea>
+        `;
+        resultsDiv.appendChild(scriptDiv);
+        
+        // Show empty ASM section
+        const scriptAsmDiv = document.createElement('div');
+        scriptAsmDiv.className = 'result-box info';
+        scriptAsmDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0;">⚡ Script ASM</h4>
+                <div style="display: flex; align-items: center; gap: 0px;">
+                    <button id="asm-key-names-toggle" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" data-active="false" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        🏷️
+                    </button>
+                    <button id="format-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Format script with indentation" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        📐
+                    </button>
+                    <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Hide pushbytes" data-active="false" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        👁️
+                    </button>
+                    <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        ⬆️
+                    </button>
+                    <button id="copy-script-btn" onclick="copyBitcoinScript()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy Bitcoin script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        📋
+                    </button>
+                </div>
+            </div>
+            <textarea id="script-asm-display" placeholder="ASM script will appear here after compilation, or paste your own and lift it..." style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);"></textarea>
+        `;
+        resultsDiv.appendChild(scriptAsmDiv);
+        
+        // Show empty address section
+        const addressDiv = document.createElement('div');
+        addressDiv.className = 'result-box info';
+        addressDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0;">🏠 Generated address</h4>
+                <div style="display: flex; align-items: center; gap: 0px;">
+                    <button id="network-toggle-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Switch to Testnet" data-network="mainnet" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'" disabled>
+                        🌐
+                    </button>
+                </div>
+            </div>
+            <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted); font-style: italic;">
+                Address will appear here after compilation
+            </div>
+        `;
+        resultsDiv.appendChild(addressDiv);
+        
+        // Add event listeners for the empty sections
+        this.attachEmptyResultsListeners();
+    }
+
+    attachEmptyResultsListeners() {
+        // Attach lift button listener for hex
+        const liftHexButton = document.getElementById('lift-hex-script-btn');
+        const hexDisplay = document.getElementById('script-hex-display');
+        if (liftHexButton && hexDisplay) {
+            liftHexButton.addEventListener('click', () => {
+                this.liftBitcoinScript(liftHexButton, hexDisplay);
+            });
+        }
+        
+        // Attach copy button listener for hex
+        const copyHexButton = document.getElementById('copy-hex-script-btn');
+        if (copyHexButton && hexDisplay) {
+            copyHexButton.addEventListener('click', () => {
+                this.copyHexScript(hexDisplay);
+            });
+        }
+        
+        // Attach lift button listener for ASM
+        const liftAsmButton = document.getElementById('lift-script-btn');
+        const asmDisplay = document.getElementById('script-asm-display');
+        if (liftAsmButton && asmDisplay) {
+            liftAsmButton.addEventListener('click', () => {
+                this.liftBitcoinScript(liftAsmButton, asmDisplay);
+            });
+        }
+    }
+
     displayResults(result) {
         const resultsDiv = document.getElementById('results');
         resultsDiv.innerHTML = '';
@@ -2837,7 +2943,7 @@ class MiniscriptCompiler {
             scriptDiv.className = 'result-box info';
             scriptDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="margin: 0;">📜 Generated script (hex)</h4>
+                    <h4 style="margin: 0;">📜 Script HEX</h4>
                     <div style="display: flex; align-items: center; gap: 0px;">
                         <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             ⬆️
@@ -2911,7 +3017,7 @@ class MiniscriptCompiler {
                 
             scriptAsmDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="margin: 0;">⚡ Bitcoin script (ASM)</h4>
+                    <h4 style="margin: 0;">⚡ Script ASM</h4>
                     <div style="display: flex; align-items: center; gap: 0px;">
                         <button id="asm-key-names-toggle" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: ${showKeyNames ? 'var(--success-border)' : 'var(--text-secondary)'}; display: flex; align-items: center; border-radius: 3px;" title="${showKeyNames ? 'Hide key names' : 'Show key names'}" data-active="${showKeyNames}" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             🏷️
@@ -2930,7 +3036,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--bg-color); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);">${currentAsm}</textarea>
+                <textarea id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);">${currentAsm}</textarea>
             `;
             
             // Add event listener for toggle button
@@ -3285,7 +3391,7 @@ class MiniscriptCompiler {
 
     clearExpression() {
         document.getElementById('expression-input').innerHTML = '';
-        document.getElementById('results').innerHTML = '';
+        this.initializeEmptyResults();
         this.clearMiniscriptMessages();
         
         // Clear and uncheck the "Show key names" checkbox
@@ -3592,7 +3698,7 @@ class MiniscriptCompiler {
             document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
             
             // Clear previous results and messages
-            document.getElementById('results').innerHTML = '';
+            this.initializeEmptyResults();
             this.clearMiniscriptMessages();
             
             // Hide description panel
@@ -3858,7 +3964,7 @@ class MiniscriptCompiler {
             document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
             
             // Clear previous results
-            document.getElementById('results').innerHTML = '';
+            this.initializeEmptyResults();
             this.clearPolicyErrors();
             
             // Hide description panel
@@ -3931,7 +4037,9 @@ window.loadExample = function(example) {
     if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
         window.compiler.highlightMiniscriptSyntax();
     }
-    document.getElementById('results').innerHTML = '';
+    if (window.compiler && window.compiler.initializeEmptyResults) {
+        window.compiler.initializeEmptyResults();
+    }
     if (window.compiler && window.compiler.clearMiniscriptMessages) {
         window.compiler.clearMiniscriptMessages();
     }
@@ -3986,7 +4094,9 @@ window.loadPolicyExample = function(example) {
     delete policyInput.dataset.lastHighlightedText;
     
     document.getElementById('expression-input').innerHTML = '';
-    document.getElementById('results').innerHTML = '';
+    if (window.compiler && window.compiler.initializeEmptyResults) {
+        window.compiler.initializeEmptyResults();
+    }
     document.getElementById('policy-errors').innerHTML = '';
     
     // Clear the success message when loading a policy example
