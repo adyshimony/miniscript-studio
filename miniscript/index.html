@@ -1053,6 +1053,12 @@
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div style="display: grid; gap: 15px;">
                     <div class="tip-item">
+                        <strong style="color: var(--text-color);">🏷️ Show key names:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            Use the 🏷️ button to toggle between showing full public keys and variable names (Alice, Bob, etc.) in your expressions. Makes complex policies much easier to read and understand.
+                        </p>
+                    </div>
+                    <div class="tip-item">
                         <strong style="color: var(--text-color);">🔑 Missing or corrupted key variables?</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             If one of the examples fails to complie with "pubkey string should be 66 or 130 digits" (or similar), or 🏷️ show keys doesn't work properly, go to "Key variables" section and use "Clear all" then "Restore defaults" to reset Alice, Bob, Charlie, etc. You can delete only the problematic key and "Restore defaults". 
@@ -1061,7 +1067,7 @@
                     <div class="tip-item">
                         <strong style="color: var(--text-color);">🔑 Extract keys to variables:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
-                            Use the 🔑 button to automatically detect keys in your expression and convert them to reusable variables. For descriptors, you can choose between extracting the full descriptor or just the embedded key.
+                            Use the 🔑 button to automatically detect keys in your expression and convert them to reusable variables. Detects public keys, xpubs, tpubs, and x-only keys. For each key, choose the appropriate type (compressed, x-only, xpub, tpub). Suggests meaningful names (Alice, Bob, Charlie) and prevents duplicates.
                         </p>
                     </div>
                     <div class="tip-item">
@@ -1095,15 +1101,21 @@
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">📋 Local storage:</strong>
+                        <strong style="color: var(--text-color);">⬆️ Lift (Reverse Engineering):</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
-                            All data (keys, saved expressions) persists locally in your browser. No server - everything stays private. Use public keys only!
+                            Paste Bitcoin Script hex/ASM into the "Script HEX" or "Script ASM" fields to automatically lift them back to miniscript. Every lift also shows the policy equivalent. You can also lift miniscript expression to policy.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🌐 Network detection:</strong>
+                        <strong style="color: var(--text-color);">🌐 Network Support:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
-                            Testnet keys (tpub) automatically generate testnet addresses, mainnet keys (xpub) generate mainnet addresses.
+                            Use the 🌐 button to toggle between mainnet and testnet address generation. Testnet keys (tpub) automatically generate testnet addresses, mainnet keys (xpub) generate mainnet addresses.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color);">📋 Local storage:</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            All data (keys, saved expressions) persists locally in your browser. No server - everything stays private. Use public keys only!
                         </p>
                     </div>
                 </div>

@@ -6,9 +6,10 @@ A WebAssembly-powered miniscript compiler that runs in the browser. This tool al
 
 - **Policy Compilation**: Convert high-level Bitcoin policies to miniscript expressions
 - **Miniscript Compilation**: Compile miniscript expressions to Bitcoin Script bytecode
+- **Reverse Engineering (Lift)**: Convert Bitcoin Script bytecode back to miniscript, and miniscript back to policy
 - **Multiple Script Contexts**: Support for Legacy, Segwit v0, and Taproot script contexts
-- **Address Generation**: Generate Bitcoin addresses for compiled scripts (where applicable)
-- **Key Variable Management**: Define and reuse named public keys across expressions
+- **Address Generation**: Generate Bitcoin addresses for compiled scripts with mainnet/testnet toggle
+- **Key Variable Management**: Define and reuse named public keys across expressions with auto-extraction
 - **Expression Storage**: Save and load frequently used policies and expressions
 - **Copy & Export**: One-click copying of expressions and policies to clipboard
 - **Interactive Web Interface**: User-friendly browser-based interface with examples
@@ -22,11 +23,25 @@ The compiler allows you to define reusable key variables instead of typing full 
 ### How to Use Key Variables
 
 1. **Add Variables**: In the "Key variables" section, enter a name (e.g., `Alice`) and corresponding public key
-2. **Generate Keys**: Use the "🎲 Generate" button to create random test keys
-3. **Use in Expressions**: Reference keys by name in policies: `pk(Alice)` instead of `pk(03a34b99...)`
-4. **Toggle Display**: Use "Show key names" checkbox to switch between showing full keys or variable names
-5. **Restore Defaults**: Use "Restore defaults" button to reset to Alice, Bob, Charlie, and David
-6. **Clear All**: Use "Clear all" button to remove all key variables (with confirmation)
+2. **Auto-Extract Keys**: Use the "🔑 Extract keys to variables" button to automatically detect and convert keys in your expressions to named variables
+3. **Generate Keys**: Use the "🎲 Generate" button to create random test keys appropriate for the current script context
+4. **Use in Expressions**: Reference keys by name in policies: `pk(Alice)` instead of `pk(03a34b99...)`
+5. **Toggle Display**: Use "Show key names" checkbox to switch between showing full keys or variable names
+6. **Restore Defaults**: Use "Restore defaults" button to reset to Alice, Bob, Charlie, and David
+7. **Clear All**: Use "Clear all" button to remove all key variables (with confirmation)
+
+### Auto-Extract Keys to Variables
+
+The "🔑 Extract keys to variables" feature automatically converts long hex keys to named variables:
+
+- **Detection**: Automatically finds public keys, xpubs, tpubs, and x-only keys in your expressions
+- **Variable Generation**: Suggests meaningful names for detected keys (Alice, Bob, Charlie, etc.)
+- **Key Type Selection**: For each detected key, choose the appropriate type:
+  - **Compressed** (66 chars): For Legacy and Segwit v0 contexts
+  - **X-only** (64 chars): For Taproot context  
+  - **xpub/tpub**: For extended public keys and derivation paths
+- **Duplicate Prevention**: Avoids creating duplicate variables for keys that already exist
+- **Batch Processing**: Handles multiple keys in complex expressions like `thresh(2,pk(Alice),pk(Bob),pk(Charlie))`
 
 ### Key Types and Context Detection
 
@@ -64,6 +79,42 @@ Bob = 02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9
 # Use in policy:
 or(pk(Alice),and(pk(Bob),older(144)))
 ```
+
+## Reverse Engineering (Lift Features)
+
+The compiler supports "lifting" - reverse engineering Bitcoin scripts back to higher-level representations:
+
+### Lift Bitcoin Script to Miniscript
+
+Convert raw Bitcoin Script bytecode (hex or ASM format) back to miniscript expressions:
+
+- **Input**: Bitcoin Script in hex format (e.g., `21022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501ac`) 
+- **Input**: Bitcoin Script in ASM format (e.g., `022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501 OP_CHECKSIG`)
+- **Output**: Miniscript expression (e.g., `pk(022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501)`)
+- **Usage**: Paste script into the "Script HEX" or "Script ASM" fields and they will automatically lift to miniscript
+
+### Lift Miniscript to Policy
+
+Convert miniscript expressions back to high-level policy language:
+
+- **Input**: Miniscript expression (e.g., `or_d(pk(Alice),and_v(v:pk(Bob),older(144)))`)
+- **Output**: Policy expression (e.g., `or(pk(Alice),and(pk(Bob),older(144)))`)
+- **Usage**: Compile any miniscript to see its policy equivalent in the results
+
+### Benefits of Lifting
+
+- **Script Analysis**: Understand what existing Bitcoin scripts do
+- **Policy Recovery**: Extract the policy logic from deployed scripts  
+- **Educational**: Learn by reverse-engineering real Bitcoin scripts
+- **Migration**: Convert legacy scripts to modern miniscript format
+- **Debugging**: Verify scripts compile to expected bytecode
+
+### Example Workflow
+
+1. **Start with Script**: Paste hex script: `21022f...ac`
+2. **Auto-Lift**: Script automatically converts to miniscript: `pk(022f...)`
+3. **Extract Keys**: Use 🔑 button to convert keys to variables: `pk(Alice)`
+4. **Compile to Policy**: See the high-level policy: `pk(Alice)`
 
 ## Save & Load System
 
