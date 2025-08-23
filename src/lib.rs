@@ -1120,6 +1120,20 @@ fn parse_asm_to_script_old(asm: &str) -> Result<ScriptBuf, String> {
 */
 
 
+// Helper function to extract parse_insane and parse errors from combined error message
+fn extract_parse_errors(error_msg: &str) -> Option<(String, String)> {
+    // The error format is: "Script lift failed - parse_insane: <error1>, parse: <error2>"
+    if let Some(pos) = error_msg.find("parse_insane: ") {
+        let after_insane = &error_msg[pos + 14..]; // Skip "parse_insane: "
+        if let Some(comma_pos) = after_insane.find(", parse: ") {
+            let insane_err = after_insane[..comma_pos].to_string();
+            let parse_err = after_insane[comma_pos + 9..].to_string(); // Skip ", parse: "
+            return Some((insane_err, parse_err));
+        }
+    }
+    None
+}
+
 fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     if bitcoin_script.trim().is_empty() {
         return Err("Empty Bitcoin script".to_string());
@@ -1148,16 +1162,32 @@ fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     
     console_log!("Successfully parsed Bitcoin script, length: {} bytes", script.len());
     
-    let mut errors = Vec::new();
+    // Structure to hold detailed error info for each context
+    struct ContextError {
+        parse_insane_err: String,
+        parse_err: String,
+    }
+    
+    let mut context_errors = Vec::new();
     
     // Try to lift the script to miniscript for different contexts
     // Start with Legacy context
     match try_lift_script_to_miniscript::<miniscript::Legacy>(script.as_script()) {
         Ok(ms) => return Ok(ms),
         Err(e) => {
-            let err_msg = format!("Legacy: {}", e);
+            // Extract the detailed errors from the combined error message
+            if let Some((insane_err, parse_err)) = extract_parse_errors(&e) {
+                context_errors.push(("Legacy", ContextError {
+                    parse_insane_err: insane_err,
+                    parse_err: parse_err,
+                }));
+            } else {
+                context_errors.push(("Legacy", ContextError {
+                    parse_insane_err: e.clone(),
+                    parse_err: e.clone(),
+                }));
+            }
             console_log!("Legacy lift failed: {}", e);
-            errors.push(err_msg);
         }
     }
     
@@ -1165,9 +1195,18 @@ fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     match try_lift_script_to_miniscript::<miniscript::Segwitv0>(script.as_script()) {
         Ok(ms) => return Ok(ms),
         Err(e) => {
-            let err_msg = format!("Segwit: {}", e);
+            if let Some((insane_err, parse_err)) = extract_parse_errors(&e) {
+                context_errors.push(("Segwit", ContextError {
+                    parse_insane_err: insane_err,
+                    parse_err: parse_err,
+                }));
+            } else {
+                context_errors.push(("Segwit", ContextError {
+                    parse_insane_err: e.clone(),
+                    parse_err: e.clone(),
+                }));
+            }
             console_log!("Segwit lift failed: {}", e);
-            errors.push(err_msg);
         }
     }
     
@@ -1175,13 +1214,34 @@ fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     match try_lift_script_to_miniscript::<miniscript::Tap>(script.as_script()) {
         Ok(ms) => return Ok(ms),
         Err(e) => {
-            let err_msg = format!("Taproot: {}", e);
+            if let Some((insane_err, parse_err)) = extract_parse_errors(&e) {
+                context_errors.push(("Taproot", ContextError {
+                    parse_insane_err: insane_err,
+                    parse_err: parse_err,
+                }));
+            } else {
+                context_errors.push(("Taproot", ContextError {
+                    parse_insane_err: e.clone(),
+                    parse_err: e.clone(),
+                }));
+            }
             console_log!("Taproot lift failed: {}", e);
-            errors.push(err_msg);
         }
     }
     
-    Err(format!("Cannot lift this Bitcoin script to miniscript in any context. Errors: {}", errors.join("; ")))
+    // Format the error message with better structure
+    let mut error_msg = String::from("❌ Script is not liftable to Miniscript\n\n");
+    error_msg.push_str("This Bitcoin script cannot be lifted to miniscript. Attempted lifting with both standard and non-standard parsers across all contexts:\n\n");
+    
+    for (context_name, errors) in context_errors {
+        error_msg.push_str(&format!("📍 {} Context:\n", context_name));
+        error_msg.push_str(&format!("   • parse_insane: ❌ {}\n", errors.parse_insane_err));
+        error_msg.push_str(&format!("   • parse: ❌ {}\n\n", errors.parse_err));
+    }
+    
+    error_msg.push_str("Note: Scripts containing raw public key hashes (P2PKH) or certain non-miniscript constructs cannot be lifted.");
+    
+    Err(error_msg)
 }
 
 fn try_lift_script_to_miniscript<Ctx>(script: &bitcoin::Script) -> Result<String, String> 
@@ -1192,14 +1252,29 @@ where
 {
     console_log!("Attempting to lift script to miniscript...");
     
-    // Try to parse the script as a miniscript
-    match Miniscript::<Ctx::Key, Ctx>::parse(script) {
+    // First try parse_insane which accepts non-standard but valid miniscripts
+    match Miniscript::<Ctx::Key, Ctx>::parse_insane(script) {
         Ok(ms) => {
             let ms_string = ms.to_string();
-            console_log!("Successfully lifted to miniscript: {}", ms_string);
+            console_log!("Successfully lifted to miniscript using parse_insane: {}", ms_string);
             Ok(ms_string)
         }
-        Err(e) => Err(format!("Script lift failed: {}", e))
+        Err(insane_err) => {
+            console_log!("parse_insane failed: {}", insane_err);
+            // Fallback to regular parse - might catch some edge cases
+            match Miniscript::<Ctx::Key, Ctx>::parse(script) {
+                Ok(ms) => {
+                    let ms_string = ms.to_string();
+                    console_log!("Successfully lifted to miniscript using parse (note: analysis failed with parse_insane): {}", ms_string);
+                    console_log!("parse_insane error was: {}", insane_err);
+                    Ok(ms_string)
+                }
+                Err(parse_err) => {
+                    console_log!("Both parse_insane and parse failed");
+                    Err(format!("Script lift failed - parse_insane: {}, parse: {}", insane_err, parse_err))
+                }
+            }
+        }
     }
 }
 
