@@ -577,6 +577,8 @@ class MiniscriptCompiler {
     clearPolicy() {
         document.getElementById('policy-input').innerHTML = '';
         document.getElementById('expression-input').innerHTML = '';
+        // Clear results first, then reinitialize
+        document.getElementById('results').innerHTML = '';
         this.initializeEmptyResults();
         this.clearPolicyErrors();
         this.clearMiniscriptMessages(); // Clear the success message too
@@ -3393,6 +3395,8 @@ class MiniscriptCompiler {
 
     clearExpression() {
         document.getElementById('expression-input').innerHTML = '';
+        // Clear results first, then reinitialize
+        document.getElementById('results').innerHTML = '';
         this.initializeEmptyResults();
         this.clearMiniscriptMessages();
         
