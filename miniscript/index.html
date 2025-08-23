@@ -682,11 +682,11 @@
                     </div>
                     <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
-                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eva),after(1735689600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
+                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eva),after(1767225600)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
                         <button onclick="showPolicyDescription('recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eva)),older(1008)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
                         <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
                         <button onclick="showPolicyDescription('hodl'); loadPolicyExample('or(9@pk(Alice),and(thresh(3,pk(Bob),pk(Charlie),pk(Eva),pk(Frank)),older(52560)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">HODL Wallet</button>
-                        <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1735689600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
+                        <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
                     </div>
                 </div>
                 
@@ -786,7 +786,7 @@
                         <button onclick="showMiniscriptDescription('or_i'); loadExample('or_i(pk(Alice),pk(Bob))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR with if-else</button>
                         <button onclick="showMiniscriptDescription('complex'); loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
                         <button onclick="showMiniscriptDescription('timelock'); loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
-                        <button onclick="showMiniscriptDescription('after'); loadExample('and_v(v:pk(Alice),after(1735689600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Absolute timelock</button>
+                        <button onclick="showMiniscriptDescription('after'); loadExample('and_v(v:pk(Alice),after(1767225600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Absolute timelock</button>
                     </div>
                     <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
@@ -1396,7 +1396,7 @@
                 },
                 'after': {
                     title: '⚙️ Absolute Timelock',
-                    structure: 'and_v(v:pk(Alice),after(1735689600)) → Alice + absolute time',
+                    structure: 'and_v(v:pk(Alice),after(1767225600)) → Alice + absolute time',
                     bitcoinScript: 'Verifies Alice signature and checks absolute timestamp',
                     useCase: 'Alice can only spend after specific date (Jan 1, 2025). Useful for scheduled payments.',
                     technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'

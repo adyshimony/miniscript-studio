@@ -4209,7 +4209,7 @@ window.showPolicyDescription = function(exampleId) {
         },
         'corporate': {
             title: '📄 Corporate Wallet Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2025',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2026',
             useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
             security: '💡 Board control with time-delayed executive override'
         },
@@ -4245,7 +4245,7 @@ window.showPolicyDescription = function(exampleId) {
         },
         'timelocked_thresh': {
             title: '📄 Timelocked Multisig Policy',
-            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2025)',
+            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2026)',
             useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
             security: '💡 Prevents any spending before the specified date, even with valid signatures'
         }
@@ -4406,9 +4406,9 @@ window.showMiniscriptDescription = function(exampleId) {
         },
         'after': {
             title: '⚙️ Absolute Timelock',
-            structure: 'and_v(v:pk(Alice),after(1735689600)) → Alice + absolute time',
+            structure: 'and_v(v:pk(Alice),after(1767225600)) → Alice + absolute time',
             bitcoinScript: 'Verifies Alice signature and checks absolute timestamp',
-            useCase: 'Alice can only spend after specific date (Jan 1, 2025). Useful for scheduled payments.',
+            useCase: 'Alice can only spend after specific date (Jan 1, 2026). Useful for scheduled payments.',
             technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
         },
         'vault_complex': {
@@ -4555,7 +4555,7 @@ window.showPolicyDescription = function(exampleId) {
         },
         'corporate': {
             title: '📄 Corporate Wallet Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2025',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2026',
             useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
             security: '💡 Board control with time-delayed executive override'
         },
@@ -4591,7 +4591,7 @@ window.showPolicyDescription = function(exampleId) {
         },
         'timelocked_thresh': {
             title: '📄 Timelocked Multisig Policy',
-            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2025)',
+            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2026)',
             useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
             security: '💡 Prevents any spending before the specified date, even with valid signatures'
         }
@@ -4751,9 +4751,9 @@ window.showMiniscriptDescription = function(exampleId) {
         },
         'after': {
             title: '⚙️ Absolute Timelock',
-            structure: 'and_v(v:pk(Alice),after(1735689600)) → Alice + absolute time',
+            structure: 'and_v(v:pk(Alice),after(1767225600)) → Alice + absolute time',
             bitcoinScript: 'Verifies Alice signature and checks absolute timestamp',
-            useCase: 'Alice can only spend after specific date (Jan 1, 2025). Useful for scheduled payments.',
+            useCase: 'Alice can only spend after specific date (Jan 1, 2026). Useful for scheduled payments.',
             technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
         },
         'vault_complex': {
