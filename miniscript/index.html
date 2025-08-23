@@ -1318,18 +1318,18 @@
                     technical: '💡 s: wrapper swaps stack elements for proper evaluation'
                 },
                 'complex': {
-                    title: '⚙️ Complex AND/OR Miniscript',
+                    title: '⚙️ Complex AND/OR: Why and_v + or_b + Wrappers',
                     structure: 'and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie))) → Alice AND (Bob OR Charlie)',
-                    bitcoinScript: 'Alice verified first, then Bob OR Charlie evaluated',
-                    useCase: 'Alice must always sign, plus either Bob or Charlie. Useful for primary + backup authorization.',
-                    technical: '💡 Nested structure demonstrates miniscript composition'
+                    bitcoinScript: '<Alice> CHECKSIGVERIFY <Bob> CHECKSIG SWAP <Charlie> CHECKSIG BOOLOR',
+                    useCase: 'Alice must always sign, plus either Bob or Charlie. Demonstrates wrapper logic: v: for VERIFY, s: for stack SWAP.',
+                    technical: '💡 Why these choices? and_v = Alice must be verified first (fail fast). or_b = boolean OR needed for final result. v:pk(Alice) = convert signature to VERIFY (stack efficient). s:pk(Charlie) = SWAP for proper stack order in BOOLOR.'
                 },
                 'timelock': {
-                    title: '⚙️ Timelock Miniscript',
-                    structure: 'and_v(v:pk(Alice),and_v(v:older(144),pk(Bob))) → Alice AND (144 blocks + Bob)',
-                    bitcoinScript: 'Verifies Alice, then checks timelock and Bob signature',
-                    useCase: 'Alice must sign, plus Bob can only sign after 144 blocks (~1 day). Prevents rushed decisions.',
-                    technical: '💡 Relative timelock using CSV (CHECKSEQUENCEVERIFY)'
+                    title: '⚙️ Timelock: Why Double and_v Structure',
+                    structure: 'and_v(v:pk(Alice),and_v(v:older(144),pk(Bob))) → Alice AND (144 blocks AND Bob)',
+                    bitcoinScript: '<Alice> CHECKSIGVERIFY 144 CHECKSEQUENCEVERIFY <Bob> CHECKSIG',
+                    useCase: 'Alice must sign, plus Bob can only sign after 144 blocks (~1 day). Why this structure? Prevents rushed joint decisions.',
+                    technical: '💡 Double and_v structure: 1) Alice verified first (early failure if missing), 2) Timelock verified before Bob (no signature check if too early), 3) Bob\'s signature checked last. This ordering minimizes wasted computation when conditions aren\'t met.'
                 },
                 'xonly': {
                     title: '⚙️ Taproot X-only Key',
@@ -1339,18 +1339,18 @@
                     technical: '💡 Taproot uses Schnorr signatures with X-only keys'
                 },
                 'multisig': {
-                    title: '⚙️ 1-of-3 Multisig Miniscript',
-                    structure: 'or_d(pk(Alice),or_d(pk(Bob),pk(Charlie))) → Nested OR with DUP',
-                    bitcoinScript: 'Conditional execution using DUP IF pattern for each branch',
-                    useCase: 'Any of three parties can spend. More flexible than traditional CHECKMULTISIG.',
-                    technical: '💡 or_d uses DUP IF for efficient conditional branching'
+                    title: '⚙️ 1-of-3 Multisig Using or_d',
+                    structure: 'or_d(pk(Alice),or_d(pk(Bob),pk(Charlie))) → Nested OR with DUP-IF pattern',
+                    bitcoinScript: 'DUP IF <Alice> CHECKSIG ELSE DUP IF <Bob> CHECKSIG ELSE <Charlie> CHECKSIG ENDIF ENDIF',
+                    useCase: 'Any of three parties can spend. Why or_d? Because we want the first successful signature to consume the condition, not evaluate all possibilities.',
+                    technical: '💡 or_d chosen over or_i/or_b because: 1) More efficient for multiple options (early exit), 2) DUP-IF pattern is cheaper than boolean operations for N>2 cases, 3) Left branch "consumes" the condition when satisfied'
                 },
                 'recovery': {
-                    title: '⚙️ Recovery Wallet Miniscript',
-                    structure: 'or_d(pk(Alice),and_v(v:pk(Bob),older(1008))) → Alice OR (Bob + delay)',
-                    bitcoinScript: 'Alice immediate, or Bob after 1008 blocks verification',
-                    useCase: 'Alice has daily control, Bob can recover funds after ~1 week waiting period.',
-                    technical: '💡 Combines immediate access with time-delayed recovery'
+                    title: '⚙️ Recovery Wallet Using or_d Logic',
+                    structure: 'or_d(pk(Alice),and_v(v:pk(Bob),older(1008))) → Alice OR (Bob + 1008 blocks)',
+                    bitcoinScript: 'DUP IF <Alice> CHECKSIG ELSE <Bob> CHECKSIGVERIFY 1008 CHECKSEQUENCEVERIFY ENDIF',
+                    useCase: 'Alice has daily control, Bob can recover after ~1 week. Why or_d? Because Alice\'s signature should immediately satisfy the condition without evaluating Bob\'s timelock.',
+                    technical: '💡 or_d logic: Alice\'s path "consumes" the script (early exit), Bob\'s path only evaluated if Alice fails. This prevents unnecessary timelock evaluation when Alice spends normally. and_v ensures Bob AND timelock both verified.'
                 },
                 'hash': {
                     title: '⚙️ Hash + Timelock Miniscript',
@@ -1388,11 +1388,11 @@
                     technical: '💡 c: wrapper converts signature to boolean, pk_k pushes key'
                 },
                 'or_i': {
-                    title: '⚙️ OR with If-Else',
+                    title: '⚙️ OR with If-Else (or_i vs or_d vs or_b)',
                     structure: 'or_i(pk(Alice),pk(Bob)) → IF Alice ELSE Bob ENDIF',
-                    bitcoinScript: 'Compiles to: IF <Alice> CHECKSIG ELSE <Bob> CHECKSIG ENDIF',
-                    useCase: 'Conditional execution - cleaner than boolean OR for some use cases.',
-                    technical: '💡 Uses IF/ELSE opcodes instead of boolean operations'
+                    bitcoinScript: 'IF <Alice> CHECKSIG ELSE <Bob> CHECKSIG ENDIF',
+                    useCase: 'Either Alice or Bob can spend. Why or_i? When you want conditional execution where the spender chooses which branch to execute upfront.',
+                    technical: '💡 or_i vs others: or_i = spender picks branch (IF/ELSE), or_d = left branch consumes (DUP-IF), or_b = evaluate both then OR (boolean logic). or_i most efficient for simple 2-way choices.'
                 },
                 'after': {
                     title: '⚙️ Absolute Timelock',
@@ -1402,18 +1402,18 @@
                     technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
                 },
                 'htlc_time': {
-                    title: '⚙️ Time-based Hash Time Locked Contract',
+                    title: '⚙️ Time-based HTLC: or_d for Efficient Cooperation',
                     structure: 'and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(...),older(144))))',
-                    bitcoinScript: 'Alice AND (Bob OR (hash preimage + timelock))',
-                    useCase: 'Payment channel or atomic swap. Alice + Bob for cooperation, or Alice + secret after delay if Bob is unresponsive.',
-                    technical: '💡 Classic HTLC pattern with time-based fallback for atomic swaps'
+                    bitcoinScript: '<Alice> CHECKSIGVERIFY DUP IF <Bob> CHECKSIG ELSE <hash> HASH160 EQUALVERIFY 144 CHECKSEQUENCEVERIFY ENDIF',
+                    useCase: 'Alice + Bob for normal cooperation, or Alice + hash secret after delay if Bob disappears. Why or_d? Bob\'s cooperation path should exit immediately without evaluating timelock.',
+                    technical: '💡 HTLC efficiency: or_d means happy case (Alice+Bob) never touches the hash or timelock logic. Only when Bob fails to cooperate does the script evaluate the hash160 and older conditions. This saves gas/fees in the common cooperative case.'
                 },
                 'htlc_hash': {
-                    title: '⚙️ Hash-based Hash Time Locked Contract',
+                    title: '⚙️ Hash-based HTLC: or_d for Different Logic',
                     structure: 'or_d(pk(Alice),and_v(v:hash160(...),and_v(v:pk(Bob),older(144))))',
-                    bitcoinScript: 'Alice immediate OR (hash preimage + Bob + timelock)',
-                    useCase: 'Alternative HTLC structure. Alice can claim immediately, or Bob can claim with hash preimage after delay.',
-                    technical: '💡 Reversed HTLC - recipient has immediate access, sender needs proof + time'
+                    bitcoinScript: 'DUP IF <Alice> CHECKSIG ELSE <hash> HASH160 EQUALVERIFY <Bob> CHECKSIGVERIFY 144 CHECKSEQUENCEVERIFY ENDIF',
+                    useCase: 'Alice can claim immediately (refund), or Bob claims with hash preimage after delay. Why or_d? Alice\'s refund shouldn\'t require evaluating Bob\'s complex conditions.',
+                    technical: '💡 Different HTLC pattern: Alice gets immediate refund path (common in failed payments), Bob must prove hash knowledge AND wait. or_d ensures Alice\'s refund is simple and efficient, while Bob\'s claim requires all three conditions (hash + signature + time).'
                 },
                 'full_descriptor': {
                     title: '⚙️ Full HD Wallet Descriptor',
