@@ -2022,12 +2022,12 @@ class MiniscriptCompiler {
         let asmScript = display.value.trim();
         
         if (!asmScript) {
-            this.showError('No Bitcoin script to lift');
+            this.showLiftError('No Bitcoin script to lift');
             return;
         }
         
         if (!this.wasm) {
-            this.showError('Compiler not ready, please wait and try again.');
+            this.showLiftError('Compiler not ready, please wait and try again.');
             return;
         }
         
@@ -2121,11 +2121,11 @@ class MiniscriptCompiler {
                 }
             } else {
                 console.log('Miniscript lift failed:', miniscriptResult.error);
-                this.showMiniscriptError(`Cannot lift Bitcoin script: ${miniscriptResult.error || 'Unknown error'}`);
+                this.showLiftError(`Cannot lift Bitcoin script: ${miniscriptResult.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Lift error:', error);
-            this.showMiniscriptError(`Lift failed: ${error.message}`);
+            this.showLiftError(`Lift failed: ${error.message}`);
         } finally {
             // Reset button
             button.textContent = originalText;
@@ -2433,9 +2433,35 @@ class MiniscriptCompiler {
             const scriptDiv = document.createElement('div');
             scriptDiv.className = 'result-box info';
             scriptDiv.innerHTML = `
-                <h4>📜 Generated script (hex)</h4>
-                <textarea readonly style="width: 100%; min-height: 60px; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.script}</textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0;">📜 Generated script (hex)</h4>
+                    <div style="display: flex; align-items: center; gap: 0px;">
+                        <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            ⬆️
+                        </button>
+                        <button id="copy-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy hex script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            📋
+                        </button>
+                    </div>
+                </div>
+                <textarea id="script-hex-display" style="width: 100%; min-height: 60px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.script}</textarea>
             `;
+            
+            // Add event listeners for the buttons
+            const liftHexButton = scriptDiv.querySelector('#lift-hex-script-btn');
+            const copyHexButton = scriptDiv.querySelector('#copy-hex-script-btn');
+            const hexDisplay = scriptDiv.querySelector('#script-hex-display');
+            
+            // Add event listener for lift button
+            liftHexButton.addEventListener('click', () => {
+                this.liftBitcoinScript(liftHexButton, hexDisplay);
+            });
+            
+            // Add event listener for copy button
+            copyHexButton.addEventListener('click', () => {
+                this.copyHexScript(hexDisplay);
+            });
+            
             resultsDiv.appendChild(scriptDiv);
         }
 
@@ -2943,13 +2969,84 @@ class MiniscriptCompiler {
 
     showSuccess(message) {
         const resultsDiv = document.getElementById('results');
+        
+        // Remove previous lift messages (success, info, error)
+        const existingLiftMessages = resultsDiv.querySelectorAll('.lift-message');
+        existingLiftMessages.forEach(el => el.remove());
+        
         const successDiv = document.createElement('div');
-        successDiv.className = 'result-box success';
+        successDiv.className = 'result-box success lift-message';
         successDiv.innerHTML = `<h4>✅ Success</h4><div>${message}</div>`;
         resultsDiv.appendChild(successDiv);
         
-        // Auto-remove success message after 3 seconds
-        setTimeout(() => successDiv.remove(), 3000);
+        // Auto-remove success message after 3 seconds (for non-lift success messages)
+        if (!message.includes('Lifted')) {
+            setTimeout(() => successDiv.remove(), 3000);
+        }
+    }
+
+    showInfo(message) {
+        const resultsDiv = document.getElementById('results');
+        
+        // Remove previous lift messages (success, info, error)
+        const existingLiftMessages = resultsDiv.querySelectorAll('.lift-message');
+        existingLiftMessages.forEach(el => el.remove());
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'result-box info lift-message';
+        infoDiv.innerHTML = `<h4>ℹ️ Info</h4><div>${message}</div>`;
+        resultsDiv.appendChild(infoDiv);
+        
+        // Auto-remove info message after 4 seconds (for non-lift info messages)
+        if (!message.includes('Lifted')) {
+            setTimeout(() => infoDiv.remove(), 4000);
+        }
+    }
+
+    showLiftError(message) {
+        const resultsDiv = document.getElementById('results');
+        
+        // Remove previous lift messages (success, info, error)
+        const existingLiftMessages = resultsDiv.querySelectorAll('.lift-message');
+        existingLiftMessages.forEach(el => el.remove());
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'result-box error lift-message';
+        errorDiv.innerHTML = `<h4>❌ Lift Error</h4><div>${message}</div>`;
+        resultsDiv.appendChild(errorDiv);
+        
+        // Lift error messages persist until user action (no auto-removal)
+    }
+
+    copyHexScript(hexDisplay) {
+        if (!hexDisplay) {
+            alert('No hex script to copy');
+            return;
+        }
+        
+        const script = hexDisplay.value.trim();
+        
+        if (!script) {
+            alert('No hex script to copy');
+            return;
+        }
+        
+        // Find the button for visual feedback
+        const button = document.getElementById('copy-hex-script-btn');
+        const originalTitle = button.title;
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(script).then(() => {
+            button.style.color = 'var(--success-border)';
+            button.title = 'Copied!';
+            setTimeout(() => {
+                button.style.color = 'var(--text-secondary)';
+                button.title = originalTitle;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy to clipboard');
+        });
     }
 
     loadSavedExpressions() {
