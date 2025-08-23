@@ -1453,13 +1453,20 @@ class MiniscriptCompiler {
         const expression = policyInput.textContent || policyInput.innerText || '';
         
         if (!expression.trim()) {
-            this.showError('Please enter a policy expression first');
+            this.showPolicyError('Please enter a policy expression first');
+            return;
+        }
+        
+        // First check for existing variables that would cause errors
+        const existingVariableErrors = this.checkForExistingVariables(expression);
+        if (existingVariableErrors.length > 0) {
+            this.showPolicyError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
             return;
         }
         
         const keys = this.extractKeysFromExpression(expression);
         if (keys.length === 0) {
-            this.showError('No keys found in the policy expression');
+            this.showPolicyError('No keys found in the policy expression');
             return;
         }
         
@@ -1471,17 +1478,69 @@ class MiniscriptCompiler {
         const expression = expressionInput.textContent || expressionInput.innerText || '';
         
         if (!expression.trim()) {
-            this.showError('Please enter a miniscript expression first');
+            this.showMiniscriptError('Please enter a miniscript expression first');
+            return;
+        }
+        
+        // First check for existing variables that would cause errors
+        const existingVariableErrors = this.checkForExistingVariables(expression);
+        if (existingVariableErrors.length > 0) {
+            this.showMiniscriptError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
             return;
         }
         
         const keys = this.extractKeysFromExpression(expression);
         if (keys.length === 0) {
-            this.showError('No keys found in the miniscript expression');
+            this.showMiniscriptError('No keys found in the miniscript expression');
             return;
         }
         
         this.showExtractModal(keys, expression);
+    }
+
+    checkForExistingVariables(expression) {
+        const existingVariables = [];
+        
+        // Use the same patterns as in extractKeysFromExpression to find variables
+        const variablePatterns = [
+            // pk(VarName), pkh(VarName), pk_k(VarName), pk_h(VarName)
+            /\b(?:pk|pkh|pk_k|pk_h)\(([A-Za-z_][A-Za-z0-9_]*)\)/g,
+            // multi(threshold,VarName1,VarName2,...)
+            /\bmulti\([0-9]+,([A-Za-z_][A-Za-z0-9_,\s]*)\)/g,
+            // Inside thresh(), and(), or() - look for bare variable names
+            /\b(?:thresh|and|or)\([^)]*\b([A-Za-z_][A-Za-z0-9_]*)\b[^)]*\)/g
+        ];
+        
+        const foundVariables = new Set();
+        
+        for (const pattern of variablePatterns) {
+            let match;
+            while ((match = pattern.exec(expression)) !== null) {
+                if (pattern.source.includes('multi')) {
+                    // Special handling for multi() - split the variable list
+                    const variables = match[1].split(',').map(v => v.trim());
+                    variables.forEach(variable => {
+                        if (this.isValidVariableName(variable)) {
+                            foundVariables.add(variable);
+                        }
+                    });
+                } else {
+                    const variable = match[1].trim();
+                    if (this.isValidVariableName(variable)) {
+                        foundVariables.add(variable);
+                    }
+                }
+            }
+        }
+        
+        // Check if any found variables already exist
+        for (const variable of foundVariables) {
+            if (this.keyVariables.has(variable)) {
+                existingVariables.push(variable);
+            }
+        }
+        
+        return existingVariables;
     }
 
     extractKeysFromExpression(expression) {
@@ -1567,7 +1626,80 @@ class MiniscriptCompiler {
             }
         }
         
+        // Finally, find key variables in miniscript/policy functions
+        const variablePatterns = [
+            // pk(VarName), pkh(VarName), pk_k(VarName), pk_h(VarName)
+            /\b(?:pk|pkh|pk_k|pk_h)\(([A-Za-z_][A-Za-z0-9_]*)\)/g,
+            // multi(threshold,VarName1,VarName2,...)
+            /\bmulti\([0-9]+,([A-Za-z_][A-Za-z0-9_,\s]*)\)/g,
+            // Inside thresh(), and(), or() - look for bare variable names
+            /\b(?:thresh|and|or)\([^)]*\b([A-Za-z_][A-Za-z0-9_]*)\b[^)]*\)/g
+        ];
+        
+        const foundVariables = new Set();
+        
+        for (const pattern of variablePatterns) {
+            let match;
+            while ((match = pattern.exec(expression)) !== null) {
+                if (pattern.source.includes('multi')) {
+                    // Special handling for multi() - split the variable list
+                    const variables = match[1].split(',').map(v => v.trim());
+                    variables.forEach(variable => {
+                        if (this.isValidVariableName(variable)) {
+                            foundVariables.add(variable);
+                        }
+                    });
+                } else {
+                    const variable = match[1].trim();
+                    if (this.isValidVariableName(variable)) {
+                        foundVariables.add(variable);
+                    }
+                }
+            }
+        }
+        
+        // Add undefined variables to the keys array
+        for (const variable of foundVariables) {
+            // Only add if it's not already defined and not a hex key
+            if (!this.keyVariables.has(variable) && !this.isHexString(variable)) {
+                keys.push({
+                    value: variable,
+                    type: 'variable',
+                    isDefault: true, // Variables are selected by default
+                    keyType: this.suggestKeyTypeForContext() // Default key type based on current context
+                });
+            }
+        }
+        
         return keys;
+    }
+    
+    isValidVariableName(name) {
+        // Check if it's a valid variable name (not a number, not a hex string, reasonable length)
+        return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && 
+               name.length <= 20 && 
+               !this.isHexString(name) &&
+               isNaN(name);
+    }
+    
+    isHexString(str) {
+        return /^[0-9a-fA-F]+$/.test(str) && (str.length === 64 || str.length === 66 || str.length === 130);
+    }
+    
+    suggestKeyTypeForContext() {
+        // Get current context from radio buttons
+        const contextRadio = document.querySelector('input[name="context"]:checked');
+        const context = contextRadio ? contextRadio.value : 'segwit';
+        
+        // Suggest appropriate key type for context
+        switch (context) {
+            case 'taproot':
+                return 'x-only';
+            case 'legacy':
+            case 'segwit':
+            default:
+                return 'compressed';
+        }
     }
 
     suggestKeyName(keyValue, existingNames = []) {
@@ -1595,6 +1727,123 @@ class MiniscriptCompiler {
         }
         
         return suggestedName;
+    }
+
+    getUnusedKeyFromPool(keyType, temporarilyUsedKeys = []) {
+        // Define all key pools (same as in generateKey function)
+        const keyPools = {
+            compressed: [
+                '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
+                '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
+                '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
+                '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
+                '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+                '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
+                '03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
+                '02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
+                '03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
+                '02791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
+                '03581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
+                '022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
+                '02bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
+                '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
+                '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
+                '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+                '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
+                '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
+                '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
+                '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
+            ],
+            'x-only': [
+                'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
+                'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
+                'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
+                '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
+                '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+                'c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
+                '774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
+                'e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
+                'd01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
+                '791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
+                '581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
+                '2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
+                'bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
+                '2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
+                '0e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
+                'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+                '5476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
+                'd30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
+                '3da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
+                'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
+            ],
+            xpub: [
+                'xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda',
+                'xpub6DVwZpXox5Ufcug1ub1LXSuYzej9yTY26asDVveSYJA3d31JhFp25ofUC6cS37YvhWGH26oTbpUdipBYfCc47hWobdezL1cQLKDhCVFqez8',
+                'xpub6DJEDKjse8S92yvQx7JkXLk5aAhkJWXZa5XckxrPy28EwLB6jUzrCS77tAEpRWq3QqF2RivtzDt9ExsyxrqkG75xJty3fwVDvDdFBpmMwfu',
+                'xpub6DX4uxi4koKfkHVJLMDEoeTwQJJYJXM49LcpKpHKgVpSJTRZ8wkYKVtFGRffCDZfzccW9k8qmTcyG3PTFoxapSzv8mu5NzkzgLZTrb2F47N',
+                'xpub6CAyrJvsVeEBuz1GyKquKxdiYjmA9HbhKmPfSX8mCg1JmP7VFMbvKXzze6gsUQ97cYcMD7DG2oge2gMzUY64mkeUGQv2KqtBpi4gw2tL5Wp',
+                'xpub6By2dbMpSdtCVycBc2MjC949ksbuE6tHwVNk53zKEGfUrE2PGF3a3D2YLeokHJPDLHAnm7aGoxT47dWb6m3BmXmhbbKT7dqRXaAridfmRqq',
+                'xpub6CaYzGvBpwvxQ92DMxS3HfVNJ3fZhpn6uVV1JLbLFSMDutjCtBv9NnbKJMgHUvwVmYzYNYTSvgHEdNi4QG7fSUCrB39VdUDzDYVNZKnK54X',
+                'xpub6C4dEw4P295tXPETX4BRbP6Ytt1cstZn2CssjGNmTpSC34PChubYotfBhBvtEG5XzKrDLvELhd9FydP5x19K4KHBXv837zzMiYzX48MhS12',
+                'xpub6DRQCUpZfs7b5vkVobwvSF2cH4BnnU8VjcLJw1WUGdSAbspFhqHRFRw8PDqgKFjL2xXSyyQc9nszDnRaPHsU4U36L6HsQPFxfUQM5o5rX7G',
+                'xpub6CX2v8gD4Lx1tQDrWfDk4RjDsWrqn1SX6Q2p8ACtWsjwSEtyA1HYGVpUNJExtjmsmpTh68h2BrVcRfFFBhJcSSz8SmXcF4crr3zNhKvRTRM',
+                'xpub6Cxu6NiSPeqcCnWTrHFGKgvFN4FM3oJsrSvKHJvsd7X8VUpt1ySe9qFCxfYk1s5yp8bkyhVLDFkH885qSehrnAPjpUZdQ1hh6HowiKg6XvB',
+                'xpub6Bv82ixJNjgxru2C64FdNMT2zcpDtGCXwvbUwAajMjG2xspFuEws2a1FNCDbHfSYPJkE82bLdAKauQ3e4Ro5ToX2zGM9v8RRE9FUyVgtDw7',
+                'xpub6BgdVUWuikQxoNZPZzUeH4wdHbrs3cShA6N2QpvVQRxqVgLkY73kyXd7v6F2fmxgjBunRndwTMdoFGB81tq431cmDXpBdU3FpSyYKPCdFqd',
+                'xpub6CFvZzxtB9b9dxhnMa7E6LhSwLXHsvKXtzpQgvYJh9miAftECi2mnnzEz5KLGEyz1MmetXTLhj93cQR4aeuW2oMnK5aczoLXuK57bbZBcN4',
+                'xpub6BhHskPWuUeDWvoyFV2JiDaoH8bQg2pdzxDuKWcSUU55X7L3dpDv7MAD4YD5M7HHVjTvXRr8KXNupYUVTTmbnSNAqspwgnNe1X8AVdKj5eh',
+                'xpub6Cst8ZhGHGuRCVntQ4rWRffvjc22xobzDEMFj4b5B2pELo6dsXjn3TRCD4dyXGLw2V6V5pG6RSWgyH3bniULoD8frDHmY1XW4iKtPHnjrrZ',
+                'xpub6BoHFYfB5bxrATp6XJkN8WCA5qRg6F8nnvw8vNEJq9fLx6m2wko4zyQuaJzQKH5o2JSTh7kEZs9AamxZUXwPkXq4umrr6wJqojdwMd7nvDg',
+                'xpub6DFEv2BRUtXrNBMHzePBNEqDKSFDDBEgxnvne2ZgwReegyVFFGqthqJ8oyL9NzGtpWbSn5a2EdC4ffZELCFWW75794954to7uf7yeDFQypf',
+                'xpub6DFEv2BRUtXrNBMHzePBNEqDKSFDDBEgxnvne2ZgwReegyVFFGqthqJ8oyL9NzGtpWbSn5a2EdC4ffZELCFWW75794954to7uf7yeDFQypf',
+                'xpub6BogqrbNGr4oC7TSMSxeAjWYGvCZ6ykK3m9XWUbH1B3wvs3JNNrXDKXjPSgfnHfyS1xJ6gis8Ngy5KCxkAD77zUjUMaM3CtrbDmUPFNoUAJ'
+            ],
+            tpub: [
+                'tpubDCqmaqe5U2vTX1o22an5Xs2249Q7oXuKATftGBjEyYFKJPo6A6Jmf7RZmHTwS7gv1KoqctnbhypL49aYDvMzNywn7wdqYbFagxdGdsNgGPT',
+                'tpubDCUSNNGv9a4ii4vjbdB1vB466uuo9LhSAJdyzJGYNXZHEYcVBXshtMXBcUVF5UjHYoU1Paj7CoqVn8MwYZ23wkU1kRCFZ7cgVBrkctnqzy3',
+                'tpubDDEprh91LAyzRYSdCwm1FHNofRxnu7HBXmVWAx6HRLxauhJ7j3eJb2RH9EXmbGMFk59yDfo2HVPttgfgpmqNjJnkvPon2YnhXmxDw7tvj1P',
+                'tpubDDiJf7V97vkpJpZnr9KpxwNNrVckiYU89VsvtvT9j5miupxtzrpD5w7GpM5R2nPMgvszhXHXzeiC4GTLGJ7UpaQDAi7BEWuCANJMt1Kw2Lw',
+                'tpubDCa93YebgDGSupE8E1Bo9cG4E1RXnqDtK7mtfKZxrFrR7Y4e6FqzwymmtHjg3pbFAGDjuAYssMaQpvEYVSyrGmdU4req5c6acrShh3Y7xQb',
+                'tpubDCXMUmB2ZGXdPw5wT3Rkh11LLL5gPgPP31T8yy4jSNLy16AUEAwZzM854Pdim97Qnwsi4eKfFsNpshQgaJu2ZMQrhdtXBtgSt5GMMrAWP91',
+                'tpubDCs2bP5EMwpgCXPsjByMvQDJChqiU1nFWAsz4LTSXTtKFMdjQ4fsF2xtDMkyysTUaGcW2QHra8AQkhpt7DduR9s8GTr7sAMTrdYkq3LqvJg',
+                'tpubDDhjkCPc8X9Xew4xtiu5b3QYA7GBVss3ZadMkoJj6y7Gpg9qgUdWSS8HtQ7xvyXPGrC2t9BSwcZCkVGGuBgUXjb8f9LZ6on783wBrCpRnTf',
+                'tpubDDUcubxexsYBR9Sv1VBjRtmokycLZJgXtPVpdoZMaj3tXBr4gk9AtFTgNNWdGJ5fJtuXoyjXbDj2NJvKsdzzuPQmdueQn7mAEE2NbdoSYY4',
+                'tpubDDHMijCf2MkCZiyFkDtk1fsjuehjjpE754Uw7QjS24fWtTP8fnQUrr2hAxksRPm1sVEiUhAAxKMa23HS2esAfsPNNP24XWcQDECsj1i5Cen',
+                'tpubDD3as1pSz2mBRHcuDoQ8hvjpFF5xN3gr1uPcA17Cd7F1vxjAw4UuNQ1DYkVh3tJYfikWACsHeD3mkz9cKRRPuqoE9kXGhRAWdnkHBqnE6mv',
+                'tpubDD2Jkdt363ZtTdnvaa4cMhiU2mg7ZjpEHRuw8ViEimfXZRd2FmDhk3XJ3butR1sGGRDasyLSMRi5fGwG8CeTyN9U6tVDkGUjNQq3VJdeA62',
+                'tpubDC8Anx4AbMFdpAygLRf4NqUrmKZysVXSodQBbqmKhmaLgjFCR9xHYsgGytkKDTj8n8abDRsYQmv2voqnxdPekdLWHsyt99yqttghUyCYYE8',
+                'tpubDCm2QWdEdVCC9t4j2E9pJA2u3CfTasqi3RteSzJuzjYsLGYj7gRi2FZAh1GWiyTPpeVFypohde8ziJCRJKn9juATVZs2GPn3RNwHVfxLM6t',
+                'tpubDDK5oGLzXWSUG5H4iyM2vhKaBhygLfJF4iiNG2QqeMRehm71Q6MYtvM165CS1pS27aeTyD9YAsfDcbTzXzCeViLrNUiNNx2GyLN5wKepq7x',
+                'tpubDCdvro24FvfG6WypbAwFfGwT4LzeT54JspmJgr3yYz8WmDV62iXGiiTyAQAPTbDLUT8jZZhb5Bjn6KyqPqwEY8ft54yEMdayby4naEXh7jw',
+                'tpubDDmjDSgRTDBRkjzquEPpgjH7Ky4PUzJ4HceuxbD7YJTQDWYjLuRWhw3Go9H8WqGSfo86wfJ8kC8pW5hKoXYEwAmqy8fnKiciMS5dHMrcJDs',
+                'tpubDCZgEW2jYXbjwu46iz7X9UWWSEE9tpSFtnVAkvw9x2rbPLmZZ3F7TDEQVdskYamiqmKvmYaQu2jwPBasRFMdJP7w6sP1hnvv4VpNe9wGCAr',
+                'tpubDC9mKxZjqKo6nsurSjgnaaxQS3WSWqm8MVRwnnqjYzXRSfKjUxuvjLgMRAix2BLW8NfoPyUDTjkZgb9jENiihS3AoL3cwG18YLDmZmq1VWP',
+                'tpubDC5H7ejMEWt2JF3AF2kdKKokQsAHcksHoHHMgw6S9x5sTs8mZ4rpNPpuNYSJr7RuwiqUgJpYnA6XftMUNW5hGkTduGCtFfBdyj2hXJKN2Xf'
+            ]
+        };
+        
+        // Get the key pool for the selected type
+        const keyPool = keyPools[keyType];
+        if (!keyPool) {
+            console.error('Invalid key type:', keyType);
+            return null;
+        }
+        
+        // Get already used keys (both from storage and temporarily allocated)
+        const usedKeys = Array.from(this.keyVariables.values());
+        const allUsedKeys = [...usedKeys, ...temporarilyUsedKeys];
+        
+        // Filter out already used keys from the appropriate pool
+        const availableKeys = keyPool.filter(key => !allUsedKeys.includes(key));
+        
+        // If no keys available, return null
+        if (availableKeys.length === 0) {
+            console.warn('No unused keys available in pool for type:', keyType);
+            return null;
+        }
+        
+        // Return the first available key
+        return availableKeys[0];
     }
 
     showExtractModal(keys, originalExpression) {
@@ -1632,7 +1881,9 @@ class MiniscriptCompiler {
             const key = keyObj.value;
             const existingVar = existingKeys.find(e => e.key === key);
             const isExisting = !!existingVar;
-            const suggestedName = isExisting ? existingVar.name : this.suggestKeyName(key, this.extractionData.mappings.map(m => m.name));
+            // For variables, use the exact variable name; for raw keys, suggest a name
+            const suggestedName = isExisting ? existingVar.name : 
+                                  (keyObj.type === 'variable' ? key : this.suggestKeyName(key, this.extractionData.mappings.map(m => m.name)));
             this.extractionData.mappings.push({ key: key, name: suggestedName });
             
             // Determine key type for display based on the new structure
@@ -1640,7 +1891,12 @@ class MiniscriptCompiler {
             let keyClass = '';
             let specialNote = '';
             
-            if (keyObj.type === 'base') {
+            if (keyObj.type === 'variable') {
+                // Key variable - needs type selection
+                keyType = 'Variable';
+                keyClass = 'variable';
+                specialNote = `<span style="color: var(--text-muted); font-size: 11px; margin-left: 10px;">🏷️ Key variable</span>`;
+            } else if (keyObj.type === 'base') {
                 // Base key (tpub/xpub)
                 if (key.startsWith('xpub')) {
                     keyType = 'Base xpub';
@@ -1700,6 +1956,15 @@ class MiniscriptCompiler {
                            placeholder="Enter variable name"
                            ${isExisting ? 'disabled' : ''}
                            style="flex: 1; padding: 6px; background: ${isExisting ? 'var(--disabled-bg)' : 'var(--bg-color)'}; border: 1px solid var(--border-color); border-radius: 4px; color: ${isExisting ? 'var(--text-muted)' : 'var(--text-primary)'};">
+                    ${keyObj.type === 'variable' && !isExisting ? `
+                    <label style="color: var(--text-secondary); min-width: 40px;">Type:</label>
+                    <select id="extract-type-${index}" 
+                            style="padding: 6px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                        <option value="compressed" ${keyObj.suggestedType === 'compressed' ? 'selected' : ''}>Compressed (66 chars)</option>
+                        <option value="x-only" ${keyObj.suggestedType === 'x-only' ? 'selected' : ''}>X-Only (64 chars)</option>
+                        <option value="xpub" ${keyObj.suggestedType === 'xpub' ? 'selected' : ''}>xpub (mainnet)</option>
+                        <option value="tpub" ${keyObj.suggestedType === 'tpub' ? 'selected' : ''}>tpub (testnet)</option>
+                    </select>` : ''}
                 </div>
             `;
             
@@ -2389,6 +2654,7 @@ class MiniscriptCompiler {
         
         // First, collect all selected keys and check for conflicts
         const selectedKeys = [];
+        const temporarilyUsedKeys = []; // Track keys being allocated in this extraction
         keys.forEach((keyObj, index) => {
             const key = keyObj.value;
             const checkbox = document.getElementById(`extract-checkbox-${index}`);
@@ -2402,20 +2668,37 @@ class MiniscriptCompiler {
                     return;
                 }
                 
+                // For variable keys, get the selected type and pull from pool
+                let actualKey = key;
+                if (keyObj.type === 'variable') {
+                    const typeSelect = document.getElementById(`extract-type-${index}`);
+                    const keyType = typeSelect ? typeSelect.value : 'compressed';
+                    
+                    // Get an unused key from the pool based on type selection
+                    const poolKey = this.getUnusedKeyFromPool(keyType, temporarilyUsedKeys);
+                    if (!poolKey) {
+                        errors.push(`No unused ${keyType} keys available in the pool for "${name}"`);
+                        return;
+                    }
+                    actualKey = poolKey;
+                    // Add this key to temporarily used list so next variable gets a different one
+                    temporarilyUsedKeys.push(poolKey);
+                }
+                
                 // Check if name already exists with different value
-                if (this.keyVariables.has(name) && this.keyVariables.get(name) !== key) {
+                if (this.keyVariables.has(name) && this.keyVariables.get(name) !== actualKey) {
                     errors.push(`"${name}" already exists with a different key value`);
                     return;
                 }
                 
                 // Check for duplicate names in current selection
                 const duplicate = selectedKeys.find(sk => sk.name === name);
-                if (duplicate && duplicate.key !== key) {
+                if (duplicate && duplicate.actualKey !== actualKey) {
                     errors.push(`Duplicate name "${name}" for different keys`);
                     return;
                 }
                 
-                selectedKeys.push({ key, name, index });
+                selectedKeys.push({ key, name, index, actualKey, isVariable: keyObj.type === 'variable' });
             }
         });
         
@@ -2433,13 +2716,20 @@ class MiniscriptCompiler {
         // Sort by key length (longest first) to replace descriptors before embedded keys
         selectedKeys.sort((a, b) => b.key.length - a.key.length);
         
-        selectedKeys.forEach(({ key, name }) => {
-            // Add the key variable
-            this.keyVariables.set(name, key);
+        selectedKeys.forEach(({ key, name, actualKey, isVariable }) => {
+            // Add the key variable with the actual generated key
+            this.keyVariables.set(name, actualKey);
             addedCount++;
             
-            // Replace the key with the variable name in the expression
-            updatedExpression = updatedExpression.split(key).join(name);
+            // Replace the original key (or variable pattern) with the variable name in the expression
+            if (isVariable) {
+                // For variables, keep the function wrapper, just replace the variable inside
+                // e.g., pk(Nadav) stays as pk(Nadav) where Nadav is now a defined variable
+                updatedExpression = updatedExpression.replace(new RegExp(`\\b((?:pk|pkh|pk_k|pk_h)\\()${key}(\\))`, 'g'), `$1${name}$2`);
+            } else {
+                // For raw keys, replace the key with the variable name
+                updatedExpression = updatedExpression.split(key).join(name);
+            }
         });
         
         if (addedCount > 0) {
