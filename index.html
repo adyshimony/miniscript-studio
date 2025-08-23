@@ -982,60 +982,406 @@
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📚 Miniscript reference</summary>
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
-                <h4 style="color: var(--text-secondary);">Basic fragments:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - Requires a signature from the specified public key</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk_k(key)</code> - Requires a signature from the specified public key (key directly on stack)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk_h(key)</code> - Requires a signature from a key that hashes to the given value</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pkh(key)</code> - Requires revealing and signing with a key that hashes to the given hash160</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - Requires that the input's relative locktime (nSequence) is at least n blocks/seconds</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - Requires that the transaction's locktime (nLockTime) is at least block height/time n</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">sha256(h)</code> - Requires a preimage that produces the given SHA256 hash when hashed</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash256(h)</code> - Requires a preimage that produces the given double-SHA256 hash (SHA256 of SHA256)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">ripemd160(h)</code> - Requires a preimage that produces the given RIPEMD160 hash when hashed</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - Requires a preimage that produces the given hash160 (RIPEMD160 of SHA256)</li>
-                </ul>
+                
+                <div style="background: var(--success-bg); padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid var(--success-border);">
+                    <h3 style="color: var(--success-border); margin: 0 0 10px 0;">🎯 Understanding Miniscript Fragments</h3>
+                    <p style="margin: 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        Miniscript fragments are the building blocks of Bitcoin smart contracts. Each fragment represents a specific spending condition or logical operation. This guide explains every fragment in detail with real-world use cases and design decisions.
+                    </p>
+                </div>
 
-                <h4 style="color: var(--text-secondary);">AND combinators:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_v(X,Y)</code> - Both X and Y must be satisfied, using VERIFY to check X then evaluating Y</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_b(X,Y)</code> - Both X and Y must be satisfied, using BOOLAND to combine their boolean results</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and_n(X,Y)</code> - Both X and Y must be satisfied, using NOTIF to conditionally execute Y based on X</li>
-                </ul>
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px;">🔑 Key-based Fragments</h3>
+                
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">pk(key)</code> - Simple Public Key Check
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Requires a signature from the specified public key.<br>
+                        <strong>Script:</strong> <code>&lt;pubkey&gt; CHECKSIG</code><br>
+                        <strong>When to use:</strong> Single-user wallets, simple ownership where one person controls funds.<br>
+                        <strong>Example:</strong> <code>pk(Alice)</code> - Only Alice can spend<br>
+                        <strong>Why choose this:</strong> Most efficient for single-key spending. Minimal script size (34 bytes for compressed key).
+                    </p>
+                </div>
 
-                <h4 style="color: var(--text-secondary);">OR combinators:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_b(X,Y)</code> - Either X or Y must be satisfied, using BOOLOR to combine their boolean results</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_c(X,Y)</code> - Either X or Y must be satisfied, using CHECKSIG pattern for efficient evaluation</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_d(X,Y)</code> - Either X or Y must be satisfied, using DUP IF to conditionally execute branches</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or_i(X,Y)</code> - Either X or Y must be satisfied, using IF/ELSE conditional branching</li>
-                </ul>
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">pkh(key)</code> - Public Key Hash
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Requires revealing the public key AND a signature. Key must hash to the given hash160.<br>
+                        <strong>Script:</strong> <code>DUP HASH160 &lt;hash&gt; EQUALVERIFY CHECKSIG</code><br>
+                        <strong>When to use:</strong> Traditional Bitcoin addresses (P2PKH style), when you want shorter scriptPubKeys.<br>
+                        <strong>Example:</strong> <code>pkh(Alice)</code> - Alice must reveal her key and sign<br>
+                        <strong>Why choose this:</strong> Shorter scriptPubKey (only 20-byte hash stored), privacy until spending, standard address format.
+                    </p>
+                </div>
 
-                <h4 style="color: var(--text-secondary);">Mixed combinators:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">andor(X,Y,Z)</code> - Optimized AND-OR: (X AND Y) OR Z pattern using efficient Bitcoin Script</li>
-                </ul>
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">pk_k(key)</code> - Raw Key on Stack
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Like pk() but expects the key already on stack (doesn't push it).<br>
+                        <strong>Script:</strong> <code>CHECKSIG</code> (key must be on stack already)<br>
+                        <strong>When to use:</strong> Advanced scripts where key comes from elsewhere (e.g., from a hash preimage).<br>
+                        <strong>Example:</strong> Used internally by compiler for optimizations<br>
+                        <strong>Why choose this:</strong> Saves bytes when key is already available, used in complex nested structures.
+                    </p>
+                </div>
 
-                <h4 style="color: var(--text-secondary);">Threshold:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X₁,X₂,...,Xₙ)</code> - Requires k out of n sub-expressions to be satisfied</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi(k,key₁,key₂,...)</code> - Traditional k-of-n multisig using CHECKMULTISIG (Taproot only)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">multi_a(k,key₁,key₂,...)</code> - Modern k-of-n multisig using CHECKSIGADD opcodes</li>
-                </ul>
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">pk_h(key)</code> - Hashed Key Check
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Like pkh() but doesn't duplicate the key (expects it on stack).<br>
+                        <strong>Script:</strong> <code>HASH160 &lt;hash&gt; EQUALVERIFY CHECKSIG</code><br>
+                        <strong>When to use:</strong> Internal optimization when key is already available.<br>
+                        <strong>Example:</strong> Used in nested constructs by compiler<br>
+                        <strong>Why choose this:</strong> Saves a DUP operation when key is already on stack.
+                    </p>
+                </div>
 
-                <h4 style="color: var(--text-secondary);">Wrappers:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">a:</code> - Moves the top stack element to/from the altstack for later use</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">s:</code> - Swaps the top two stack elements before evaluation</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">c:</code> - Adds CHECKSIG operation to convert a public key to a signature check</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">t:</code> - Converts any non-zero value to 1 (true), zero values remain 0 (false)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">d:</code> - Duplicates the top stack element if it's non-zero before conditional execution</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">v:</code> - Adds VERIFY operation to ensure the wrapped expression must evaluate to true</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">j:</code> - Checks if the top element has non-zero size before conditional execution</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">n:</code> - Ensures the top stack element is non-zero (adds 0NOTEQUAL check)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">l:</code> - Wraps the left branch of a conditional with IF for selective execution</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">u:</code> - Wraps the right branch of a conditional with IF for selective execution</li>
-                </ul>
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">⏰ Time-based Fragments</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">after(n)</code> - Absolute Timelock
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Can only spend after block height or Unix timestamp n.<br>
+                        <strong>Script:</strong> <code>&lt;n&gt; CHECKLOCKTIMEVERIFY</code><br>
+                        <strong>When to use:</strong> Scheduled payments, vesting, inheritance planning, time-delayed vaults.<br>
+                        <strong>Example:</strong> <code>and_v(v:pk(Alice),after(1767225600))</code> - Alice can spend after Jan 1, 2026<br>
+                        <strong>Why choose this:</strong> Enforces spending cannot happen before specific time. Uses transaction nLockTime field.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">older(n)</code> - Relative Timelock
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Must wait n blocks after UTXO creation before spending.<br>
+                        <strong>Script:</strong> <code>&lt;n&gt; CHECKSEQUENCEVERIFY</code><br>
+                        <strong>When to use:</strong> Lightning channels, vault recovery paths, forced hodling, gradual release.<br>
+                        <strong>Example:</strong> <code>or(pk(Alice),and(pk(Bob),older(144)))</code> - Bob can spend after 1 day<br>
+                        <strong>Why choose this:</strong> Creates delay relative to when UTXO was created. Perfect for timeout-based recovery.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">🔐 Hash-based Fragments</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">sha256(hash)</code> - SHA256 Preimage
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Requires revealing data that hashes to the given SHA256 hash.<br>
+                        <strong>Script:</strong> <code>SIZE 32 EQUALVERIFY SHA256 &lt;hash&gt; EQUAL</code><br>
+                        <strong>When to use:</strong> Atomic swaps, HTLCs, proof of knowledge, cross-chain bridges.<br>
+                        <strong>Example:</strong> <code>and(pk(Alice),sha256(abc123...))</code> - Alice + secret<br>
+                        <strong>Why choose this:</strong> Most common hash function in Bitcoin, 32-byte preimages, widely supported.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">hash256(hash)</code> - Double SHA256
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Requires preimage for SHA256(SHA256(data)).<br>
+                        <strong>Script:</strong> <code>SIZE 32 EQUALVERIFY HASH256 &lt;hash&gt; EQUAL</code><br>
+                        <strong>When to use:</strong> Bitcoin-native hashing (used for block headers, txids).<br>
+                        <strong>Example:</strong> Cross-chain swaps with Bitcoin-style chains<br>
+                        <strong>Why choose this:</strong> Standard Bitcoin hashing, slightly more secure against length extension.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">hash160(hash)</code> - RIPEMD160(SHA256)
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Requires preimage for RIPEMD160(SHA256(data)).<br>
+                        <strong>Script:</strong> <code>SIZE 32 EQUALVERIFY HASH160 &lt;hash&gt; EQUAL</code><br>
+                        <strong>When to use:</strong> Bitcoin address-style hashing, 20-byte hashes for smaller scripts.<br>
+                        <strong>Example:</strong> <code>and(pk(Alice),hash160(6c60f404...))</code> - Common in 2FA setups<br>
+                        <strong>Why choose this:</strong> Smaller hash (20 bytes), used in Bitcoin addresses, good for space optimization.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">ripemd160(hash)</code> - RIPEMD160 Hash
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Requires preimage for RIPEMD160(data).<br>
+                        <strong>Script:</strong> <code>SIZE 32 EQUALVERIFY RIPEMD160 &lt;hash&gt; EQUAL</code><br>
+                        <strong>When to use:</strong> Alternative hash function, legacy compatibility.<br>
+                        <strong>Example:</strong> Rarely used, mainly for specific protocols<br>
+                        <strong>Why choose this:</strong> Different hash function for diversity, 20-byte output.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">🔀 OR Combinators - Choosing the Right One</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">or_i(X,Y)</code> - If/Else Branch Selection
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Spender chooses branch with 1 (left) or 0 (right) on stack.<br>
+                        <strong>Script:</strong> <code>IF &lt;X&gt; ELSE &lt;Y&gt; ENDIF</code><br>
+                        <strong>When to use:</strong> Two distinct spending paths, clean branch selection, vault tiers.<br>
+                        <strong>Example:</strong> <code>or_i(pk(Alice),pk(Bob))</code> - Alice OR Bob can spend<br>
+                        <strong>Why choose or_i:</strong> Most readable, explicit branch choice, good for user-facing options. Spender decides upfront which path to take.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">or_d(X,Y)</code> - Try Left First, Fallback to Right
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Tries X first; if X leaves 0, then tries Y.<br>
+                        <strong>Script:</strong> <code>&lt;X&gt; IFDUP NOTIF &lt;Y&gt; ENDIF</code><br>
+                        <strong>When to use:</strong> Primary path with automatic fallback, signature-or-timeout patterns.<br>
+                        <strong>Example:</strong> <code>or_d(pk(Alice),and(pk(Bob),older(144)))</code> - Alice primary, Bob backup<br>
+                        <strong>Why choose or_d:</strong> Automatic fallback without explicit choice. Left branch "dissatisfies" gracefully to allow right branch.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">or_c(X,Y)</code> - Optimized for Signatures
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Specialized OR for pk/pkh combinations.<br>
+                        <strong>Script:</strong> <code>&lt;X&gt; NOTIF &lt;Y&gt; ENDIF</code><br>
+                        <strong>When to use:</strong> When left side is a signature check that can be "dissatisfied".<br>
+                        <strong>Example:</strong> Used internally for optimizing signature-based ORs<br>
+                        <strong>Why choose or_c:</strong> Most efficient for signature-based options. Compiler often chooses this automatically.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">or_b(X,Y)</code> - Boolean OR Logic
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Evaluates both branches, combines with boolean OR.<br>
+                        <strong>Script:</strong> <code>&lt;X&gt; &lt;Y&gt; BOOLOR</code><br>
+                        <strong>When to use:</strong> When you need both conditions evaluated (rare).<br>
+                        <strong>Example:</strong> Complex boolean logic, both sides must execute<br>
+                        <strong>Why choose or_b:</strong> Both branches always execute. Usually inefficient but sometimes necessary for specific logic.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">🔗 AND Combinators - Combining Conditions</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">and_v(X,Y)</code> - Verify Then Execute
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> X must be true (verified), then Y is evaluated.<br>
+                        <strong>Script:</strong> <code>&lt;X&gt; VERIFY &lt;Y&gt;</code><br>
+                        <strong>When to use:</strong> Most common AND. Signature + timelock, key + hash, any two conditions.<br>
+                        <strong>Example:</strong> <code>and_v(v:pk(Alice),older(144))</code> - Alice after 1 day<br>
+                        <strong>Why choose and_v:</strong> Clean, efficient, X doesn't leave anything on stack. Use when X is a "check" condition.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">and_b(X,Y)</code> - Boolean AND
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Both return boolean values, combined with AND.<br>
+                        <strong>Script:</strong> <code>&lt;X&gt; &lt;Y&gt; BOOLAND</code><br>
+                        <strong>When to use:</strong> When both sides produce boolean (0/1) results.<br>
+                        <strong>Example:</strong> Combining hash checks or boolean conditions<br>
+                        <strong>Why choose and_b:</strong> Both sides leave values on stack to be combined. Less common than and_v.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">and_n(X,Y)</code> - Conditional AND
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Uses NOTIF pattern for conditional execution.<br>
+                        <strong>Script:</strong> <code>&lt;X&gt; NOTIF 0 ELSE &lt;Y&gt; ENDIF</code><br>
+                        <strong>When to use:</strong> Internal optimization, rarely hand-written.<br>
+                        <strong>Example:</strong> Compiler-generated for specific patterns<br>
+                        <strong>Why choose and_n:</strong> Special cases where this pattern is more efficient.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">🎯 Threshold & Multisig</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">thresh(k,X₁,...,Xₙ)</code> - K-of-N Threshold
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Exactly k of the n conditions must be satisfied.<br>
+                        <strong>Script:</strong> Complex combination of ADD and EQUAL checks<br>
+                        <strong>When to use:</strong> Flexible multisig, mixed conditions (keys + timelocks + hashes).<br>
+                        <strong>Example:</strong> <code>thresh(2,pk(A),pk(B),pk(C))</code> - Any 2 of 3 signers<br>
+                        <strong>Why choose thresh:</strong> Most flexible threshold. Can mix different condition types, not just keys.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">multi(k,key₁,...)</code> - Classic Multisig
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Traditional Bitcoin multisig with CHECKMULTISIG.<br>
+                        <strong>Script:</strong> <code>&lt;k&gt; &lt;key1&gt; ... &lt;keyn&gt; &lt;n&gt; CHECKMULTISIG</code><br>
+                        <strong>When to use:</strong> Legacy compatibility, up to 3-of-3 in P2SH.<br>
+                        <strong>Example:</strong> <code>multi(2,Alice,Bob,Charlie)</code><br>
+                        <strong>Why choose multi:</strong> Most efficient for pure key-based multisig. Limited to 20 keys max.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">multi_a(k,key₁,...)</code> - Taproot Multisig
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Modern multisig using CHECKSIGADD (Taproot only).<br>
+                        <strong>Script:</strong> Series of <code>CHECKSIGADD</code> operations<br>
+                        <strong>When to use:</strong> Taproot scripts, more than 20 keys, batch validation.<br>
+                        <strong>Example:</strong> <code>multi_a(11,key1,...,key20)</code> - 11-of-20<br>
+                        <strong>Why choose multi_a:</strong> No key limit, more efficient in Taproot, better for large multisigs.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">🎭 Wrappers - Modifying Behavior</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">v:</code> - Verify Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Adds VERIFY, expression must be true or script fails.<br>
+                        <strong>Script:</strong> <code>&lt;expr&gt; VERIFY</code><br>
+                        <strong>When to use:</strong> Converting expressions for use in and_v, ensuring conditions are met.<br>
+                        <strong>Example:</strong> <code>and_v(v:pk(Alice),older(144))</code><br>
+                        <strong>Why use:</strong> Makes expression "unit type" - doesn't leave value on stack.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">a:</code> - Alt Stack Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Temporarily stores value on alt stack.<br>
+                        <strong>Script:</strong> <code>TOALTSTACK ... FROMALTSTACK</code><br>
+                        <strong>When to use:</strong> Complex scripts needing temporary storage, threshold operations.<br>
+                        <strong>Example:</strong> <code>thresh(2,pk(A),a:pk(B),a:pk(C))</code><br>
+                        <strong>Why use:</strong> Prevents stack interference in complex evaluations.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">s:</code> - Swap Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Swaps top two stack elements.<br>
+                        <strong>Script:</strong> <code>SWAP &lt;expr&gt;</code><br>
+                        <strong>When to use:</strong> Reordering stack for specific operations.<br>
+                        <strong>Example:</strong> Internal compiler optimization<br>
+                        <strong>Why use:</strong> Stack management in complex scripts.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">c:</code> - Checksig Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Adds CHECKSIG to a key.<br>
+                        <strong>Script:</strong> <code>&lt;key&gt; CHECKSIG</code><br>
+                        <strong>When to use:</strong> Converting raw keys to signature checks.<br>
+                        <strong>Example:</strong> <code>or_c(pk(A),v:pk(B))</code> uses this internally<br>
+                        <strong>Why use:</strong> Type conversion for certain combinators.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">d:</code> - Dup-If Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Duplicates if non-zero.<br>
+                        <strong>Script:</strong> <code>DUP IF ... ENDIF</code><br>
+                        <strong>When to use:</strong> or_d constructions, conditional duplication.<br>
+                        <strong>Example:</strong> Used in <code>or_d</code> patterns<br>
+                        <strong>Why use:</strong> Enables dissatisfaction in OR branches.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">t:</code> - True/False Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Converts to 1 if true, 0 if false.<br>
+                        <strong>Script:</strong> <code>IF 1 ELSE 0 ENDIF</code><br>
+                        <strong>When to use:</strong> Normalizing boolean values.<br>
+                        <strong>Example:</strong> <code>t:or_i(pk(A),pk(B))</code><br>
+                        <strong>Why use:</strong> Ensures consistent 0/1 output.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">🚀 Advanced Patterns</h3>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">andor(X,Y,Z)</code> - Optimized (X AND Y) OR Z
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> If X is satisfied, require Y; otherwise require Z.<br>
+                        <strong>Script:</strong> Optimized combination avoiding redundant checks<br>
+                        <strong>When to use:</strong> "If condition then require Y, else require Z" patterns.<br>
+                        <strong>Example:</strong> <code>andor(pk(Alice),pk(Bob),and(pk(Charlie),older(144)))</code><br>
+                        <strong>Why choose andor:</strong> More efficient than <code>or(and(X,Y),Z)</code> for this specific pattern.
+                    </p>
+                </div>
+
+                <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">💡 Design Patterns & Best Practices</h3>
+
+                <div style="background: var(--warning-bg); padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid var(--warning-border);">
+                    <h4 style="color: var(--warning-border); margin: 0 0 10px 0;">Common Patterns</h4>
+                    <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px; line-height: 1.8;">
+                        <li><strong>Hot Wallet + Cold Backup:</strong> <code>or(pk(Hot),and(pk(Cold),older(1008)))</code></li>
+                        <li><strong>2FA with Timeout:</strong> <code>and(pk(User),or(pk(Service),older(52560)))</code></li>
+                        <li><strong>Escrow:</strong> <code>or(and(pk(Buyer),pk(Seller)),pk(Arbiter))</code></li>
+                        <li><strong>HTLC:</strong> <code>or(and(pk(Recipient),sha256(H)),and(pk(Sender),older(144)))</code></li>
+                        <li><strong>Inheritance:</strong> <code>or(pk(Owner),and(pk(Heir),after(1798761600)))</code></li>
+                        <li><strong>Vault:</strong> <code>or(and(pk(Hot),pk(Cold)),and(pk(Recovery),older(4320)))</code></li>
+                    </ul>
+                </div>
+
+                <div style="background: var(--success-bg); padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid var(--success-border);">
+                    <h4 style="color: var(--success-border); margin: 0 0 10px 0;">Choosing Fragments</h4>
+                    <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px; line-height: 1.8;">
+                        <li><strong>Keys:</strong> Use <code>pk()</code> for simplicity, <code>pkh()</code> for privacy/compatibility</li>
+                        <li><strong>Time:</strong> Use <code>after()</code> for absolute dates, <code>older()</code> for relative delays</li>
+                        <li><strong>OR Logic:</strong> Use <code>or_i</code> for clear choices, <code>or_d</code> for primary/backup</li>
+                        <li><strong>AND Logic:</strong> Use <code>and_v</code> for most cases, others for optimization</li>
+                        <li><strong>Threshold:</strong> Use <code>thresh</code> for mixed conditions, <code>multi</code> for pure multisig</li>
+                        <li><strong>Wrappers:</strong> Let compiler add them, use <code>v:</code> when needed for and_v</li>
+                    </ul>
+                </div>
                 
                 <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
                     <strong>Note:</strong> Public keys must be 33-byte compressed hex strings (66 characters) for Legacy and Segwit v0, or 32-byte X-only keys (64 characters) for Taproot.
