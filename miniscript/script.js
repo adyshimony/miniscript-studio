@@ -2019,7 +2019,7 @@ class MiniscriptCompiler {
     }
 
     liftBitcoinScript(button, display) {
-        const asmScript = display.value.trim();
+        let asmScript = display.value.trim();
         
         if (!asmScript) {
             this.showError('No Bitcoin script to lift');
@@ -2038,7 +2038,19 @@ class MiniscriptCompiler {
         button.title = 'Lifting...';
         
         try {
-            console.log('Lifting Bitcoin script:', asmScript);
+            // Replace any key variable names with their actual values before lifting
+            if (this.keyVariables.size > 0) {
+                for (const [keyName, keyValue] of this.keyVariables.entries()) {
+                    // Replace key names that appear after OP_PUSHBYTES_XX or standalone
+                    const regexWithPushbytes = new RegExp(`(OP_PUSHBYTES_\\d+\\s+)${keyName}(?=\\s|$)`, 'g');
+                    const regexStandalone = new RegExp(`\\b${keyName}\\b`, 'g');
+                    
+                    asmScript = asmScript.replace(regexWithPushbytes, `$1${keyValue}`);
+                    asmScript = asmScript.replace(regexStandalone, keyValue);
+                }
+            }
+            
+            console.log('Lifting Bitcoin script (with keys replaced):', asmScript);
             
             // Lift ASM to Miniscript with pushbytes intact (no more auto-cleaning)
             const miniscriptResult = lift_to_miniscript(asmScript);
@@ -2432,18 +2444,53 @@ class MiniscriptCompiler {
             const scriptAsmDiv = document.createElement('div');
             scriptAsmDiv.className = 'result-box info';
             
+            // Store the original ASM
+            const originalAsm = result.script_asm;
+            
+            // Create simplified version (without OP_PUSHBYTES_XX prefixes)
             const simplifiedAsm = this.simplifyAsm(result.script_asm);
-            const currentAsm = document.getElementById('hide-pushbytes-btn') && document.getElementById('hide-pushbytes-btn').dataset.active === 'true' ? 
-                simplifiedAsm : result.script_asm;
+            
+            // Apply key names by default if we have key variables
+            let showKeyNames = false;
+            let originalWithKeyNames = originalAsm;
+            let simplifiedWithKeyNames = simplifiedAsm;
+            
+            if (this.keyVariables.size > 0) {
+                showKeyNames = true;
+                // Replace keys with names in both original and simplified versions
+                for (const [keyName, keyValue] of this.keyVariables.entries()) {
+                    // For original (with OP_PUSHBYTES_XX)
+                    const regexOriginal = new RegExp(`(OP_PUSHBYTES_\\d+\\s+)${keyValue}(?=\\s|$)`, 'g');
+                    originalWithKeyNames = originalWithKeyNames.replace(regexOriginal, `$1${keyName}`);
+                    
+                    // For simplified (without OP_PUSHBYTES_XX, just the hex values)
+                    const regexSimplified = new RegExp(`\\b${keyValue}\\b`, 'g');
+                    simplifiedWithKeyNames = simplifiedWithKeyNames.replace(regexSimplified, keyName);
+                }
+            }
+            
+            // By default, hide pushbytes after compilation
+            const shouldHidePushbytes = true; // Always hide pushbytes by default
+            
+            // Determine what to display initially
+            let currentAsm;
+            if (shouldHidePushbytes) {
+                currentAsm = showKeyNames ? simplifiedWithKeyNames : simplifiedAsm;
+            } else {
+                currentAsm = showKeyNames ? originalWithKeyNames : originalAsm;
+            }
                 
             scriptAsmDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="margin: 0;">⚡ Bitcoin script (ASM)</h4>
                     <div style="display: flex; align-items: center; gap: 0px;">
+                        <button id="asm-key-names-toggle" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: ${showKeyNames ? 'var(--success-border)' : 'var(--text-secondary)'}; display: flex; align-items: center; border-radius: 3px;" title="${showKeyNames ? 'Hide key names' : 'Show key names'}" data-active="${showKeyNames}" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            🏷️
+                        </button>
                         <button id="format-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Format script with indentation" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             📐
                         </button>
-                        <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Hide pushbytes" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--success-border); display: flex; align-items: center; border-radius: 3px;" title="Show pushbytes" data-active="true" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             👁️
                         </button>
                         <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -2461,30 +2508,55 @@ class MiniscriptCompiler {
             const toggleButton = scriptAsmDiv.querySelector('#hide-pushbytes-btn');
             const display = scriptAsmDiv.querySelector('#script-asm-display');
             const formatButton = scriptAsmDiv.querySelector('#format-script-btn');
+            const keyNamesToggle = scriptAsmDiv.querySelector('#asm-key-names-toggle');
             
-            // Initialize toggle button state based on previous state if any
-            const previousState = document.getElementById('hide-pushbytes-btn') && document.getElementById('hide-pushbytes-btn').dataset.active === 'true';
-            if (previousState) {
-                toggleButton.style.color = 'var(--success-border)';
-                toggleButton.title = 'Show pushbytes';
-                toggleButton.dataset.active = 'true';
-                display.value = simplifiedAsm;
-            } else {
-                toggleButton.dataset.active = 'false';
-            }
+            // Store all versions for quick access
+            display.dataset.originalAsm = originalAsm;
+            display.dataset.simplifiedAsm = simplifiedAsm;
+            display.dataset.originalWithKeyNames = originalWithKeyNames;
+            display.dataset.simplifiedWithKeyNames = simplifiedWithKeyNames;
+            
+            // Add event listener for key names toggle button
+            keyNamesToggle.addEventListener('click', () => {
+                const isActive = keyNamesToggle.dataset.active === 'true';
+                const isHidingPushbytes = toggleButton.dataset.active === 'true';
+                
+                if (isActive) {
+                    // Hide key names - show actual keys
+                    display.value = isHidingPushbytes ? display.dataset.simplifiedAsm : display.dataset.originalAsm;
+                    keyNamesToggle.style.color = 'var(--text-secondary)';
+                    keyNamesToggle.title = 'Show key names';
+                    keyNamesToggle.dataset.active = 'false';
+                } else {
+                    // Show key names - use pre-computed versions
+                    display.value = isHidingPushbytes ? display.dataset.simplifiedWithKeyNames : display.dataset.originalWithKeyNames;
+                    keyNamesToggle.style.color = 'var(--success-border)';
+                    keyNamesToggle.title = 'Hide key names';
+                    keyNamesToggle.dataset.active = 'true';
+                }
+                
+                // Reset format state when toggling key names
+                formatButton.dataset.formatted = 'false';
+                formatButton.style.color = 'var(--text-secondary)';
+                formatButton.title = 'Format script with indentation';
+            });
+            
+            // Button is already initialized as active in the HTML since we hide pushbytes by default
+            // No need to change the state here as it's already set correctly
             
             toggleButton.addEventListener('click', () => {
                 const isCurrentlyHiding = toggleButton.dataset.active === 'true';
+                const isShowingKeyNames = keyNamesToggle.dataset.active === 'true';
                 
                 if (isCurrentlyHiding) {
                     // Show pushbytes
-                    display.value = result.script_asm;
+                    display.value = isShowingKeyNames ? display.dataset.originalWithKeyNames : display.dataset.originalAsm;
                     toggleButton.style.color = 'var(--text-secondary)';
                     toggleButton.title = 'Hide pushbytes';
                     toggleButton.dataset.active = 'false';
                 } else {
                     // Hide pushbytes
-                    display.value = simplifiedAsm;
+                    display.value = isShowingKeyNames ? display.dataset.simplifiedWithKeyNames : display.dataset.simplifiedAsm;
                     toggleButton.style.color = 'var(--success-border)';
                     toggleButton.title = 'Show pushbytes';
                     toggleButton.dataset.active = 'true';
