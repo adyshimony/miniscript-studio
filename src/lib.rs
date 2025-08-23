@@ -948,6 +948,7 @@ fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
             "OP_14" | "OP_PUSHNUM_14" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_14),
             "OP_15" | "OP_PUSHNUM_15" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_15),
             "OP_16" | "OP_PUSHNUM_16" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_16),
+            "OP_PUSHNUM_NEG1" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_NEG1),
             
             // Common opcodes
             "OP_DUP" => builder = builder.push_opcode(opcodes::all::OP_DUP),
@@ -963,6 +964,7 @@ fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
             "OP_CHECKMULTISIGVERIFY" => builder = builder.push_opcode(opcodes::all::OP_CHECKMULTISIGVERIFY),
             "OP_CHECKLOCKTIMEVERIFY" | "OP_CLTV" => builder = builder.push_opcode(opcodes::all::OP_CLTV),
             "OP_CHECKSEQUENCEVERIFY" | "OP_CSV" => builder = builder.push_opcode(opcodes::all::OP_CSV),
+            "OP_CHECKSIGADD" => builder = builder.push_opcode(opcodes::all::OP_CHECKSIGADD),
             
             // Control flow
             "OP_IF" => builder = builder.push_opcode(opcodes::all::OP_IF),
@@ -987,13 +989,75 @@ fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
             "OP_FROMALTSTACK" => builder = builder.push_opcode(opcodes::all::OP_FROMALTSTACK),
             "OP_TOALTSTACK" => builder = builder.push_opcode(opcodes::all::OP_TOALTSTACK),
             "OP_IFDUP" => builder = builder.push_opcode(opcodes::all::OP_IFDUP),
+            "OP_DEPTH" => builder = builder.push_opcode(opcodes::all::OP_DEPTH),
+            "OP_2OVER" => builder = builder.push_opcode(opcodes::all::OP_2OVER),
+            "OP_2ROT" => builder = builder.push_opcode(opcodes::all::OP_2ROT),
+            "OP_2SWAP" => builder = builder.push_opcode(opcodes::all::OP_2SWAP),
+            "OP_3DUP" => builder = builder.push_opcode(opcodes::all::OP_3DUP),
             
             // Arithmetic
             "OP_ADD" => builder = builder.push_opcode(opcodes::all::OP_ADD),
             "OP_SUB" => builder = builder.push_opcode(opcodes::all::OP_SUB),
+            "OP_MUL" => builder = builder.push_opcode(opcodes::all::OP_MUL),
+            "OP_DIV" => builder = builder.push_opcode(opcodes::all::OP_DIV),
+            "OP_MOD" => builder = builder.push_opcode(opcodes::all::OP_MOD),
+            "OP_LSHIFT" => builder = builder.push_opcode(opcodes::all::OP_LSHIFT),
+            "OP_RSHIFT" => builder = builder.push_opcode(opcodes::all::OP_RSHIFT),
             "OP_BOOLAND" => builder = builder.push_opcode(opcodes::all::OP_BOOLAND),
             "OP_BOOLOR" => builder = builder.push_opcode(opcodes::all::OP_BOOLOR),
+            "OP_NUMEQUAL" => builder = builder.push_opcode(opcodes::all::OP_NUMEQUAL),
+            "OP_NUMEQUALVERIFY" => builder = builder.push_opcode(opcodes::all::OP_NUMEQUALVERIFY),
+            "OP_NUMNOTEQUAL" => builder = builder.push_opcode(opcodes::all::OP_NUMNOTEQUAL),
+            "OP_LESSTHAN" => builder = builder.push_opcode(opcodes::all::OP_LESSTHAN),
+            "OP_GREATERTHAN" => builder = builder.push_opcode(opcodes::all::OP_GREATERTHAN),
+            "OP_LESSTHANOREQUAL" => builder = builder.push_opcode(opcodes::all::OP_LESSTHANOREQUAL),
+            "OP_GREATERTHANOREQUAL" => builder = builder.push_opcode(opcodes::all::OP_GREATERTHANOREQUAL),
+            "OP_MIN" => builder = builder.push_opcode(opcodes::all::OP_MIN),
+            "OP_MAX" => builder = builder.push_opcode(opcodes::all::OP_MAX),
+            "OP_WITHIN" => builder = builder.push_opcode(opcodes::all::OP_WITHIN),
+            "OP_1NEGATE" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_NEG1), // Alias
+            "OP_NEGATE" => builder = builder.push_opcode(opcodes::all::OP_NEGATE),
+            "OP_ABS" => builder = builder.push_opcode(opcodes::all::OP_ABS),
             "OP_NOT" => builder = builder.push_opcode(opcodes::all::OP_NOT),
+            "OP_0NOTEQUAL" => builder = builder.push_opcode(opcodes::all::OP_0NOTEQUAL),
+            
+            // String/byte operations
+            "OP_CAT" => builder = builder.push_opcode(opcodes::all::OP_CAT),
+            "OP_SUBSTR" => builder = builder.push_opcode(opcodes::all::OP_SUBSTR),
+            "OP_LEFT" => builder = builder.push_opcode(opcodes::all::OP_LEFT),
+            "OP_RIGHT" => builder = builder.push_opcode(opcodes::all::OP_RIGHT),
+            "OP_INVERT" => builder = builder.push_opcode(opcodes::all::OP_INVERT),
+            "OP_AND" => builder = builder.push_opcode(opcodes::all::OP_AND),
+            "OP_OR" => builder = builder.push_opcode(opcodes::all::OP_OR),
+            "OP_XOR" => builder = builder.push_opcode(opcodes::all::OP_XOR),
+            
+            // Reserved words (these will fail script execution but are valid opcodes)
+            "OP_RESERVED" => builder = builder.push_opcode(opcodes::all::OP_RESERVED),
+            "OP_VER" => builder = builder.push_opcode(opcodes::all::OP_VER),
+            "OP_VERIF" => builder = builder.push_opcode(opcodes::all::OP_VERIF),
+            "OP_VERNOTIF" => builder = builder.push_opcode(opcodes::all::OP_VERNOTIF),
+            "OP_RESERVED1" => builder = builder.push_opcode(opcodes::all::OP_RESERVED1),
+            "OP_RESERVED2" => builder = builder.push_opcode(opcodes::all::OP_RESERVED2),
+            
+            // Alternative hash functions (disabled by default)
+            "OP_SHA1" => builder = builder.push_opcode(opcodes::all::OP_SHA1),
+            "OP_MD5" => builder = builder.push_opcode(opcodes::all::OP_HASH160), // MD5 not in bitcoin lib, using HASH160 as fallback
+            
+            // NOP operations
+            "OP_NOP" => builder = builder.push_opcode(opcodes::all::OP_NOP),
+            "OP_NOP1" => builder = builder.push_opcode(opcodes::all::OP_NOP1),
+            "OP_NOP4" => builder = builder.push_opcode(opcodes::all::OP_NOP4),
+            "OP_NOP5" => builder = builder.push_opcode(opcodes::all::OP_NOP5),
+            "OP_NOP6" => builder = builder.push_opcode(opcodes::all::OP_NOP6),
+            "OP_NOP7" => builder = builder.push_opcode(opcodes::all::OP_NOP7),
+            "OP_NOP8" => builder = builder.push_opcode(opcodes::all::OP_NOP8),
+            "OP_NOP9" => builder = builder.push_opcode(opcodes::all::OP_NOP9),
+            "OP_NOP10" => builder = builder.push_opcode(opcodes::all::OP_NOP10),
+            
+            // Additional push operations
+            "OP_PUSHDATA1" => builder = builder.push_opcode(opcodes::all::OP_PUSHDATA1),
+            "OP_PUSHDATA2" => builder = builder.push_opcode(opcodes::all::OP_PUSHDATA2),
+            "OP_PUSHDATA4" => builder = builder.push_opcode(opcodes::all::OP_PUSHDATA4),
             
             // Handle OP_PUSHBYTES_* opcodes - these should be followed by hex data
             pushbytes if pushbytes.starts_with("OP_PUSHBYTES_") => {
