@@ -575,6 +575,7 @@ class MiniscriptCompiler {
         document.getElementById('expression-input').innerHTML = '';
         document.getElementById('results').innerHTML = '';
         this.clearPolicyErrors();
+        this.clearMiniscriptMessages(); // Clear the success message too
         
         // Reset the "Show key names" checkbox since we cleared the miniscript
         const toggleBtn = document.getElementById('key-names-toggle');
@@ -3335,6 +3336,11 @@ window.loadPolicyExample = function(example) {
     document.getElementById('expression-input').innerHTML = '';
     document.getElementById('results').innerHTML = '';
     document.getElementById('policy-errors').innerHTML = '';
+    
+    // Clear the success message when loading a policy example
+    if (window.compiler && window.compiler.clearMiniscriptMessages) {
+        window.compiler.clearMiniscriptMessages();
+    }
     
     if (window.compiler && window.compiler.highlightPolicySyntax) {
         window.compiler.highlightPolicySyntax();
