@@ -197,6 +197,23 @@ export function lift_to_policy(miniscript) {
     return ret;
 }
 
+/**
+ * @param {string} script_hex
+ * @param {string} script_type
+ * @param {string} network
+ * @returns {any}
+ */
+export function generate_address_for_network(script_hex, script_type, network) {
+    const ptr0 = passStringToWasm0(script_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(script_type, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.generate_address_for_network(ptr0, len0, ptr1, len1, ptr2, len2);
+    return ret;
+}
+
 export function main() {
     wasm.main();
 }

@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_policy, lift_to_miniscript, lift_to_policy } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -2723,14 +2723,36 @@ class MiniscriptCompiler {
 
         // Show address if available
         if (result.address) {
+            // Detect current network from address prefix
+            const isTestnet = result.address.startsWith('tb1') || result.address.startsWith('2') || result.address.startsWith('m') || result.address.startsWith('n');
+            
             const addressDiv = document.createElement('div');
             addressDiv.className = 'result-box info';
             addressDiv.innerHTML = `
-                <h4>🏠 Generated address</h4>
-                <div style="word-break: break-all; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0;">🏠 Generated address</h4>
+                    <div style="display: flex; align-items: center; gap: 0px;">
+                        <button id="network-toggle-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: ${isTestnet ? 'var(--success-border)' : 'var(--text-secondary)'}; display: flex; align-items: center; border-radius: 3px;" title="${isTestnet ? 'Switch to Mainnet' : 'Switch to Testnet'}" data-network="${isTestnet ? 'testnet' : 'mainnet'}" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            🌐
+                        </button>
+                    </div>
+                </div>
+                <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
                     ${result.address}
                 </div>
             `;
+            
+            // Store script info for network switching
+            const addressDisplay = addressDiv.querySelector('#address-display');
+            addressDisplay.dataset.scriptHex = result.script;
+            addressDisplay.dataset.scriptType = result.miniscript_type || 'Unknown';
+            
+            // Add event listener for network toggle
+            const networkToggleBtn = addressDiv.querySelector('#network-toggle-btn');
+            networkToggleBtn.addEventListener('click', () => {
+                this.toggleAddressNetwork(networkToggleBtn, addressDisplay);
+            });
+            
             resultsDiv.appendChild(addressDiv);
         } else {
             const noAddressDiv = document.createElement('div');
@@ -3160,6 +3182,64 @@ class MiniscriptCompiler {
             console.error('Failed to copy: ', err);
             alert('Failed to copy to clipboard');
         });
+    }
+
+    toggleAddressNetwork(button, addressDisplay) {
+        const currentNetwork = button.dataset.network;
+        const scriptHex = addressDisplay.dataset.scriptHex;
+        const scriptType = addressDisplay.dataset.scriptType;
+        
+        if (!scriptHex || !scriptType) {
+            console.error('Missing script information for network toggle');
+            return;
+        }
+        
+        if (!this.wasm) {
+            console.error('WASM not ready');
+            return;
+        }
+        
+        // Determine new network
+        const newNetwork = currentNetwork === 'mainnet' ? 'testnet' : 'mainnet';
+        
+        // Show loading state
+        const originalContent = addressDisplay.textContent;
+        addressDisplay.textContent = 'Generating address...';
+        button.disabled = true;
+        
+        try {
+            console.log(`Switching from ${currentNetwork} to ${newNetwork} for ${scriptType} script`);
+            
+            // Call WASM function to generate address for new network
+            const result = generate_address_for_network(scriptHex, scriptType, newNetwork);
+            
+            if (result.success && result.address) {
+                // Update address display
+                addressDisplay.textContent = result.address;
+                
+                // Update button state
+                button.dataset.network = newNetwork;
+                if (newNetwork === 'testnet') {
+                    button.style.color = 'var(--success-border)';
+                    button.title = 'Switch to Mainnet';
+                } else {
+                    button.style.color = 'var(--text-secondary)';
+                    button.title = 'Switch to Testnet';
+                }
+                
+                console.log(`Successfully switched to ${newNetwork}: ${result.address}`);
+            } else {
+                console.error('Failed to generate address:', result.error);
+                addressDisplay.textContent = originalContent;
+                alert(`Failed to generate ${newNetwork} address: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Network toggle error:', error);
+            addressDisplay.textContent = originalContent;
+            alert(`Error switching networks: ${error.message}`);
+        } finally {
+            button.disabled = false;
+        }
     }
 
     loadSavedExpressions() {

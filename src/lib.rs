@@ -1340,6 +1340,79 @@ fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
 }
 
 
+#[derive(Serialize, Deserialize)]
+pub struct AddressResult {
+    pub success: bool,
+    pub address: Option<String>,
+    pub error: Option<String>,
+}
+
+#[wasm_bindgen]
+pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
+    console_log!("Generating address for script: {} type: {} network: {}", script_hex, script_type, network);
+    
+    // Parse network
+    let network_enum = match network.to_lowercase().as_str() {
+        "mainnet" | "bitcoin" => Network::Bitcoin,
+        "testnet" => Network::Testnet,
+        _ => {
+            let result = AddressResult {
+                success: false,
+                address: None,
+                error: Some("Invalid network. Use 'mainnet' or 'testnet'".to_string()),
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+    
+    // Decode hex script
+    let script_bytes = match hex::decode(script_hex) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            let result = AddressResult {
+                success: false,
+                address: None,
+                error: Some("Invalid hex script".to_string()),
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+    
+    let script = ScriptBuf::from_bytes(script_bytes);
+    
+    // Generate address based on script type
+    let address = match script_type {
+        "Legacy" => {
+            match Address::p2sh(&script, network_enum) {
+                Ok(addr) => Some(addr.to_string()),
+                Err(_) => None,
+            }
+        },
+        "Segwit v0" => {
+            Some(Address::p2wsh(&script, network_enum).to_string())
+        },
+        "Taproot" => {
+            generate_taproot_address(&script, network_enum)
+        },
+        _ => None,
+    };
+    
+    let success = address.is_some();
+    let error = if !success {
+        Some(format!("Failed to generate {} address for {}", script_type, network))
+    } else {
+        None
+    };
+    
+    let result = AddressResult {
+        success,
+        address,
+        error,
+    };
+    
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
 #[wasm_bindgen(start)]
 pub fn main() {
     console_log!("=== REAL MINISCRIPT WASM MODULE LOADED ===");
