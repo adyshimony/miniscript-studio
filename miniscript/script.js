@@ -4412,11 +4412,11 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
         },
         'vault_complex': {
-            title: '⚙️ Complex Multi-tier Vault System',
-            structure: '5-tier security vault with progressive timelock delays and threshold requirements',
-            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 immediate → 📅 Tier 1 (2 hrs): VaultKey3 OR 2-of-3 → 📅 Tier 2 (4 hrs): VaultKey4 OR 2-of-3 → 📅 Tier 3 (6 hrs): VaultKey2 OR 2-of-5 → 📅 Final (8 hrs): VaultKey1 OR TestnetKey',
-            useCase: 'Enterprise vault with escalating recovery paths. Each tier adds delay but reduces signature requirements. Emergency path for immediate access, progressively easier recovery over time.',
-            technical: '💡 Nested or_i creates priority order: most secure (immediate) to most accessible (delayed). Demonstrates complex custody with 5 distinct spending conditions.'
+            title: '🏦 Enterprise Multi-Tier Vault System',
+            structure: 'Nested or_i structure: 5 spending paths from most secure (immediate) to most accessible (14-day delay)',
+            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 (immediate) → 📅 Tier 1: VaultKey3 OR 2-of-3 keys (after 1 day) → 📅 Tier 2: VaultKey4 OR 2-of-3 keys (after 3 days) → 📅 Tier 3: VaultKey2 OR 2-of-5 keys (after 7 days) → 📅 Final: VaultKey1 OR TestnetKey (after 14 days)',
+            useCase: 'Corporate treasury with graduated security model. Immediate access requires 2 directors (VaultKey3+VaultKey4). As time passes, recovery becomes easier but requires waiting longer. Perfect for balancing security vs. accessibility in enterprise custody.',
+            technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering from most to least secure.'
         }
     };
     
@@ -4757,11 +4757,11 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
         },
         'vault_complex': {
-            title: '⚙️ Complex Multi-tier Vault System',
-            structure: '5-tier security vault with progressive timelock delays and threshold requirements',
-            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 immediate → 📅 Tier 1 (2 hrs): VaultKey3 OR 2-of-3 → 📅 Tier 2 (4 hrs): VaultKey4 OR 2-of-3 → 📅 Tier 3 (6 hrs): VaultKey2 OR 2-of-5 → 📅 Final (8 hrs): VaultKey1 OR TestnetKey',
-            useCase: 'Enterprise vault with escalating recovery paths. Each tier adds delay but reduces signature requirements. Emergency path for immediate access, progressively easier recovery over time.',
-            technical: '💡 Nested or_i creates priority order: most secure (immediate) to most accessible (delayed). Demonstrates complex custody with 5 distinct spending conditions.'
+            title: '🏦 Enterprise Multi-Tier Vault System',
+            structure: 'Nested or_i structure: 5 spending paths from most secure (immediate) to most accessible (14-day delay)',
+            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 (immediate) → 📅 Tier 1: VaultKey3 OR 2-of-3 keys (after 1 day) → 📅 Tier 2: VaultKey4 OR 2-of-3 keys (after 3 days) → 📅 Tier 3: VaultKey2 OR 2-of-5 keys (after 7 days) → 📅 Final: VaultKey1 OR TestnetKey (after 14 days)',
+            useCase: 'Corporate treasury with graduated security model. Immediate access requires 2 directors (VaultKey3+VaultKey4). As time passes, recovery becomes easier but requires waiting longer. Perfect for balancing security vs. accessibility in enterprise custody.',
+            technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering from most to least secure.'
         }
     };
     
