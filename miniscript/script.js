@@ -531,6 +531,8 @@ class MiniscriptCompiler {
                 formatButton.title = 'Format expression with indentation';
                 formatButton.dataset.formatted = 'false';
                 
+                // Clear the highlighting cache and re-highlight
+                delete expressionInput.dataset.lastHighlightedText;
                 this.highlightMiniscriptSyntax();
                 
                 // Always set toggle button to "Hide Key Names" state after compilation if we replaced keys
@@ -742,8 +744,8 @@ class MiniscriptCompiler {
     applyMiniscriptSyntaxHighlighting(text) {
         // Miniscript syntax patterns (based on official spec: https://bitcoin.sipa.be/miniscript/)
         return text
-            // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
-            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)(\/<[0-9;]+>\/\*)/g, 
+            // HD wallet descriptors: [fingerprint/path]xpub/<range>/* or [fingerprint/path]xpub/path/index
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)((?:\/<[0-9;]+>\/\*|\/[0-9]+\/[0-9*]+))/g, 
                 '<span class="syntax-descriptor-bracket">$1</span>' +
                 '<span class="syntax-fingerprint">$2</span>' +
                 '<span class="syntax-descriptor-bracket">$3</span>' +
