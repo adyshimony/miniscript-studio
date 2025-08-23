@@ -2018,6 +2018,91 @@ class MiniscriptCompiler {
         }
     }
 
+    liftMiniscriptToPolicy() {
+        const expressionInput = document.getElementById('expression-input');
+        const miniscript = expressionInput.textContent.trim();
+        
+        if (!miniscript) {
+            this.showMiniscriptError('No miniscript expression to lift');
+            return;
+        }
+        
+        if (!this.wasm) {
+            this.showMiniscriptError('Compiler not ready, please wait and try again.');
+            return;
+        }
+        
+        // Show loading state
+        const button = document.getElementById('lift-miniscript-btn');
+        const originalText = button.innerHTML;
+        button.innerHTML = '⏳';
+        button.disabled = true;
+        button.title = 'Lifting...';
+        
+        try {
+            // Replace any key variable names with their actual values before lifting
+            let processedMiniscript = miniscript;
+            if (this.keyVariables.size > 0) {
+                for (const [keyName, keyValue] of this.keyVariables.entries()) {
+                    // Replace key names with hex values
+                    const regex = new RegExp(`\\b${keyName}\\b`, 'g');
+                    processedMiniscript = processedMiniscript.replace(regex, keyValue);
+                }
+            }
+            
+            console.log('Lifting miniscript to policy:', processedMiniscript);
+            
+            // Lift miniscript to policy
+            const policyResult = lift_to_policy(processedMiniscript);
+            
+            if (policyResult.success && policyResult.policy) {
+                // Replace keys with names in the policy result if we have key variables
+                let displayPolicy = policyResult.policy;
+                if (this.keyVariables.size > 0) {
+                    displayPolicy = this.replaceKeysWithNames(policyResult.policy);
+                }
+                
+                // Fill policy textarea
+                const policyInput = document.getElementById('policy-input');
+                policyInput.textContent = displayPolicy;
+                
+                // Reset policy format button state
+                const policyFormatBtn = document.getElementById('policy-format-toggle');
+                if (policyFormatBtn) {
+                    policyFormatBtn.style.color = 'var(--text-secondary)';
+                    policyFormatBtn.title = 'Format expression with indentation';
+                    policyFormatBtn.dataset.formatted = 'false';
+                }
+                
+                // Update the "Show key names" toggle button for policy to active state
+                const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+                if (policyToggleBtn && this.keyVariables.size > 0) {
+                    policyToggleBtn.style.color = 'var(--success-border)';
+                    policyToggleBtn.title = 'Hide key names';
+                    policyToggleBtn.dataset.active = 'true';
+                }
+                
+                // Re-apply policy syntax highlighting
+                delete policyInput.dataset.lastHighlightedText;
+                this.highlightPolicySyntax();
+                
+                console.log('Successfully lifted to policy:', displayPolicy);
+                this.showMiniscriptSuccess('✅ Lifted to Policy!');
+            } else {
+                console.log('Policy lift failed:', policyResult.error);
+                this.showMiniscriptError(`Cannot lift miniscript: ${policyResult.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Lift error:', error);
+            this.showMiniscriptError(`Lift failed: ${error.message}`);
+        } finally {
+            // Reset button
+            button.innerHTML = originalText;
+            button.disabled = false;
+            button.title = 'Lift to Policy';
+        }
+    }
+
     liftBitcoinScript(button, display) {
         let asmScript = display.value.trim();
         
@@ -2066,9 +2151,15 @@ class MiniscriptCompiler {
             */
             
             if (miniscriptResult.success && miniscriptResult.miniscript) {
+                // Replace keys with names in the miniscript result if we have key variables
+                let displayMiniscript = miniscriptResult.miniscript;
+                if (this.keyVariables.size > 0) {
+                    displayMiniscript = this.replaceKeysWithNames(miniscriptResult.miniscript);
+                }
+                
                 // Fill miniscript textarea
                 const expressionInput = document.getElementById('expression-input');
-                expressionInput.textContent = miniscriptResult.miniscript;
+                expressionInput.textContent = displayMiniscript;
                 
                 // Reset miniscript format button state
                 const miniscriptFormatBtn = document.getElementById('format-miniscript-btn');
@@ -2076,6 +2167,14 @@ class MiniscriptCompiler {
                     miniscriptFormatBtn.style.color = 'var(--text-secondary)';
                     miniscriptFormatBtn.title = 'Format expression with indentation';
                     miniscriptFormatBtn.dataset.formatted = 'false';
+                }
+                
+                // Update the "Show key names" toggle button for miniscript to active state
+                const miniscriptToggleBtn = document.getElementById('key-names-toggle');
+                if (miniscriptToggleBtn && this.keyVariables.size > 0) {
+                    miniscriptToggleBtn.style.color = 'var(--success-border)';
+                    miniscriptToggleBtn.title = 'Hide key names';
+                    miniscriptToggleBtn.dataset.active = 'true';
                 }
                 
                 // Re-apply miniscript syntax highlighting
@@ -2089,9 +2188,15 @@ class MiniscriptCompiler {
                     const policyResult = lift_to_policy(miniscriptResult.miniscript);
                     
                     if (policyResult.success && policyResult.policy) {
+                        // Replace keys with names in the policy result if we have key variables
+                        let displayPolicy = policyResult.policy;
+                        if (this.keyVariables.size > 0) {
+                            displayPolicy = this.replaceKeysWithNames(policyResult.policy);
+                        }
+                        
                         // Fill policy textarea
                         const policyInput = document.getElementById('policy-input');
-                        policyInput.textContent = policyResult.policy;
+                        policyInput.textContent = displayPolicy;
                         
                         // Reset policy format button state
                         const policyFormatBtn = document.getElementById('policy-format-toggle');
@@ -2099,6 +2204,14 @@ class MiniscriptCompiler {
                             policyFormatBtn.style.color = 'var(--text-secondary)';
                             policyFormatBtn.title = 'Format expression with indentation';
                             policyFormatBtn.dataset.formatted = 'false';
+                        }
+                        
+                        // Update the "Show key names" toggle button for policy to active state
+                        const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+                        if (policyToggleBtn && this.keyVariables.size > 0) {
+                            policyToggleBtn.style.color = 'var(--success-border)';
+                            policyToggleBtn.title = 'Hide key names';
+                            policyToggleBtn.dataset.active = 'true';
                         }
                         
                         // Re-apply policy syntax highlighting
@@ -4499,5 +4612,13 @@ window.togglePolicyFormat = function() {
         window.compiler.togglePolicyFormat();
     } else {
         console.error('Compiler or togglePolicyFormat method not available');
+    }
+};
+
+window.liftMiniscriptToPolicy = function() {
+    if (window.compiler && typeof window.compiler.liftMiniscriptToPolicy === 'function') {
+        window.compiler.liftMiniscriptToPolicy();
+    } else {
+        console.error('Compiler or liftMiniscriptToPolicy method not available');
     }
 };
