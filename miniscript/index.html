@@ -987,13 +987,6 @@
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">📚 Miniscript reference</summary>
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 
-                <div style="background: var(--success-bg); padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid var(--success-border);">
-                    <h3 style="color: var(--success-border); margin: 0 0 10px 0;">🎯 Understanding Miniscript Fragments</h3>
-                    <p style="margin: 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
-                        Miniscript fragments are the building blocks of Bitcoin smart contracts. Each fragment represents a specific spending condition or logical operation. This guide explains every fragment in detail with real-world use cases and design decisions.
-                    </p>
-                </div>
-
                 <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px;">🔑 Key-based Fragments</h3>
                 
                 <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
@@ -1375,8 +1368,8 @@
                     </ul>
                 </div>
 
-                <div style="background: var(--success-bg); padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid var(--success-border);">
-                    <h4 style="color: var(--success-border); margin: 0 0 10px 0;">Choosing Fragments</h4>
+                <div style="background: var(--info-bg); padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">Choosing Fragments</h4>
                     <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px; line-height: 1.8;">
                         <li><strong>Keys:</strong> Use <code>pk()</code> for simplicity, <code>pkh()</code> for privacy/compatibility</li>
                         <li><strong>Time:</strong> Use <code>after()</code> for absolute dates, <code>older()</code> for relative delays</li>
