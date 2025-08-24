@@ -3297,7 +3297,10 @@ class MiniscriptCompiler {
         for (const [name, value] of sortedVariables) {
             const marker = `__TEMP_KEY_${tempIndex}__`;
             tempMarkers.set(marker, name);
-            processedText = processedText.split(value).join(marker);
+            // Use regex with word boundaries to match complete hex strings only
+            // This prevents matching "02abc..." when looking for "abc..."
+            const regex = new RegExp('\\b' + this.escapeRegex(value) + '\\b', 'g');
+            processedText = processedText.replace(regex, marker);
             tempIndex++;
         }
         
