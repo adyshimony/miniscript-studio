@@ -4172,86 +4172,128 @@ window.showPolicyDescription = function(exampleId) {
         'single': {
             title: '📄 Single Key Policy',
             conditions: '🔓 Alice: Immediate spending (no restrictions)',
-            useCase: 'Personal wallet with single owner. Simple and efficient for individual use.',
-            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost'
+            useCase: '**Personal Wallet:** The simplest Bitcoin wallet structure - one person, one key. Perfect for individual users who want straightforward control over their funds. Most mobile wallets and hardware wallets use this pattern by default.',
+            examples: '💡 **Real-world examples:** Personal savings account, daily spending wallet, individual trading account',
+            efficiency: '⚡ **Efficiency:** Minimal transaction size (~73 bytes witness), lowest fees, fastest signing process',
+            security: '⚠️ **Security trade-offs:** Single point of failure - if Alice loses her key or gets compromised, funds are permanently lost. No redundancy or recovery options built-in.',
+            bestFor: '✅ **Best for:** Individual users, small amounts, frequent transactions, users comfortable with full self-custody responsibility'
         },
         'or': {
-            title: '📄 OR Keys Policy',
-            conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately',
-            useCase: 'Shared wallet where either party can spend. Useful for joint accounts or backup access.',
-            security: '💡 Either key compromise results in fund loss'
+            title: '📄 OR Keys Policy - Either Party Access',
+            conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately (independent access)',
+            useCase: '**Shared Access Wallet:** Either person can spend independently. Common for couples, business partners, or backup access scenarios. Think "joint checking account" where either person can write checks.',
+            examples: '💡 **Real-world examples:** Joint family account, business petty cash, emergency fund shared between spouses, backup key for solo traders',
+            efficiency: '⚡ **Efficiency:** Slightly larger than single key (~105 bytes witness). Spender chooses which key to use, so no coordination needed.',
+            security: '⚠️ **Security trade-offs:** Weakest-link security - compromise of ANY key results in fund loss. However, provides redundancy against key loss (lose one, still have the other).',
+            bestFor: '✅ **Best for:** Trusted partnerships, backup access, situations where convenience matters more than maximum security, emergency access scenarios'
         },
         'and': {
-            title: '📄 AND Keys Policy',
-            conditions: '🔓 Alice + Bob: Both signatures required',
-            useCase: '2-of-2 multisig. Both parties must agree to spend. Common for business partnerships.',
-            security: '💡 More secure but requires cooperation of both parties'
+            title: '📄 AND Keys Policy - Dual Authorization',
+            conditions: '🔓 Alice + Bob: Both signatures required (no unilateral spending)',
+            useCase: '**2-of-2 Multisig:** Both parties must agree to every transaction. Perfect for business partnerships, joint investments, or married couples who want shared financial control. Like requiring two signatures on a check.',
+            examples: '💡 **Real-world examples:** Business partnership funds, joint investment account, high-value couple\'s savings, parent-child shared control, corporate treasury requiring dual approval',
+            efficiency: '⚡ **Efficiency:** ~137 bytes witness data. Requires coordination between parties for every transaction, but maximum security.',
+            security: '✅ **Security benefits:** Strongest security - requires compromise of BOTH keys to steal funds. Protects against single key compromise, impulsive spending, and unauthorized transactions.',
+            bestFor: '✅ **Best for:** High-value storage, business partnerships, situations requiring mutual consent, protection against single-person compromise or coercion'
         },
         'threshold': {
-            title: '📄 2-of-3 Threshold Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie',
-            useCase: 'Board of directors or family trust. Prevents single point of failure while requiring majority.',
-            security: '💡 Balanced security - survives 1 key loss, prevents 1 key compromise'
+            title: '📄 2-of-3 Threshold Policy - Majority Consensus',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (flexible majority control)',
+            useCase: '**Majority Multisig:** Any 2 out of 3 parties can approve transactions. Perfect for small boards, family trusts, or adding redundancy while maintaining control. Like corporate voting where majority wins.',
+            examples: '💡 **Real-world examples:** Board of directors treasury, family trust with multiple trustees, business with 3 partners, estate planning with beneficiaries, crypto startup founder funds',
+            efficiency: '⚡ **Efficiency:** Variable witness size depending on which 2 keys sign (~170-200 bytes). Good balance of security and usability.',
+            security: '✅ **Security benefits:** Survives 1 key loss or compromise. Prevents single-person control while allowing majority decisions. More resilient than 2-of-2 but less than single key.',
+            bestFor: '✅ **Best for:** Small group control, estate planning, business partnerships with 3+ people, backup scenarios where 1 key might be lost, decision-making that benefits from consensus'
         },
         'timelock': {
-            title: '📄 Timelock Policy',
-            conditions: '🔓 Alice: Immediate spending\n⏰ Bob: After 144 blocks (~1 day)',
-            useCase: 'Emergency access with delay. Alice has daily control, Bob can recover after waiting period.',
-            security: '💡 Cooling-off period prevents rushed decisions'
+            title: '📄 Timelock Policy - Immediate vs Delayed Access',
+            conditions: '🔓 Alice: Immediate spending (instant access)\n⏰ Bob: After 144 blocks (~1 day) delay',
+            useCase: '**Emergency Recovery with Cooling Period:** Alice has daily control, Bob can recover funds but must wait. Prevents rushed decisions and provides time for Alice to intervene if needed. Like a bank account with both owner access and emergency power of attorney.',
+            examples: '💡 **Real-world examples:** Personal wallet with family backup, business owner with partner recovery, elderly parent with adult child backup, trader with emergency contact access',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is efficient (~73 bytes), Bob\'s path is larger (~105 bytes) due to timelock verification.',
+            security: '✅ **Security benefits:** Alice retains full control while providing recovery option. 24-hour delay gives Alice time to move funds if Bob\'s key is compromised. Prevents immediate theft through Bob\'s key.',
+            bestFor: '✅ **Best for:** Personal wallets needing backup, elderly users with trusted family, business continuity planning, any scenario where primary user wants emergency recovery with built-in warning time'
         },
         'xonly': {
-            title: '📄 Taproot X-only Key',
-            conditions: '🔓 David: Immediate spending (Taproot context)',
-            useCase: 'Demonstrates Taproot X-only public keys (64 characters). More efficient and private.',
-            security: '💡 Taproot provides better privacy and efficiency'
+            title: '📄 Taproot X-only Key - Next-Gen Single Key',
+            conditions: '🔓 David: Immediate spending (Taproot/Schnorr context)',
+            useCase: '**Modern Single Key:** Uses Taproot\'s X-only public keys (32 bytes vs 33 bytes) with Schnorr signatures. More efficient, more private, and enables advanced scripting. The future of single-key Bitcoin wallets.',
+            examples: '💡 **Real-world examples:** Modern hardware wallets, Lightning Network wallets, privacy-focused personal wallets, wallets that might later upgrade to complex scripts',
+            efficiency: '⚡ **Efficiency:** Smaller keys (32 vs 33 bytes), smaller signatures (~64 vs 71 bytes), better batch verification, and identical on-chain appearance regardless of underlying complexity.',
+            security: '✅ **Security benefits:** Same security as regular pubkeys but with better privacy (all Taproot outputs look identical). Enables "pay-to-contract" and other advanced features.',
+            bestFor: '✅ **Best for:** Modern applications, privacy-conscious users, wallets that might later add complex conditions, Lightning Network, applications requiring batch signature verification'
         },
         'testnet_xpub': {
-            title: '📄 Testnet Extended Public Key',
-            conditions: '🔓 TestnetKey: HD wallet extended public key (testnet)',
-            useCase: 'Demonstrates policy compilation with extended public keys (xpub/tpub). The compiler derives concrete keys from the descriptor.',
-            security: '💡 HD wallets allow deterministic key generation from a single seed'
+            title: '📄 Testnet Extended Public Key - HD Wallet Demo',
+            conditions: '🔓 TestnetKey: HD wallet extended public key (testnet environment)',
+            useCase: '**Hierarchical Deterministic Wallet:** Demonstrates how modern wallets derive multiple addresses from a single seed. The xpub/tpub allows generating receive addresses without exposing private keys. Essential for business accounting and privacy.',
+            examples: '💡 **Real-world examples:** Business wallets generating customer payment addresses, exchange deposit systems, accounting software, wallet address generation for e-commerce',
+            efficiency: '⚡ **Efficiency:** Same as single key once derived, but enables generating unlimited addresses from one seed. Reduces backup complexity from many keys to one seed.',
+            security: '✅ **Security benefits:** Extended public keys can generate addresses without private key exposure. If one address is compromised, others remain secure. Enables "watching-only" wallets for monitoring.',
+            bestFor: '✅ **Best for:** Businesses receiving many payments, privacy-conscious users (new address per transaction), development and testing, wallets requiring address pre-generation'
         },
         'corporate': {
-            title: '📄 Corporate Wallet Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2026',
-            useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
-            security: '💡 Board control with time-delayed executive override'
+            title: '📄 Corporate Wallet Policy - Board + Executive Override',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board majority)\n⏰ Eva (CEO): After January 1, 2026 (time-delayed executive access)',
+            useCase: '**Corporate Treasury:** Daily operations require board majority (2-of-3), but CEO gets emergency access after a specific date. Perfect for businesses with board governance but executive emergency powers.',
+            examples: '💡 **Real-world examples:** Startup treasury with founder override, nonprofit with board control plus executive director emergency access, family business with multiple decision-makers',
+            efficiency: '⚡ **Efficiency:** Board path uses threshold efficiency (~170-200 bytes), CEO path adds timelock verification (~105 bytes).',
+            security: '✅ **Security benefits:** Board control prevents single-person decisions, time-delayed CEO access provides emergency recovery without immediate risk, specific date prevents indefinite executive power.',
+            bestFor: '✅ **Best for:** Corporate treasuries, nonprofits, family businesses, any organization needing board control with executive emergency access, succession planning'
         },
         'recovery': {
-            title: '📄 Emergency Recovery Policy',
-            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week)',
-            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
-            security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
+            title: '📄 Emergency Recovery Policy - Weighted Priority',
+            conditions: '🔓 Alice: Immediate spending (95% probability weight - primary path)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week) emergency consensus',
+            useCase: '**Personal Wallet with Family Recovery:** Alice controls daily spending, but family/friends can recover funds if Alice is unavailable for a week. The 95@ weight tells the compiler to optimize for Alice\'s path since it\'s used 95% of the time.',
+            examples: '💡 **Real-world examples:** Individual with trusted family backup, solo business owner with partner emergency access, crypto enthusiast with friend/family recovery network, elderly user with adult children backup',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized due to probability weight. Recovery path is larger (~200+ bytes) but rarely used.',
+            security: '✅ **Security benefits:** Alice retains full control, 1-week delay gives Alice time to respond to unauthorized recovery attempts, requires 2-of-3 consensus prevents single family member compromise.',
+            bestFor: '✅ **Best for:** Individual wallets with trusted emergency contacts, estate planning, any scenario where primary user wants family backup without compromising daily control'
         },
         'twofa': {
-            title: '📄 2FA + Backup Policy',
+            title: '📄 2FA + Backup Policy - Multi-Factor Security',
             conditions: '🔓 Alice + (Bob + secret OR wait 1 year)',
-            useCase: 'Two-factor authentication wallet. Alice + second device, or Alice alone after 1 year backup delay.',
-            security: '💡 Strong 2FA security with long-term recovery option'
+            useCase: '**Two-Factor Authentication Wallet:** Alice must always sign, plus either Bob (second device/key) with a secret hash, or Alice alone after waiting 1 year. Like 2FA on your crypto wallet - primary key plus second factor, with long-term recovery.',
+            examples: '💡 **Real-world examples:** High-security personal wallet, crypto trader with hardware + mobile 2FA, business owner with primary + backup key + secret, paranoid holder with multiple security layers',
+            efficiency: '⚡ **Efficiency:** Alice+Bob path is moderate (~137 bytes), Alice+secret path adds hash verification (~170 bytes), Alice-alone path after 1 year includes timelock (~105 bytes).',
+            security: '✅ **Security benefits:** Alice always required prevents device compromise, secret hash prevents Bob device compromise, 1-year delay prevents rushed recovery, multiple security factors.',
+            bestFor: '✅ **Best for:** High-value wallets, users comfortable with complexity, scenarios requiring strong 2FA, professional traders, anyone wanting multiple security layers with recovery options'
         },
         'inheritance': {
-            title: '📄 Taproot Inheritance Policy',
-            conditions: '🔓 David: Immediate spending\n⏰ Helen + Ivan + Julia: 2-of-3 after 26280 blocks (~6 months)',
-            useCase: 'Estate planning. David controls funds, beneficiaries can inherit after extended waiting period.',
-            security: '💡 Long delay ensures David has opportunity to intervene'
+            title: '📄 Taproot Inheritance Policy - Estate Planning',
+            conditions: '🔓 David: Immediate spending (full control while alive)\n⏰ Helen + Ivan + Julia: 2-of-3 after 26280 blocks (~6 months) beneficiary inheritance',
+            useCase: '**Digital Estate Planning:** David controls funds normally, but if inactive for 6 months, beneficiaries can inherit with majority consensus. Long delay ensures David can intervene if needed and provides time for proper estate proceedings.',
+            examples: '💡 **Real-world examples:** Retirement savings with family inheritance, crypto holder with beneficiaries, business owner with succession plan, elderly user planning estate distribution',
+            efficiency: '⚡ **Efficiency:** David\'s path is efficient Taproot (~64 bytes), inheritance path is larger (~200+ bytes) but only used after death/incapacitation.',
+            security: '✅ **Security benefits:** 6-month delay prevents premature inheritance claims, 2-of-3 consensus prevents single beneficiary compromise, David maintains full control while active, Taproot privacy.',
+            bestFor: '✅ **Best for:** Estate planning, retirement accounts, high-value long-term storage, family wealth transfer, business succession planning, anyone wanting crypto inheritance without trusted third parties'
         },
         'delayed': {
-            title: '📄 Taproot 2-of-2 OR Delayed',
-            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
-            useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
-            security: '💡 Cooperative control with individual fallback'
+            title: '📄 Taproot 2-of-2 OR Delayed - Cooperative + Emergency',
+            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending (cooperative path)\n⏰ David: After 144 blocks (~1 day) single-party emergency',
+            useCase: '**Joint Account with Emergency Access:** Julia and Karl must both agree for immediate spending, but David can spend alone after 1 day. Perfect for joint accounts where cooperation is preferred but emergency access is needed.',
+            examples: '💡 **Real-world examples:** Couple\'s shared savings with emergency contact, business partnership with mediator access, joint investment account with trusted third party override',
+            efficiency: '⚡ **Efficiency:** Cooperative path requires both signatures (~137 bytes), David\'s emergency path includes timelock verification (~105 bytes).',
+            security: '✅ **Security benefits:** Cooperative path prevents single-party spending, 24-hour delay gives Julia/Karl time to respond to unauthorized David access, balanced control between cooperation and emergency needs.',
+            bestFor: '✅ **Best for:** Joint accounts with trusted mediator, cooperative funds with emergency provisions, business partnerships with dispute resolution, any scenario balancing cooperation with emergency access'
         },
         'hodl': {
-            title: '📄 HODL Wallet Policy',
-            conditions: '🔓 Alice: Immediate spending (9x probability weight)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year',
-            useCase: 'Long-term savings wallet. Alice has normal access, but requires family consensus after 1 year if Alice is unavailable.',
-            security: '💡 Designed to discourage frequent spending while providing family recovery'
+            title: '📄 HODL Wallet Policy - Long-term Savings with Family Backup',
+            conditions: '🔓 Alice: Immediate spending (9x probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
+            useCase: '**Long-term Savings with Deterrent:** Alice controls daily spending but faces family oversight for emergency recovery. The 9@ weight optimizes for Alice while the 1-year delay discourages frequent spending and provides substantial family intervention time.',
+            examples: '💡 **Real-world examples:** Retirement savings account, long-term investment fund, addiction recovery wallet with family oversight, high-value HODL strategy with family safety net',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized (~64 bytes) due to 9x weight, family recovery path is larger (~250+ bytes) but designed for rare use.',
+            security: '✅ **Security benefits:** Alice maintains control, 1-year delay prevents impulsive family intervention, 3-of-4 consensus prevents single family member compromise, probability weight optimizes for expected usage.',
+            bestFor: '✅ **Best for:** Long-term savings, retirement planning, addiction recovery scenarios, high-value HODL strategies, family wealth management, anyone wanting spending deterrents with family backup'
         },
         'timelocked_thresh': {
-            title: '📄 Timelocked Multisig Policy',
-            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2026)',
-            useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
-            security: '💡 Prevents any spending before the specified date, even with valid signatures'
+            title: '📄 Timelocked Multisig Policy - Scheduled Activation',
+            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (activated ONLY after January 1, 2026)',
+            useCase: '**Scheduled Fund Release:** Funds cannot be spent by anyone until a specific date, then require 2-of-3 consensus. Perfect for vesting schedules, trust fund releases, planned distributions, or any scenario requiring future activation.',
+            examples: '💡 **Real-world examples:** Employee vesting schedule, trust fund release to beneficiaries, scheduled charity donations, escrow for future projects, company bonus pool release date',
+            efficiency: '⚡ **Efficiency:** All paths require timelock verification plus threshold logic (~200+ bytes), but prevents any spending before activation date.',
+            security: '✅ **Security benefits:** Absolute prevention of early spending (even with all signatures), requires majority consensus after activation, immutable schedule prevents coercion or impulsive changes.',
+            bestFor: '✅ **Best for:** Vesting schedules, trust funds, scheduled distributions, escrow services, any scenario requiring guaranteed future activation with group control, regulatory compliance requiring time delays'
         }
     };
     
@@ -4259,18 +4301,27 @@ window.showPolicyDescription = function(exampleId) {
     if (desc) {
         contentDiv.innerHTML = `
             <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
-            <div style="margin-bottom: 10px;">
+            <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
-                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); white-space: pre-line;">${desc.conditions}</div>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); white-space: pre-line; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.conditions}</div>
             </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
-                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+            <div style="margin-bottom: 8px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Use Case & Scenario:</strong>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
             </div>
-            <div>
-                <strong style="color: var(--text-color); font-size: 12px;">Security Notes:</strong>
-                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
+            ${desc.examples ? `<div style="margin-bottom: 8px;">
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.examples}</div>
+            </div>` : ''}
+            ${desc.efficiency ? `<div style="margin-bottom: 8px;">
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.efficiency}</div>
+            </div>` : ''}
+            <div style="margin-bottom: 8px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Security Analysis:</strong>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
             </div>
+            ${desc.bestFor ? `<div>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.bestFor}</div>
+            </div>` : ''}
         `;
         panel.style.display = 'block';
     }
@@ -4522,82 +4573,121 @@ window.showPolicyDescription = function(exampleId) {
             security: '⚠️ Single point of failure - if Alice loses her key, funds are lost'
         },
         'or': {
-            title: '📄 OR Keys Policy',
-            conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately',
-            useCase: 'Shared wallet where either party can spend. Useful for joint accounts or backup access.',
-            security: '💡 Either key compromise results in fund loss'
+            title: '📄 OR Keys Policy - Either Party Access',
+            conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately (independent access)',
+            useCase: '**Shared Access Wallet:** Either person can spend independently. Common for couples, business partners, or backup access scenarios. Think "joint checking account" where either person can write checks.',
+            examples: '💡 **Real-world examples:** Joint family account, business petty cash, emergency fund shared between spouses, backup key for solo traders',
+            efficiency: '⚡ **Efficiency:** Slightly larger than single key (~105 bytes witness). Spender chooses which key to use, so no coordination needed.',
+            security: '⚠️ **Security trade-offs:** Weakest-link security - compromise of ANY key results in fund loss. However, provides redundancy against key loss (lose one, still have the other).',
+            bestFor: '✅ **Best for:** Trusted partnerships, backup access, situations where convenience matters more than maximum security, emergency access scenarios'
         },
         'and': {
-            title: '📄 AND Keys Policy',
-            conditions: '🔓 Alice + Bob: Both signatures required',
-            useCase: '2-of-2 multisig. Both parties must agree to spend. Common for business partnerships.',
-            security: '💡 More secure but requires cooperation of both parties'
+            title: '📄 AND Keys Policy - Dual Authorization',
+            conditions: '🔓 Alice + Bob: Both signatures required (no unilateral spending)',
+            useCase: '**2-of-2 Multisig:** Both parties must agree to every transaction. Perfect for business partnerships, joint investments, or married couples who want shared financial control. Like requiring two signatures on a check.',
+            examples: '💡 **Real-world examples:** Business partnership funds, joint investment account, high-value couple\'s savings, parent-child shared control, corporate treasury requiring dual approval',
+            efficiency: '⚡ **Efficiency:** ~137 bytes witness data. Requires coordination between parties for every transaction, but maximum security.',
+            security: '✅ **Security benefits:** Strongest security - requires compromise of BOTH keys to steal funds. Protects against single key compromise, impulsive spending, and unauthorized transactions.',
+            bestFor: '✅ **Best for:** High-value storage, business partnerships, situations requiring mutual consent, protection against single-person compromise or coercion'
         },
         'threshold': {
-            title: '📄 2-of-3 Threshold Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie',
-            useCase: 'Board of directors or family trust. Prevents single point of failure while requiring majority.',
-            security: '💡 Balanced security - survives 1 key loss, prevents 1 key compromise'
+            title: '📄 2-of-3 Threshold Policy - Majority Consensus',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (flexible majority control)',
+            useCase: '**Majority Multisig:** Any 2 out of 3 parties can approve transactions. Perfect for small boards, family trusts, or adding redundancy while maintaining control. Like corporate voting where majority wins.',
+            examples: '💡 **Real-world examples:** Board of directors treasury, family trust with multiple trustees, business with 3 partners, estate planning with beneficiaries, crypto startup founder funds',
+            efficiency: '⚡ **Efficiency:** Variable witness size depending on which 2 keys sign (~170-200 bytes). Good balance of security and usability.',
+            security: '✅ **Security benefits:** Survives 1 key loss or compromise. Prevents single-person control while allowing majority decisions. More resilient than 2-of-2 but less than single key.',
+            bestFor: '✅ **Best for:** Small group control, estate planning, business partnerships with 3+ people, backup scenarios where 1 key might be lost, decision-making that benefits from consensus'
         },
         'timelock': {
-            title: '📄 Timelock Policy',
-            conditions: '🔓 Alice: Immediate spending\n⏰ Bob: After 144 blocks (~1 day)',
-            useCase: 'Emergency access with delay. Alice has daily control, Bob can recover after waiting period.',
-            security: '💡 Cooling-off period prevents rushed decisions'
+            title: '📄 Timelock Policy - Immediate vs Delayed Access',
+            conditions: '🔓 Alice: Immediate spending (instant access)\n⏰ Bob: After 144 blocks (~1 day) delay',
+            useCase: '**Emergency Recovery with Cooling Period:** Alice has daily control, Bob can recover funds but must wait. Prevents rushed decisions and provides time for Alice to intervene if needed. Like a bank account with both owner access and emergency power of attorney.',
+            examples: '💡 **Real-world examples:** Personal wallet with family backup, business owner with partner recovery, elderly parent with adult child backup, trader with emergency contact access',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is efficient (~73 bytes), Bob\'s path is larger (~105 bytes) due to timelock verification.',
+            security: '✅ **Security benefits:** Alice retains full control while providing recovery option. 24-hour delay gives Alice time to move funds if Bob\'s key is compromised. Prevents immediate theft through Bob\'s key.',
+            bestFor: '✅ **Best for:** Personal wallets needing backup, elderly users with trusted family, business continuity planning, any scenario where primary user wants emergency recovery with built-in warning time'
         },
         'xonly': {
-            title: '📄 Taproot X-only Key',
-            conditions: '🔓 David: Immediate spending (Taproot context)',
-            useCase: 'Demonstrates Taproot X-only public keys (64 characters). More efficient and private.',
-            security: '💡 Taproot provides better privacy and efficiency'
+            title: '📄 Taproot X-only Key - Next-Gen Single Key',
+            conditions: '🔓 David: Immediate spending (Taproot/Schnorr context)',
+            useCase: '**Modern Single Key:** Uses Taproot\'s X-only public keys (32 bytes vs 33 bytes) with Schnorr signatures. More efficient, more private, and enables advanced scripting. The future of single-key Bitcoin wallets.',
+            examples: '💡 **Real-world examples:** Modern hardware wallets, Lightning Network wallets, privacy-focused personal wallets, wallets that might later upgrade to complex scripts',
+            efficiency: '⚡ **Efficiency:** Smaller keys (32 vs 33 bytes), smaller signatures (~64 vs 71 bytes), better batch verification, and identical on-chain appearance regardless of underlying complexity.',
+            security: '✅ **Security benefits:** Same security as regular pubkeys but with better privacy (all Taproot outputs look identical). Enables "pay-to-contract" and other advanced features.',
+            bestFor: '✅ **Best for:** Modern applications, privacy-conscious users, wallets that might later add complex conditions, Lightning Network, applications requiring batch signature verification'
         },
         'testnet_xpub': {
-            title: '📄 Testnet Extended Public Key',
-            conditions: '🔓 TestnetKey: HD wallet extended public key (testnet)',
-            useCase: 'Demonstrates policy compilation with extended public keys (xpub/tpub). The compiler derives concrete keys from the descriptor.',
-            security: '💡 HD wallets allow deterministic key generation from a single seed'
+            title: '📄 Testnet Extended Public Key - HD Wallet Demo',
+            conditions: '🔓 TestnetKey: HD wallet extended public key (testnet environment)',
+            useCase: '**Hierarchical Deterministic Wallet:** Demonstrates how modern wallets derive multiple addresses from a single seed. The xpub/tpub allows generating receive addresses without exposing private keys. Essential for business accounting and privacy.',
+            examples: '💡 **Real-world examples:** Business wallets generating customer payment addresses, exchange deposit systems, accounting software, wallet address generation for e-commerce',
+            efficiency: '⚡ **Efficiency:** Same as single key once derived, but enables generating unlimited addresses from one seed. Reduces backup complexity from many keys to one seed.',
+            security: '✅ **Security benefits:** Extended public keys can generate addresses without private key exposure. If one address is compromised, others remain secure. Enables "watching-only" wallets for monitoring.',
+            bestFor: '✅ **Best for:** Businesses receiving many payments, privacy-conscious users (new address per transaction), development and testing, wallets requiring address pre-generation'
         },
         'corporate': {
-            title: '📄 Corporate Wallet Policy',
-            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board)\n⏰ Eva (CEO): After January 1, 2026',
-            useCase: 'Corporate treasury with board oversight and emergency CEO access after specific date.',
-            security: '💡 Board control with time-delayed executive override'
+            title: '📄 Corporate Wallet Policy - Board + Executive Override',
+            conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board majority)\n⏰ Eva (CEO): After January 1, 2026 (time-delayed executive access)',
+            useCase: '**Corporate Treasury:** Daily operations require board majority (2-of-3), but CEO gets emergency access after a specific date. Perfect for businesses with board governance but executive emergency powers.',
+            examples: '💡 **Real-world examples:** Startup treasury with founder override, nonprofit with board control plus executive director emergency access, family business with multiple decision-makers',
+            efficiency: '⚡ **Efficiency:** Board path uses threshold efficiency (~170-200 bytes), CEO path adds timelock verification (~105 bytes).',
+            security: '✅ **Security benefits:** Board control prevents single-person decisions, time-delayed CEO access provides emergency recovery without immediate risk, specific date prevents indefinite executive power.',
+            bestFor: '✅ **Best for:** Corporate treasuries, nonprofits, family businesses, any organization needing board control with executive emergency access, succession planning'
         },
         'recovery': {
-            title: '📄 Emergency Recovery Policy',
-            conditions: '🔓 Alice: Immediate spending (95% probability weight)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week)',
-            useCase: 'Personal wallet with family/friends emergency recovery. Alice controls daily, family can recover if needed. The 95@ weight tells miniscript compiler to optimize for Alice\'s path.',
-            security: '💡 Probability weight helps wallets optimize fees and witness sizes for common usage'
+            title: '📄 Emergency Recovery Policy - Weighted Priority',
+            conditions: '🔓 Alice: Immediate spending (95% probability weight - primary path)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week) emergency consensus',
+            useCase: '**Personal Wallet with Family Recovery:** Alice controls daily spending, but family/friends can recover funds if Alice is unavailable for a week. The 95@ weight tells the compiler to optimize for Alice\'s path since it\'s used 95% of the time.',
+            examples: '💡 **Real-world examples:** Individual with trusted family backup, solo business owner with partner emergency access, crypto enthusiast with friend/family recovery network, elderly user with adult children backup',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized due to probability weight. Recovery path is larger (~200+ bytes) but rarely used.',
+            security: '✅ **Security benefits:** Alice retains full control, 1-week delay gives Alice time to respond to unauthorized recovery attempts, requires 2-of-3 consensus prevents single family member compromise.',
+            bestFor: '✅ **Best for:** Individual wallets with trusted emergency contacts, estate planning, any scenario where primary user wants family backup without compromising daily control'
         },
         'twofa': {
-            title: '📄 2FA + Backup Policy',
+            title: '📄 2FA + Backup Policy - Multi-Factor Security',
             conditions: '🔓 Alice + (Bob + secret OR wait 1 year)',
-            useCase: 'Two-factor authentication wallet. Alice + second device, or Alice alone after 1 year backup delay.',
-            security: '💡 Strong 2FA security with long-term recovery option'
+            useCase: '**Two-Factor Authentication Wallet:** Alice must always sign, plus either Bob (second device/key) with a secret hash, or Alice alone after waiting 1 year. Like 2FA on your crypto wallet - primary key plus second factor, with long-term recovery.',
+            examples: '💡 **Real-world examples:** High-security personal wallet, crypto trader with hardware + mobile 2FA, business owner with primary + backup key + secret, paranoid holder with multiple security layers',
+            efficiency: '⚡ **Efficiency:** Alice+Bob path is moderate (~137 bytes), Alice+secret path adds hash verification (~170 bytes), Alice-alone path after 1 year includes timelock (~105 bytes).',
+            security: '✅ **Security benefits:** Alice always required prevents device compromise, secret hash prevents Bob device compromise, 1-year delay prevents rushed recovery, multiple security factors.',
+            bestFor: '✅ **Best for:** High-value wallets, users comfortable with complexity, scenarios requiring strong 2FA, professional traders, anyone wanting multiple security layers with recovery options'
         },
         'inheritance': {
-            title: '📄 Taproot Inheritance Policy',
-            conditions: '🔓 David: Immediate spending\n⏰ Helen + Ivan + Julia: 2-of-3 after 26280 blocks (~6 months)',
-            useCase: 'Estate planning. David controls funds, beneficiaries can inherit after extended waiting period.',
-            security: '💡 Long delay ensures David has opportunity to intervene'
+            title: '📄 Taproot Inheritance Policy - Estate Planning',
+            conditions: '🔓 David: Immediate spending (full control while alive)\n⏰ Helen + Ivan + Julia: 2-of-3 after 26280 blocks (~6 months) beneficiary inheritance',
+            useCase: '**Digital Estate Planning:** David controls funds normally, but if inactive for 6 months, beneficiaries can inherit with majority consensus. Long delay ensures David can intervene if needed and provides time for proper estate proceedings.',
+            examples: '💡 **Real-world examples:** Retirement savings with family inheritance, crypto holder with beneficiaries, business owner with succession plan, elderly user planning estate distribution',
+            efficiency: '⚡ **Efficiency:** David\'s path is efficient Taproot (~64 bytes), inheritance path is larger (~200+ bytes) but only used after death/incapacitation.',
+            security: '✅ **Security benefits:** 6-month delay prevents premature inheritance claims, 2-of-3 consensus prevents single beneficiary compromise, David maintains full control while active, Taproot privacy.',
+            bestFor: '✅ **Best for:** Estate planning, retirement accounts, high-value long-term storage, family wealth transfer, business succession planning, anyone wanting crypto inheritance without trusted third parties'
         },
         'delayed': {
-            title: '📄 Taproot 2-of-2 OR Delayed',
-            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending\n⏰ David: After 144 blocks (~1 day)',
-            useCase: 'Joint account with single-party emergency access. Both parties agree, or one party after delay.',
-            security: '💡 Cooperative control with individual fallback'
+            title: '📄 Taproot 2-of-2 OR Delayed - Cooperative + Emergency',
+            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending (cooperative path)\n⏰ David: After 144 blocks (~1 day) single-party emergency',
+            useCase: '**Joint Account with Emergency Access:** Julia and Karl must both agree for immediate spending, but David can spend alone after 1 day. Perfect for joint accounts where cooperation is preferred but emergency access is needed.',
+            examples: '💡 **Real-world examples:** Couple\'s shared savings with emergency contact, business partnership with mediator access, joint investment account with trusted third party override',
+            efficiency: '⚡ **Efficiency:** Cooperative path requires both signatures (~137 bytes), David\'s emergency path includes timelock verification (~105 bytes).',
+            security: '✅ **Security benefits:** Cooperative path prevents single-party spending, 24-hour delay gives Julia/Karl time to respond to unauthorized David access, balanced control between cooperation and emergency needs.',
+            bestFor: '✅ **Best for:** Joint accounts with trusted mediator, cooperative funds with emergency provisions, business partnerships with dispute resolution, any scenario balancing cooperation with emergency access'
         },
         'hodl': {
-            title: '📄 HODL Wallet Policy',
-            conditions: '🔓 Alice: Immediate spending (9x probability weight)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year',
-            useCase: 'Long-term savings wallet. Alice has normal access, but requires family consensus after 1 year if Alice is unavailable.',
-            security: '💡 Designed to discourage frequent spending while providing family recovery'
+            title: '📄 HODL Wallet Policy - Long-term Savings with Family Backup',
+            conditions: '🔓 Alice: Immediate spending (9x probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
+            useCase: '**Long-term Savings with Deterrent:** Alice controls daily spending but faces family oversight for emergency recovery. The 9@ weight optimizes for Alice while the 1-year delay discourages frequent spending and provides substantial family intervention time.',
+            examples: '💡 **Real-world examples:** Retirement savings account, long-term investment fund, addiction recovery wallet with family oversight, high-value HODL strategy with family safety net',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized (~64 bytes) due to 9x weight, family recovery path is larger (~250+ bytes) but designed for rare use.',
+            security: '✅ **Security benefits:** Alice maintains control, 1-year delay prevents impulsive family intervention, 3-of-4 consensus prevents single family member compromise, probability weight optimizes for expected usage.',
+            bestFor: '✅ **Best for:** Long-term savings, retirement planning, addiction recovery scenarios, high-value HODL strategies, family wealth management, anyone wanting spending deterrents with family backup'
         },
         'timelocked_thresh': {
-            title: '📄 Timelocked Multisig Policy',
-            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (but only after January 1, 2026)',
-            useCase: 'Delayed activation multisig. Perfect for scheduled fund releases, vesting schedules, or planned distributions.',
-            security: '💡 Prevents any spending before the specified date, even with valid signatures'
+            title: '📄 Timelocked Multisig Policy - Scheduled Activation',
+            conditions: '⏰ Any 2 of: Alice, Bob, Charlie (activated ONLY after January 1, 2026)',
+            useCase: '**Scheduled Fund Release:** Funds cannot be spent by anyone until a specific date, then require 2-of-3 consensus. Perfect for vesting schedules, trust fund releases, planned distributions, or any scenario requiring future activation.',
+            examples: '💡 **Real-world examples:** Employee vesting schedule, trust fund release to beneficiaries, scheduled charity donations, escrow for future projects, company bonus pool release date',
+            efficiency: '⚡ **Efficiency:** All paths require timelock verification plus threshold logic (~200+ bytes), but prevents any spending before activation date.',
+            security: '✅ **Security benefits:** Absolute prevention of early spending (even with all signatures), requires majority consensus after activation, immutable schedule prevents coercion or impulsive changes.',
+            bestFor: '✅ **Best for:** Vesting schedules, trust funds, scheduled distributions, escrow services, any scenario requiring guaranteed future activation with group control, regulatory compliance requiring time delays'
         }
     };
     
@@ -4605,18 +4695,27 @@ window.showPolicyDescription = function(exampleId) {
     if (desc) {
         contentDiv.innerHTML = `
             <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
-            <div style="margin-bottom: 10px;">
+            <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
-                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); white-space: pre-line;">${desc.conditions}</div>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); white-space: pre-line; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.conditions}</div>
             </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
-                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+            <div style="margin-bottom: 8px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Use Case & Scenario:</strong>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
             </div>
-            <div>
-                <strong style="color: var(--text-color); font-size: 12px;">Security Notes:</strong>
-                <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
+            ${desc.examples ? `<div style="margin-bottom: 8px;">
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.examples}</div>
+            </div>` : ''}
+            ${desc.efficiency ? `<div style="margin-bottom: 8px;">
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.efficiency}</div>
+            </div>` : ''}
+            <div style="margin-bottom: 8px;">
+                <strong style="color: var(--text-color); font-size: 12px;">Security Analysis:</strong>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
             </div>
+            ${desc.bestFor ? `<div>
+                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.bestFor}</div>
+            </div>` : ''}
         `;
         panel.style.display = 'block';
     }

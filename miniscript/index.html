@@ -951,26 +951,30 @@
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <h4 style="color: var(--text-secondary);">Basic functions:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - A single public key that must provide a signature</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - A relative timelock requiring n blocks/seconds to pass since input creation</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - An absolute timelock requiring block height or time n to be reached</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">sha256(h)</code> - A SHA256 hash preimage that must be provided to satisfy the condition</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash256(h)</code> - A double-SHA256 hash preimage that must be provided</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">ripemd160(h)</code> - A RIPEMD160 hash preimage that must be provided</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - A Bitcoin hash160 preimage that must be provided</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - A single public key that must provide a signature. Most efficient for individual wallets.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - A relative timelock requiring n blocks/seconds to pass since input creation. Used for delayed access or recovery scenarios.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - An absolute timelock requiring block height or time n to be reached. Perfect for scheduled releases or vesting.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">sha256(h)</code> - A SHA256 hash preimage that must be provided to satisfy the condition. Useful for payment secrets or 2FA.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash256(h)</code> - A double-SHA256 hash preimage that must be provided. Alternative hash function for specific protocols.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">ripemd160(h)</code> - A RIPEMD160 hash preimage that must be provided. Less common, used in some specific applications.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - A Bitcoin hash160 preimage that must be provided. Standard Bitcoin address hash, combines SHA256+RIPEMD160.</li>
                 </ul>
 
                 <h4 style="color: var(--text-secondary);">Logical operators:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and(X,Y)</code> - Both conditions X and Y must be satisfied simultaneously</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or(X,Y)</code> - Either condition X or Y must be satisfied (or both)</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X,Y,Z,...)</code> - At least k out of the listed conditions must be satisfied</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and(X,Y)</code> - Both conditions X and Y must be satisfied simultaneously. Great for joint control or multi-factor authentication.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or(X,Y)</code> - Either condition X or Y must be satisfied (or both). Perfect for backup access or alternative spending paths.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X,Y,Z,...)</code> - At least k out of the listed conditions must be satisfied. Ideal for board governance or family trusts (e.g., 2-of-3, 3-of-5).</li>
                 </ul>
 
+                <h4 style="color: var(--text-secondary);">Probability weights:</h4>
+                <p style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
+                    Add <code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">95@</code> before any condition to indicate it's used 95% of the time. This helps the compiler optimize for the common case, making transactions smaller and cheaper. Example: <code>or(95@pk(Alice),and(pk(Bob),older(144)))</code>
+                </p>
 
                 <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
                     <strong>Note:</strong> Policy language provides a high-level, human-readable way to express spending conditions that compile to miniscript. 
-                    Keys can be variable names or full hex public keys. Policies are automatically optimized during compilation.
+                    Keys can be variable names (Alice, Bob) or full hex public keys. Policies are automatically optimized during compilation.
                 </p>
 
                 <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
