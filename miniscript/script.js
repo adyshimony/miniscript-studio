@@ -3621,15 +3621,32 @@ class MiniscriptCompiler {
         
         // Copy to clipboard
         navigator.clipboard.writeText(script).then(() => {
-            button.style.color = 'var(--success-border)';
+            // Visual feedback - temporarily change button
+            button.textContent = '✅';
             button.title = 'Copied!';
+            button.style.color = 'var(--success-border)';
+            
             setTimeout(() => {
-                button.style.color = 'var(--text-secondary)';
+                button.textContent = '📋';
                 button.title = originalTitle;
-            }, 2000);
+                button.style.color = 'var(--text-secondary)';
+            }, 1500);
         }).catch(err => {
             console.error('Failed to copy: ', err);
-            alert('Failed to copy to clipboard');
+            // Fallback for older browsers
+            hexDisplay.select();
+            document.execCommand('copy');
+            
+            // Visual feedback for fallback
+            button.textContent = '✅';
+            button.title = 'Copied!';
+            button.style.color = 'var(--success-border)';
+            
+            setTimeout(() => {
+                button.textContent = '📋';
+                button.title = originalTitle;
+                button.style.color = 'var(--text-secondary)';
+            }, 1500);
         });
     }
 
