@@ -619,10 +619,10 @@ class MiniscriptCompiler {
 <br><br>
 <strong>Your options:</strong>
 <br><br>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your policy and lets you assign key variables to them</div>
 <div>→ <strong>Check Key variables section:</strong> Look below to see if "${missingKey}" already exists with a different value</div>
-<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
-<div>→ <strong>Extract keys:</strong> Auto-detects undefined variables in your policy and lets you assign keys to them</div>
-<div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with a valid public key</div>
+<div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with any valid key type</div>
+<div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
 <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
@@ -637,10 +637,10 @@ class MiniscriptCompiler {
 <br><br>
 <strong>Your options:</strong>
 <br><br>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your policy and lets you assign key variables to them</div>
 <div>→ <strong>Check Key variables section:</strong> Look below to see if this variable exists or needs to be added</div>
-<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
-<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables in your policy and lets you assign keys to them</div>
 <div>→ <strong>Add manually:</strong> Define your custom variable in the Key variables section with any valid key type</div>
+<div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
 <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
@@ -3260,10 +3260,10 @@ class MiniscriptCompiler {
 <br><br>
 <strong>Your options:</strong>
 <br><br>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your policy and lets you assign key variables to them</div>
 <div>→ <strong>Check Key variables section:</strong> Look below to see if "${missingKey}" already exists with a different value</div>
-<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
-<div>→ <strong>Extract keys:</strong> Auto-detects undefined variables in your policy and lets you assign keys to them</div>
-<div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with a valid public key</div>
+<div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with any valid key type</div>
+<div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
 <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
@@ -3278,10 +3278,10 @@ class MiniscriptCompiler {
 <br><br>
 <strong>Your options:</strong>
 <br><br>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your policy and lets you assign key variables to them</div>
 <div>→ <strong>Check Key variables section:</strong> Look below to see if this variable exists or needs to be added</div>
-<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
-<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables in your policy and lets you assign keys to them</div>
 <div>→ <strong>Add manually:</strong> Define your custom variable in the Key variables section with any valid key type</div>
+<div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
 <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
