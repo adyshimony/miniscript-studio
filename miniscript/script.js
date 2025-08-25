@@ -1501,20 +1501,33 @@ class MiniscriptCompiler {
             return;
         }
         
-        // First check for existing variables that would cause errors
-        const existingVariableErrors = this.checkForExistingVariables(expression);
-        if (existingVariableErrors.length > 0) {
-            this.showPolicyError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
-            return;
-        }
-        
-        const keys = this.extractKeysFromExpression(expression);
-        if (keys.length === 0) {
+        // Extract all keys from expression
+        const allKeys = this.extractKeysFromExpression(expression);
+        if (allKeys.length === 0) {
             this.showPolicyError('No keys found in the policy expression');
             return;
         }
         
-        this.showExtractModal(keys, expression);
+        // Check for existing variables
+        const existingVariableErrors = this.checkForExistingVariables(expression);
+        
+        // Filter out keys that correspond to existing variables
+        const newKeys = allKeys.filter(key => {
+            return !existingVariableErrors.includes(key.name);
+        });
+        
+        if (newKeys.length === 0) {
+            this.showPolicyError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
+            return;
+        }
+        
+        // Show modal with only the new keys
+        if (existingVariableErrors.length > 0) {
+            // Show info that some keys already exist
+            console.log(`${existingVariableErrors.length} keys already exist as variables: ${existingVariableErrors.join(', ')}`);
+        }
+        
+        this.showExtractModal(newKeys, expression);
     }
 
     extractKeysFromMiniscript() {
@@ -1526,20 +1539,33 @@ class MiniscriptCompiler {
             return;
         }
         
-        // First check for existing variables that would cause errors
-        const existingVariableErrors = this.checkForExistingVariables(expression);
-        if (existingVariableErrors.length > 0) {
-            this.showMiniscriptError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
-            return;
-        }
-        
-        const keys = this.extractKeysFromExpression(expression);
-        if (keys.length === 0) {
+        // Extract all keys from expression
+        const allKeys = this.extractKeysFromExpression(expression);
+        if (allKeys.length === 0) {
             this.showMiniscriptError('No keys found in the miniscript expression');
             return;
         }
         
-        this.showExtractModal(keys, expression);
+        // Check for existing variables
+        const existingVariableErrors = this.checkForExistingVariables(expression);
+        
+        // Filter out keys that correspond to existing variables
+        const newKeys = allKeys.filter(key => {
+            return !existingVariableErrors.includes(key.name);
+        });
+        
+        if (newKeys.length === 0) {
+            this.showMiniscriptError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
+            return;
+        }
+        
+        // Show modal with only the new keys
+        if (existingVariableErrors.length > 0) {
+            // Show info that some keys already exist
+            console.log(`${existingVariableErrors.length} keys already exist as variables: ${existingVariableErrors.join(', ')}`);
+        }
+        
+        this.showExtractModal(newKeys, expression);
     }
 
     checkForExistingVariables(expression) {
