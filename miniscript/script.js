@@ -5303,3 +5303,114 @@ window.liftMiniscriptToPolicy = function() {
         console.error('Compiler or liftMiniscriptToPolicy method not available');
     }
 };
+
+// Share policy expression via URL
+window.sharePolicyExpression = function() {
+    const policyInput = document.getElementById('policy-input');
+    const policy = policyInput.textContent.trim();
+    
+    if (!policy) {
+        alert('No policy to share');
+        return;
+    }
+    
+    // Encode the policy for URL
+    const encoded = encodeURIComponent(policy);
+    const shareUrl = `${window.location.origin}${window.location.pathname}?policy=${encoded}`;
+    
+    // Find the button for visual feedback
+    const button = event.target.closest('button');
+    const originalTitle = button.title;
+    
+    // Copy share URL to clipboard
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        // Visual feedback
+        button.textContent = '✅';
+        button.title = 'Share link copied!';
+        button.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            button.textContent = '🔗';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy share link:', err);
+        alert('Failed to copy share link');
+    });
+};
+
+// Share miniscript expression via URL
+window.shareMiniscriptExpression = function() {
+    const expressionInput = document.getElementById('expression-input');
+    const miniscript = expressionInput.textContent.trim();
+    
+    if (!miniscript) {
+        alert('No miniscript to share');
+        return;
+    }
+    
+    // Encode the miniscript for URL
+    const encoded = encodeURIComponent(miniscript);
+    const shareUrl = `${window.location.origin}${window.location.pathname}?miniscript=${encoded}`;
+    
+    // Find the button for visual feedback
+    const button = event.target.closest('button');
+    const originalTitle = button.title;
+    
+    // Copy share URL to clipboard
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        // Visual feedback
+        button.textContent = '✅';
+        button.title = 'Share link copied!';
+        button.style.color = 'var(--success-border)';
+        
+        setTimeout(() => {
+            button.textContent = '🔗';
+            button.title = originalTitle;
+            button.style.color = 'var(--text-secondary)';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy share link:', err);
+        alert('Failed to copy share link');
+    });
+};
+
+// Load shared content from URL on page load
+window.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedPolicy = urlParams.get('policy');
+    const sharedMiniscript = urlParams.get('miniscript');
+    
+    if (sharedPolicy) {
+        // Load policy from URL
+        const policyInput = document.getElementById('policy-input');
+        if (policyInput) {
+            policyInput.textContent = decodeURIComponent(sharedPolicy);
+            // Show a success message
+            console.log('Loaded shared policy:', sharedPolicy);
+            // Optional: Auto-compile after a short delay
+            setTimeout(() => {
+                const compileBtn = document.getElementById('compile-policy-btn');
+                if (compileBtn) {
+                    compileBtn.click();
+                }
+            }, 500);
+        }
+    } else if (sharedMiniscript) {
+        // Load miniscript from URL
+        const expressionInput = document.getElementById('expression-input');
+        if (expressionInput) {
+            expressionInput.textContent = decodeURIComponent(sharedMiniscript);
+            // Show a success message
+            console.log('Loaded shared miniscript:', sharedMiniscript);
+            // Optional: Auto-compile after a short delay
+            setTimeout(() => {
+                const compileBtn = document.getElementById('compile-btn');
+                if (compileBtn) {
+                    compileBtn.click();
+                }
+            }, 500);
+        }
+    }
+});

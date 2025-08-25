@@ -154,7 +154,7 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             line-height: 1.4;
-            min-height: 70px;
+            min-height: 140px;
         }
         
         .miniscript-editor:empty::before {
@@ -644,6 +644,9 @@
                     <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy policy expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📋
                     </button>
+                    <button onclick="sharePolicyExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share policy via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        🔗
+                    </button>
                 </div>
             </div>
             <div 
@@ -752,6 +755,9 @@
                     </button>
                     <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy miniscript expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📋
+                    </button>
+                    <button onclick="shareMiniscriptExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share miniscript via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        🔗
                     </button>
                 </div>
             </div>
