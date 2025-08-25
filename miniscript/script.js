@@ -5506,13 +5506,22 @@ window.addEventListener('DOMContentLoaded', function() {
                         window.compiler.highlightPolicySyntax();
                     }
                     
-                    // Set button to "Hide key names" state AFTER initialization
+                    // Set button state based on content AFTER initialization
                     setTimeout(() => {
                         const policyToggleBtn = document.getElementById('policy-key-names-toggle');
-                        if (policyToggleBtn) {
-                            policyToggleBtn.style.color = 'var(--success-border)';
-                            policyToggleBtn.title = 'Hide key names';
-                            policyToggleBtn.dataset.active = 'true';
+                        if (policyToggleBtn && window.compiler && window.compiler.containsKeyNames) {
+                            const containsKeyNames = window.compiler.containsKeyNames(state.policy);
+                            if (containsKeyNames) {
+                                // Content shows key names (Alice, Bob, etc.) - button should say "Hide"
+                                policyToggleBtn.style.color = 'var(--success-border)';
+                                policyToggleBtn.title = 'Hide key names';
+                                policyToggleBtn.dataset.active = 'true';
+                            } else {
+                                // Content shows hex keys - button should say "Show"
+                                policyToggleBtn.style.color = 'var(--success-border)';
+                                policyToggleBtn.title = 'Show key names';
+                                policyToggleBtn.dataset.active = 'false';
+                            }
                         }
                     }, 150);
                 }
@@ -5529,13 +5538,22 @@ window.addEventListener('DOMContentLoaded', function() {
                         window.compiler.highlightMiniscriptSyntax();
                     }
                     
-                    // Set button to "Hide key names" state AFTER initialization
+                    // Set button state based on content AFTER initialization
                     setTimeout(() => {
                         const toggleBtn = document.getElementById('key-names-toggle');
-                        if (toggleBtn) {
-                            toggleBtn.style.color = 'var(--success-border)';
-                            toggleBtn.title = 'Hide key names';
-                            toggleBtn.dataset.active = 'true';
+                        if (toggleBtn && window.compiler && window.compiler.containsKeyNames) {
+                            const containsKeyNames = window.compiler.containsKeyNames(state.miniscript);
+                            if (containsKeyNames) {
+                                // Content shows key names (Alice, Bob, etc.) - button should say "Hide"
+                                toggleBtn.style.color = 'var(--success-border)';
+                                toggleBtn.title = 'Hide key names';
+                                toggleBtn.dataset.active = 'true';
+                            } else {
+                                // Content shows hex keys - button should say "Show"
+                                toggleBtn.style.color = 'var(--success-border)';
+                                toggleBtn.title = 'Show key names';
+                                toggleBtn.dataset.active = 'false';
+                            }
                         }
                     }, 150);
                 }
@@ -5571,13 +5589,23 @@ window.addEventListener('DOMContentLoaded', function() {
                 policyInput.textContent = decodeURIComponent(sharedPolicy);
                 console.log('Loaded shared policy:', sharedPolicy);
                 
-                // Set button to "Hide key names" state AFTER initialization
+                // Set button state based on content AFTER initialization
                 setTimeout(() => {
                     const policyToggleBtn = document.getElementById('policy-key-names-toggle');
-                    if (policyToggleBtn) {
-                        policyToggleBtn.style.color = 'var(--success-border)';
-                        policyToggleBtn.title = 'Hide key names';
-                        policyToggleBtn.dataset.active = 'true';
+                    if (policyToggleBtn && window.compiler && window.compiler.containsKeyNames) {
+                        const decodedPolicy = decodeURIComponent(sharedPolicy);
+                        const containsKeyNames = window.compiler.containsKeyNames(decodedPolicy);
+                        if (containsKeyNames) {
+                            // Content shows key names (Alice, Bob, etc.) - button should say "Hide"
+                            policyToggleBtn.style.color = 'var(--success-border)';
+                            policyToggleBtn.title = 'Hide key names';
+                            policyToggleBtn.dataset.active = 'true';
+                        } else {
+                            // Content shows hex keys - button should say "Show"
+                            policyToggleBtn.style.color = 'var(--success-border)';
+                            policyToggleBtn.title = 'Show key names';
+                            policyToggleBtn.dataset.active = 'false';
+                        }
                     }
                 }, 150);
                 
@@ -5597,13 +5625,23 @@ window.addEventListener('DOMContentLoaded', function() {
                 expressionInput.textContent = decodeURIComponent(sharedMiniscript);
                 console.log('Loaded shared miniscript:', sharedMiniscript);
                 
-                // Set button to "Hide key names" state AFTER initialization
+                // Set button state based on content AFTER initialization
                 setTimeout(() => {
                     const toggleBtn = document.getElementById('key-names-toggle');
-                    if (toggleBtn) {
-                        toggleBtn.style.color = 'var(--success-border)';
-                        toggleBtn.title = 'Hide key names';
-                        toggleBtn.dataset.active = 'true';
+                    if (toggleBtn && window.compiler && window.compiler.containsKeyNames) {
+                        const decodedMiniscript = decodeURIComponent(sharedMiniscript);
+                        const containsKeyNames = window.compiler.containsKeyNames(decodedMiniscript);
+                        if (containsKeyNames) {
+                            // Content shows key names (Alice, Bob, etc.) - button should say "Hide"
+                            toggleBtn.style.color = 'var(--success-border)';
+                            toggleBtn.title = 'Hide key names';
+                            toggleBtn.dataset.active = 'true';
+                        } else {
+                            // Content shows hex keys - button should say "Show"
+                            toggleBtn.style.color = 'var(--success-border)';
+                            toggleBtn.title = 'Show key names';
+                            toggleBtn.dataset.active = 'false';
+                        }
                     }
                 }, 150);
                 
