@@ -614,31 +614,47 @@ class MiniscriptCompiler {
                 
                 if (missingKey) {
                     additionalHelp = `
-                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
-                            <strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
-                            <br>→ Check the <strong>Key variables</strong> section to see if it exists
-                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys (Alice, Bob, Charlie, etc.)
-                            <br>→ Or add it manually with a valid 66-character public key
-                        </div>
+<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
+<br><br>
+<strong>Your options:</strong>
+<br><br>
+<div>→ <strong>Check Key variables section:</strong> Look below to see if "${missingKey}" already exists with a different value</div>
+<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
+<div>→ <strong>Extract keys:</strong> Auto-detects undefined variables in your policy and lets you assign keys to them</div>
+<div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with a valid public key</div>
+<div style="margin-top: 10px; display: flex; gap: 10px;">
+<button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+</div>
+</div>
                     `;
                 } else if (gotLength <= 15) {
                     // Generic help for short strings that look like variable names
                     additionalHelp = `
-                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
-                            <strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
-                            <br>→ Check the <strong>Key variables</strong> section
-                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys
-                            <br>→ Or define your custom key with a valid 66-character public key
-                        </div>
+<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
+<br><br>
+<strong>Your options:</strong>
+<br><br>
+<div>→ <strong>Check Key variables section:</strong> Look below to see if this variable exists or needs to be added</div>
+<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables in your policy and lets you assign keys to them</div>
+<div>→ <strong>Add manually:</strong> Define your custom variable in the Key variables section with any valid key type</div>
+<div style="margin-top: 10px; display: flex; gap: 10px;">
+<button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+</div>
+</div>
                     `;
                 }
             }
         }
         
         policyErrorsDiv.innerHTML = `
-            <div class="result-box error" style="margin: 0;">
+            <div class="result-box error" style="margin: 0; text-align: left;">
                 <h4>❌ Policy error</h4>
-                <div style="margin-top: 10px;">${message}</div>
+                <div style="margin-top: 10px; text-align: left;">${message}</div>
                 ${additionalHelp}
             </div>
         `;
@@ -3239,31 +3255,47 @@ class MiniscriptCompiler {
                 
                 if (missingKey) {
                     additionalHelp = `
-                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
-                            <strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
-                            <br>→ Check the <strong>Key variables</strong> section to see if it exists
-                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys (Alice, Bob, Charlie, etc.)
-                            <br>→ Or add it manually with a valid 66-character public key
-                        </div>
+<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
+<br><br>
+<strong>Your options:</strong>
+<br><br>
+<div>→ <strong>Check Key variables section:</strong> Look below to see if "${missingKey}" already exists with a different value</div>
+<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
+<div>→ <strong>Extract keys:</strong> Auto-detects undefined variables in your policy and lets you assign keys to them</div>
+<div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with a valid public key</div>
+<div style="margin-top: 10px; display: flex; gap: 10px;">
+<button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+</div>
+</div>
                     `;
                 } else if (gotLength <= 15) {
                     // Generic help for short strings that look like variable names
                     additionalHelp = `
-                        <div style="margin-top: 15px; padding: 12px; background: var(--warning-bg, rgba(251, 191, 36, 0.1)); border: 1px solid var(--warning-border, rgba(251, 191, 36, 0.3)); border-radius: 6px;">
-                            <strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
-                            <br>→ Check the <strong>Key variables</strong> section
-                            <br>→ Click <strong>"Restore defaults"</strong> to add common keys
-                            <br>→ Or define your custom key with a valid 66-character public key
-                        </div>
+<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
+<br><br>
+<strong>Your options:</strong>
+<br><br>
+<div>→ <strong>Check Key variables section:</strong> Look below to see if this variable exists or needs to be added</div>
+<div>→ <strong>Restore defaults:</strong> Adds common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys</div>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables in your policy and lets you assign keys to them</div>
+<div>→ <strong>Add manually:</strong> Define your custom variable in the Key variables section with any valid key type</div>
+<div style="margin-top: 10px; display: flex; gap: 10px;">
+<button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+</div>
+</div>
                     `;
                 }
             }
         }
         
         messagesDiv.innerHTML = `
-            <div class="result-box error" style="margin: 0;">
+            <div class="result-box error" style="margin: 0; text-align: left;">
                 <h4>❌ Miniscript error</h4>
-                <div style="margin-top: 10px;">${message}</div>
+                <div style="margin-top: 10px; text-align: left;">${message}</div>
                 ${additionalHelp}
             </div>
         `;
