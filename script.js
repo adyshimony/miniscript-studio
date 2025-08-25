@@ -3803,6 +3803,12 @@ class MiniscriptCompiler {
             this.initializeEmptyResults();
             this.clearMiniscriptMessages();
             
+            // Clear script fields when loading saved miniscript
+            const scriptHexDisplay = document.getElementById('script-hex-display');
+            const scriptAsmDisplay = document.getElementById('script-asm-display');
+            if (scriptHexDisplay) scriptHexDisplay.value = '';
+            if (scriptAsmDisplay) scriptAsmDisplay.value = '';
+            
             // Hide description panel
             const miniscriptPanel = document.querySelector('.miniscript-description-panel');
             if (miniscriptPanel) miniscriptPanel.style.display = 'none';
@@ -3812,6 +3818,9 @@ class MiniscriptCompiler {
             if (checkbox) {
                 checkbox.checked = false;
             }
+            
+            // Auto-compile if enabled
+            autoCompileIfEnabled('miniscript');
         }
     }
 
@@ -4078,6 +4087,9 @@ class MiniscriptCompiler {
             if (checkbox) {
                 checkbox.checked = false;
             }
+            
+            // Auto-compile if enabled
+            autoCompileIfEnabled('policy');
         }
     }
 
@@ -4146,6 +4158,12 @@ window.loadExample = function(example) {
         window.compiler.clearMiniscriptMessages();
     }
     
+    // Clear script fields when loading new miniscript example
+    const scriptHexDisplay = document.getElementById('script-hex-display');
+    const scriptAsmDisplay = document.getElementById('script-asm-display');
+    if (scriptHexDisplay) scriptHexDisplay.value = '';
+    if (scriptAsmDisplay) scriptAsmDisplay.value = '';
+    
     // Update toggle button state based on loaded content
     if (window.compiler && window.compiler.containsKeyNames) {
         const containsKeyNames = window.compiler.containsKeyNames(example);
@@ -4183,6 +4201,9 @@ window.loadExample = function(example) {
     if (checkbox) {
         checkbox.checked = false;
     }
+    
+    // Auto-compile if enabled
+    autoCompileIfEnabled('miniscript');
 };
 
 // Global function to load policy examples
@@ -4257,6 +4278,9 @@ window.loadPolicyExample = function(example) {
     if (checkbox) {
         checkbox.checked = false;
     }
+    
+    // Auto-compile if enabled
+    autoCompileIfEnabled('policy');
 };
 
 // Global function to show policy descriptions
@@ -5314,6 +5338,22 @@ function getKeyVariables() {
         return keyObj;
     }
     return {};
+}
+
+// Auto-compile helper function that respects the setting
+function autoCompileIfEnabled(type) {
+    const autoCompile = document.getElementById('auto-compile-setting');
+    if (autoCompile && autoCompile.checked) {
+        setTimeout(() => {
+            if (type === 'policy') {
+                const compileBtn = document.getElementById('compile-policy-btn');
+                if (compileBtn) compileBtn.click();
+            } else if (type === 'miniscript') {
+                const compileBtn = document.getElementById('compile-btn');
+                if (compileBtn) compileBtn.click();
+            }
+        }, 500);
+    }
 }
 
 // Share policy expression via URL
