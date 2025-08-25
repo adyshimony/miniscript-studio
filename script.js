@@ -5500,6 +5500,11 @@ window.addEventListener('DOMContentLoaded', function() {
                 if (policyInput) {
                     policyInput.textContent = state.policy;
                     console.log('Loaded policy from JSON state');
+                    
+                    // Apply syntax highlighting for policy
+                    if (window.compiler && window.compiler.highlightPolicySyntax) {
+                        window.compiler.highlightPolicySyntax();
+                    }
                 }
             }
             
@@ -5508,6 +5513,11 @@ window.addEventListener('DOMContentLoaded', function() {
                 if (expressionInput) {
                     expressionInput.textContent = state.miniscript;
                     console.log('Loaded miniscript from JSON state');
+                    
+                    // Apply syntax highlighting for miniscript
+                    if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+                        window.compiler.highlightMiniscriptSyntax();
+                    }
                 }
             }
             
