@@ -5505,6 +5505,16 @@ window.addEventListener('DOMContentLoaded', function() {
                     if (window.compiler && window.compiler.highlightPolicySyntax) {
                         window.compiler.highlightPolicySyntax();
                     }
+                    
+                    // Set button to "Hide key names" state AFTER initialization
+                    setTimeout(() => {
+                        const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+                        if (policyToggleBtn) {
+                            policyToggleBtn.style.color = 'var(--success-border)';
+                            policyToggleBtn.title = 'Hide key names';
+                            policyToggleBtn.dataset.active = 'true';
+                        }
+                    }, 150);
                 }
             }
             
@@ -5518,6 +5528,16 @@ window.addEventListener('DOMContentLoaded', function() {
                     if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
                         window.compiler.highlightMiniscriptSyntax();
                     }
+                    
+                    // Set button to "Hide key names" state AFTER initialization
+                    setTimeout(() => {
+                        const toggleBtn = document.getElementById('key-names-toggle');
+                        if (toggleBtn) {
+                            toggleBtn.style.color = 'var(--success-border)';
+                            toggleBtn.title = 'Hide key names';
+                            toggleBtn.dataset.active = 'true';
+                        }
+                    }, 150);
                 }
             }
             
@@ -5551,6 +5571,16 @@ window.addEventListener('DOMContentLoaded', function() {
                 policyInput.textContent = decodeURIComponent(sharedPolicy);
                 console.log('Loaded shared policy:', sharedPolicy);
                 
+                // Set button to "Hide key names" state AFTER initialization
+                setTimeout(() => {
+                    const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+                    if (policyToggleBtn) {
+                        policyToggleBtn.style.color = 'var(--success-border)';
+                        policyToggleBtn.title = 'Hide key names';
+                        policyToggleBtn.dataset.active = 'true';
+                    }
+                }, 150);
+                
                 // Auto-compile if setting is enabled
                 const autoCompile = document.getElementById('auto-compile-setting');
                 if (autoCompile && autoCompile.checked) {
@@ -5566,6 +5596,16 @@ window.addEventListener('DOMContentLoaded', function() {
             if (expressionInput) {
                 expressionInput.textContent = decodeURIComponent(sharedMiniscript);
                 console.log('Loaded shared miniscript:', sharedMiniscript);
+                
+                // Set button to "Hide key names" state AFTER initialization
+                setTimeout(() => {
+                    const toggleBtn = document.getElementById('key-names-toggle');
+                    if (toggleBtn) {
+                        toggleBtn.style.color = 'var(--success-border)';
+                        toggleBtn.title = 'Hide key names';
+                        toggleBtn.dataset.active = 'true';
+                    }
+                }, 150);
                 
                 // Auto-compile if setting is enabled
                 const autoCompile = document.getElementById('auto-compile-setting');
