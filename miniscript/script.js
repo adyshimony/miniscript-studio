@@ -5304,6 +5304,18 @@ window.liftMiniscriptToPolicy = function() {
     }
 };
 
+// Get current key variables for sharing
+function getKeyVariables() {
+    if (window.compiler && window.compiler.keyVariables) {
+        const keyObj = {};
+        for (const [name, value] of window.compiler.keyVariables) {
+            keyObj[name] = value;
+        }
+        return keyObj;
+    }
+    return {};
+}
+
 // Share policy expression via URL
 window.sharePolicyExpression = function() {
     const policyInput = document.getElementById('policy-input');
@@ -5314,13 +5326,28 @@ window.sharePolicyExpression = function() {
         return;
     }
     
-    // Encode the policy for URL - properly encode all special characters
-    const encoded = encodeURIComponent(policy);
-    const shareUrl = `${window.location.origin}${window.location.pathname}#policy=${encoded}`;
+    // Get share format setting
+    const shareFormat = document.getElementById('share-format-setting').value;
+    let shareUrl;
+    
+    if (shareFormat === 'json') {
+        // JSON format - includes all state
+        const state = {
+            policy: policy,
+            keys: getKeyVariables() // Get current key variables
+        };
+        const jsonString = JSON.stringify(state);
+        const encoded = btoa(jsonString); // Base64 encode
+        shareUrl = `${window.location.origin}${window.location.pathname}#state=${encoded}`;
+    } else {
+        // URL format - just the policy
+        const encoded = encodeURIComponent(policy);
+        shareUrl = `${window.location.origin}${window.location.pathname}#policy=${encoded}`;
+    }
     
     // Debug: log what we're encoding
     console.log('Original policy:', policy);
-    console.log('Encoded policy:', encoded);
+    console.log('Share format:', shareFormat);
     console.log('Full URL:', shareUrl);
     
     // Find the button for visual feedback
@@ -5355,13 +5382,28 @@ window.shareMiniscriptExpression = function() {
         return;
     }
     
-    // Encode the miniscript for URL - properly encode all special characters
-    const encoded = encodeURIComponent(miniscript);
-    const shareUrl = `${window.location.origin}${window.location.pathname}#miniscript=${encoded}`;
+    // Get share format setting
+    const shareFormat = document.getElementById('share-format-setting').value;
+    let shareUrl;
+    
+    if (shareFormat === 'json') {
+        // JSON format - includes all state
+        const state = {
+            miniscript: miniscript,
+            keys: getKeyVariables() // Get current key variables
+        };
+        const jsonString = JSON.stringify(state);
+        const encoded = btoa(jsonString); // Base64 encode
+        shareUrl = `${window.location.origin}${window.location.pathname}#state=${encoded}`;
+    } else {
+        // URL format - just the miniscript
+        const encoded = encodeURIComponent(miniscript);
+        shareUrl = `${window.location.origin}${window.location.pathname}#miniscript=${encoded}`;
+    }
     
     // Debug: log what we're encoding
     console.log('Original miniscript:', miniscript);
-    console.log('Encoded miniscript:', encoded);
+    console.log('Share format:', shareFormat);
     console.log('Full URL:', shareUrl);
     
     // Find the button for visual feedback
@@ -5388,43 +5430,102 @@ window.shareMiniscriptExpression = function() {
 
 // Load shared content from URL on page load
 window.addEventListener('DOMContentLoaded', function() {
-    // Parse hash fragment instead of query string
+    // Parse hash fragment
     const hash = window.location.hash.substring(1); // Remove the #
-    const params = new URLSearchParams(hash);
-    const sharedPolicy = params.get('policy');
-    const sharedMiniscript = params.get('miniscript');
     
-    if (sharedPolicy) {
-        // Load policy from URL
-        const policyInput = document.getElementById('policy-input');
-        if (policyInput) {
-            policyInput.textContent = decodeURIComponent(sharedPolicy);
-            console.log('Decoded policy:', policyInput.textContent);
-            // Show a success message
-            console.log('Loaded shared policy:', sharedPolicy);
-            // Optional: Auto-compile after a short delay
-            setTimeout(() => {
-                const compileBtn = document.getElementById('compile-policy-btn');
-                if (compileBtn) {
-                    compileBtn.click();
+    // Check if it's a JSON state or regular URL parameters
+    if (hash.startsWith('state=')) {
+        // JSON format with base64 encoded state
+        const encoded = hash.substring(6); // Remove 'state='
+        try {
+            const jsonString = atob(encoded); // Base64 decode
+            const state = JSON.parse(jsonString);
+            
+            console.log('Loaded JSON state:', state);
+            
+            // Load key variables first
+            if (state.keys && window.compiler) {
+                for (const [name, value] of Object.entries(state.keys)) {
+                    window.compiler.keyVariables.set(name, value);
                 }
-            }, 500);
+                // Refresh key variables display
+                if (typeof window.loadKeyVariables === 'function') {
+                    window.loadKeyVariables();
+                }
+            }
+            
+            // Load policy or miniscript
+            if (state.policy) {
+                const policyInput = document.getElementById('policy-input');
+                if (policyInput) {
+                    policyInput.textContent = state.policy;
+                    console.log('Loaded policy from JSON state');
+                }
+            }
+            
+            if (state.miniscript) {
+                const expressionInput = document.getElementById('expression-input');
+                if (expressionInput) {
+                    expressionInput.textContent = state.miniscript;
+                    console.log('Loaded miniscript from JSON state');
+                }
+            }
+            
+            // Auto-compile if setting is enabled
+            const autoCompile = document.getElementById('auto-compile-setting');
+            if (autoCompile && autoCompile.checked) {
+                setTimeout(() => {
+                    if (state.policy) {
+                        const compileBtn = document.getElementById('compile-policy-btn');
+                        if (compileBtn) compileBtn.click();
+                    } else if (state.miniscript) {
+                        const compileBtn = document.getElementById('compile-btn');
+                        if (compileBtn) compileBtn.click();
+                    }
+                }, 500);
+            }
+            
+        } catch (err) {
+            console.error('Failed to parse JSON state:', err);
         }
-    } else if (sharedMiniscript) {
-        // Load miniscript from URL
-        const expressionInput = document.getElementById('expression-input');
-        if (expressionInput) {
-            expressionInput.textContent = decodeURIComponent(sharedMiniscript);
-            console.log('Decoded miniscript:', expressionInput.textContent);
-            // Show a success message
-            console.log('Loaded shared miniscript:', sharedMiniscript);
-            // Optional: Auto-compile after a short delay
-            setTimeout(() => {
-                const compileBtn = document.getElementById('compile-btn');
-                if (compileBtn) {
-                    compileBtn.click();
+    } else {
+        // URL format with URL parameters
+        const params = new URLSearchParams(hash);
+        const sharedPolicy = params.get('policy');
+        const sharedMiniscript = params.get('miniscript');
+        
+        if (sharedPolicy) {
+            // Load policy from URL
+            const policyInput = document.getElementById('policy-input');
+            if (policyInput) {
+                policyInput.textContent = decodeURIComponent(sharedPolicy);
+                console.log('Loaded shared policy:', sharedPolicy);
+                
+                // Auto-compile if setting is enabled
+                const autoCompile = document.getElementById('auto-compile-setting');
+                if (autoCompile && autoCompile.checked) {
+                    setTimeout(() => {
+                        const compileBtn = document.getElementById('compile-policy-btn');
+                        if (compileBtn) compileBtn.click();
+                    }, 500);
                 }
-            }, 500);
+            }
+        } else if (sharedMiniscript) {
+            // Load miniscript from URL
+            const expressionInput = document.getElementById('expression-input');
+            if (expressionInput) {
+                expressionInput.textContent = decodeURIComponent(sharedMiniscript);
+                console.log('Loaded shared miniscript:', sharedMiniscript);
+                
+                // Auto-compile if setting is enabled
+                const autoCompile = document.getElementById('auto-compile-setting');
+                if (autoCompile && autoCompile.checked) {
+                    setTimeout(() => {
+                        const compileBtn = document.getElementById('compile-btn');
+                        if (compileBtn) compileBtn.click();
+                    }, 500);
+                }
+            }
         }
     }
 });

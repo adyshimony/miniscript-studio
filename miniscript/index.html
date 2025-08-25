@@ -618,6 +618,52 @@
                 width: calc(100% - 40px);
             }
         }
+
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            border-radius: 12px;
+            transition: 0.2s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--border-focus);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
@@ -1451,6 +1497,38 @@
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             All data (keys, saved expressions) persists locally in your browser. No server - everything stays private. Use public keys only!
                         </p>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details style="margin-bottom: 20px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">⚙️ Settings</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
+                <div style="display: grid; gap: 15px;">
+                    <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: var(--text-color);">🏃 Auto-compile on load:</strong>
+                            <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                                Automatically compile policies and miniscripts when loading from shared URLs or saved expressions. When disabled, expressions load but require manual compilation.
+                            </p>
+                        </div>
+                        <label class="toggle-switch" style="margin-left: 20px;">
+                            <input type="checkbox" id="auto-compile-setting" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: var(--text-color);">🔗 Share format:</strong>
+                            <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                                Choose how shared URLs are formatted. URL encoding preserves special characters in readable format. JSON creates compact base64-encoded URLs that include all state.
+                            </p>
+                        </div>
+                        <select id="share-format-setting" style="margin-left: 20px; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 13px;">
+                            <option value="url">URL encoded</option>
+                            <option value="json">JSON (compact)</option>
+                        </select>
                     </div>
                 </div>
             </div>
