@@ -5314,9 +5314,14 @@ window.sharePolicyExpression = function() {
         return;
     }
     
-    // Encode the policy for URL
+    // Encode the policy for URL - properly encode all special characters
     const encoded = encodeURIComponent(policy);
-    const shareUrl = `${window.location.origin}${window.location.pathname}?policy=${encoded}`;
+    const shareUrl = `${window.location.origin}${window.location.pathname}#policy=${encoded}`;
+    
+    // Debug: log what we're encoding
+    console.log('Original policy:', policy);
+    console.log('Encoded policy:', encoded);
+    console.log('Full URL:', shareUrl);
     
     // Find the button for visual feedback
     const button = event.target.closest('button');
@@ -5350,9 +5355,14 @@ window.shareMiniscriptExpression = function() {
         return;
     }
     
-    // Encode the miniscript for URL
+    // Encode the miniscript for URL - properly encode all special characters
     const encoded = encodeURIComponent(miniscript);
-    const shareUrl = `${window.location.origin}${window.location.pathname}?miniscript=${encoded}`;
+    const shareUrl = `${window.location.origin}${window.location.pathname}#miniscript=${encoded}`;
+    
+    // Debug: log what we're encoding
+    console.log('Original miniscript:', miniscript);
+    console.log('Encoded miniscript:', encoded);
+    console.log('Full URL:', shareUrl);
     
     // Find the button for visual feedback
     const button = event.target.closest('button');
@@ -5378,15 +5388,18 @@ window.shareMiniscriptExpression = function() {
 
 // Load shared content from URL on page load
 window.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sharedPolicy = urlParams.get('policy');
-    const sharedMiniscript = urlParams.get('miniscript');
+    // Parse hash fragment instead of query string
+    const hash = window.location.hash.substring(1); // Remove the #
+    const params = new URLSearchParams(hash);
+    const sharedPolicy = params.get('policy');
+    const sharedMiniscript = params.get('miniscript');
     
     if (sharedPolicy) {
         // Load policy from URL
         const policyInput = document.getElementById('policy-input');
         if (policyInput) {
             policyInput.textContent = decodeURIComponent(sharedPolicy);
+            console.log('Decoded policy:', policyInput.textContent);
             // Show a success message
             console.log('Loaded shared policy:', sharedPolicy);
             // Optional: Auto-compile after a short delay
@@ -5402,6 +5415,7 @@ window.addEventListener('DOMContentLoaded', function() {
         const expressionInput = document.getElementById('expression-input');
         if (expressionInput) {
             expressionInput.textContent = decodeURIComponent(sharedMiniscript);
+            console.log('Decoded miniscript:', expressionInput.textContent);
             // Show a success message
             console.log('Loaded shared miniscript:', sharedMiniscript);
             // Optional: Auto-compile after a short delay
