@@ -38,7 +38,7 @@ The "🔑 Extract keys to variables" feature automatically converts long hex key
 - **Variable Generation**: Suggests meaningful names for detected keys (Alice, Bob, Charlie, etc.)
 - **Key Type Selection**: For each detected key, choose the appropriate type:
   - **Compressed** (66 chars): For Legacy and Segwit v0 contexts
-  - **X-only** (64 chars): For Taproot context  
+  - **X-only** (64 chars): For Taproot context
   - **xpub/tpub**: For extended public keys and derivation paths
 - **Duplicate Prevention**: Avoids creating duplicate variables for keys that already exist
 - **Batch Processing**: Handles multiple keys in complex expressions like `thresh(2,pk(Alice),pk(Bob),pk(Charlie))`
@@ -50,7 +50,7 @@ The compiler automatically detects the appropriate script context based on the k
 - **Compressed Keys** (66 characters, starting with 02/03): Used for Legacy and Segwit v0 contexts
   - Example: `02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
   - Visual indicator: Blue color with "compressed" badge
-- **X-only Keys** (64 characters): Used for Taproot context  
+- **X-only Keys** (64 characters): Used for Taproot context
   - Example: `f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
   - Visual indicator: Purple color with "x-only" badge
 
@@ -69,17 +69,6 @@ The compiler automatically detects the appropriate script context based on the k
 - **Testing**: Generate random keys for experimentation
 - **Context Awareness**: Automatic detection and switching of script contexts based on key formats
 
-### Example
-
-```
-# Define variables:
-Alice = 03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd
-Bob = 02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9
-
-# Use in policy:
-or(pk(Alice),and(pk(Bob),older(144)))
-```
-
 ## Reverse Engineering (Lift Features)
 
 The compiler supports "lifting" - reverse engineering Bitcoin scripts back to higher-level representations:
@@ -88,7 +77,7 @@ The compiler supports "lifting" - reverse engineering Bitcoin scripts back to hi
 
 Convert raw Bitcoin Script bytecode (hex or ASM format) back to miniscript expressions:
 
-- **Input**: Bitcoin Script in hex format (e.g., `21022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501ac`) 
+- **Input**: Bitcoin Script in hex format (e.g., `21022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501ac`)
 - **Input**: Bitcoin Script in ASM format (e.g., `022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501 OP_CHECKSIG`)
 - **Output**: Miniscript expression (e.g., `pk(022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501)`)
 - **Usage**: Paste script into the "Script HEX" or "Script ASM" fields and they will automatically lift to miniscript
@@ -104,7 +93,7 @@ Convert miniscript expressions back to high-level policy language:
 ### Benefits of Lifting
 
 - **Script Analysis**: Understand what existing Bitcoin scripts do
-- **Policy Recovery**: Extract the policy logic from deployed scripts  
+- **Policy Recovery**: Extract the policy logic from deployed scripts
 - **Educational**: Learn by reverse-engineering real Bitcoin scripts
 - **Migration**: Convert legacy scripts to modern miniscript format
 - **Debugging**: Verify scripts compile to expected bytecode
@@ -141,6 +130,48 @@ The compiler provides persistent storage for your work:
 - **Limit**: Up to 20 saved policies and 20 saved expressions
 - **Export**: Use the copy buttons (📋) to export expressions to external tools
 
+## Share Feature
+
+Share your work with colleagues or save it for later using shareable URLs:
+
+### How to Share
+
+- **Create Share Link**: Click the 🔗 button next to any policy or miniscript expression
+- **What's Included**: The URL contains only your policy or miniscript expression
+- **Automatic Loading**: When someone opens your link, the expression is loaded into the appropriate input field
+- **Format Options**: Choose between URL encoding or compact JSON format in Settings
+
+### Share URL Formats
+
+- **URL Encoded**: Human-readable format that preserves special characters
+
+  - Example: `?policy=or(pk(Alice),pk(Bob))`
+  - Best for: Simple expressions, readability in URL bar
+- **JSON (Compact)**: Base64-encoded format for complex expressions
+
+  - Example: `?state=eyJwb2xpY3kiOiJvcihwa...`
+  - Best for: Complex expressions, shorter URLs
+
+### Use Cases
+
+- **Collaboration**: Share your work with team members
+- **Documentation**: Include links in documentation or tutorials
+- **Backup**: Save URLs as bookmarks for important expressions
+- **Templates**: Create reusable template URLs for common patterns
+
+## Settings
+
+Configure the compiler's behavior through the Settings section:
+
+### Auto-compile on Load
+
+Control whether expressions compile automatically when loaded:
+
+- **Enabled** (default): When you load an example or saved expression, it automatically compiles to show results immediately
+- **Disabled**: Expressions load into the input fields but wait for manual compilation
+- **Applies to**: Example buttons, saved expressions, saved policies
+- **Does NOT apply to**: Shared URLs (never auto-compile)
+
 ## Interface Guide
 
 ### Main Sections
@@ -152,6 +183,8 @@ The compiler interface is organized into collapsible sections for easy navigatio
 - **📝 Saved expressions**: Store and reload compiled miniscript expressions
 - **📘 Policy reference**: Complete policy language documentation
 - **📚 Miniscript reference**: Detailed miniscript syntax guide
+- **💡 Tips & Quick Help**: Usage tips and feature explanations
+- **⚙️ Settings**: Configure auto-compile and share format preferences
 
 ### Input Areas
 
