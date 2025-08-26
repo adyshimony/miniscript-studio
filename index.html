@@ -673,6 +673,40 @@
     </style>
 </head>
 <body>
+    <!-- Corner ribbon for GitHub -->
+    <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" class="corner-ribbon-left" title="View source on GitHub">
+        <svg width="50" height="50" viewBox="0 0 50 50" style="position: fixed; top: 0; left: 0; z-index: 1000;">
+            <polygon points="0,0 50,0 0,50" fill="#1a202c" />
+            <text x="24" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(-45 25 25)">🐙</text>
+        </svg>
+    </a>
+    
+    <!-- Corner ribbon for beer donation -->
+    <a href="https://coinos.io/adys/receive" target="_blank" class="corner-ribbon-right" title="Buy me a beer 🍺">
+        <svg width="50" height="50" viewBox="0 0 50 50" style="position: fixed; top: 0; right: 0; z-index: 1000;">
+            <polygon points="0,0 50,0 50,50" fill="#1a202c" />
+            <text x="26" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(45 25 25)">🍺</text>
+        </svg>
+    </a>
+    
+    <style>
+        .corner-ribbon-left, .corner-ribbon-right {
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+            transition: opacity 0.2s;
+        }
+        .corner-ribbon-left {
+            left: 0;
+        }
+        .corner-ribbon-right {
+            right: 0;
+        }
+        .corner-ribbon-left:hover, .corner-ribbon-right:hover {
+            opacity: 0.8;
+        }
+    </style>
+    
     <div class="main-content">
         <div class="container">
             <h1>🔨 Miniscript compiler</h1>
@@ -1620,16 +1654,10 @@ Use 🏷️ to show/hide actual key values."
                 </div>
             </div>
         </details>
+
         
         </div>
         
-        <footer style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid var(--border-color);">
-            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">
-                <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="color: var(--text-secondary); text-decoration: none;">
-                    📁 View source on GitHub
-                </a>
-            </p>
-        </footer>
     </div>
     
     <div id="save-modal" class="modal">
@@ -2035,5 +2063,7 @@ Use 🏷️ to show/hide actual key values."
         };
 
     </script>
+
+
 </body>
 </html>
