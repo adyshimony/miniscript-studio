@@ -255,6 +255,12 @@
             min-width: 60px;
         }
         
+        code {
+            overflow-wrap: break-word;
+            word-break: break-all;
+            white-space: normal;
+        }
+        
         button {
             padding: 12px 24px;
             border: none;
@@ -1394,8 +1400,8 @@
 
                 <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">💡 Design Patterns & Best Practices</h3>
 
-                <div style="background: var(--warning-bg); padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid var(--warning-border);">
-                    <h4 style="color: var(--warning-border); margin: 0 0 10px 0;">Common Patterns</h4>
+                <div style="margin: 20px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-color); margin: 0 0 10px 0;">Common Patterns</h4>
                     <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px; line-height: 1.8;">
                         <li><strong>Hot Wallet + Cold Backup:</strong> <code>or(pk(Hot),and(pk(Cold),older(1008)))</code></li>
                         <li><strong>2FA with Timeout:</strong> <code>and(pk(User),or(pk(Service),older(52560)))</code></li>
