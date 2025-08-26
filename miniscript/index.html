@@ -526,15 +526,15 @@
             }
 
             .examples-section .button-group {
-                flex-direction: row;
-                flex-wrap: wrap;
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
             }
 
             .examples-section .button-group button {
                 font-size: 10px !important;
                 padding: 6px 8px !important;
-                min-width: 60px;
-                flex: 1;
+                width: 100%;
             }
 
             #policy-input, #expression-input {
