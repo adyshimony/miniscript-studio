@@ -609,7 +609,7 @@ class MiniscriptCompiler {
                 // Try to find what key name might be missing from the policy
                 const policyText = document.getElementById('policy-input').textContent || '';
                 // Common key names that match this length
-                const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey'];
+                const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey', 'jcKey1', 'jcKey2', 'jcKey3', 'saKey', 'jcAg1', 'jcAg2', 'jcAg3', 'recKey1', 'recKey2', 'recKey3'];
                 const missingKey = commonKeys.find(key => key.length === gotLength && policyText.includes(key));
                 
                 if (missingKey) {
@@ -1468,12 +1468,24 @@ class MiniscriptCompiler {
         this.keyVariables.set('VaultKey3', '[9F996716/48h/1h/0h/2h]tpubDC8ne3Amvh6dPrBtkLb9H1CutNTmvYi4jKnt3bDFMXAkPB8bdGZMWtJAiGUPSkpqi49XWR16q7ZvcKfepcgApuYH1vqq72oNpyxE2gNqBod/<16;17>/*');
         this.keyVariables.set('VaultKey4', '[0A4E923E/48h/1h/123h/2h]tpubDCQwZ5SRgzsiqpzkZjVsjLij3XnE4woshJPnUQDoU6Wc9NVy2zFMApMGftBwCe3t5UnGmqbL69EUu9P9ydZrwi2gEzxbYEQv16qiCzaujdB/<16;17>/*');
         
+        // Joint custody keys for 3-key joint custody example
+        this.keyVariables.set('jcKey1', '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556');
+        this.keyVariables.set('jcKey2', '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357');
+        this.keyVariables.set('jcKey3', '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65');
+        this.keyVariables.set('saKey', '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb');
+        this.keyVariables.set('jcAg1', '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe');
+        this.keyVariables.set('jcAg2', '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9');
+        this.keyVariables.set('jcAg3', '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd');
+        this.keyVariables.set('recKey1', '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34');
+        this.keyVariables.set('recKey2', '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
+        this.keyVariables.set('recKey3', '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
+        
         this.saveKeyVariables();
         this.displayKeyVariables();
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 24 default Taproot key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKeys). Continue?')) {
+        if (confirm('This will restore 34 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKeys). Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -3276,7 +3288,7 @@ class MiniscriptCompiler {
                 // Try to find what key name might be missing from the expression
                 const expressionText = document.getElementById('expression-input').textContent || '';
                 // Common key names that match this length
-                const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey'];
+                const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey', 'jcKey1', 'jcKey2', 'jcKey3', 'saKey', 'jcAg1', 'jcAg2', 'jcAg3', 'recKey1', 'recKey2', 'recKey3'];
                 const missingKey = commonKeys.find(key => key.length === gotLength && expressionText.includes(key));
                 
                 if (missingKey) {
@@ -4618,6 +4630,13 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 (immediate) → 📅 Tier 1: VaultKey3 OR 2-of-3 keys (after 1 day) → 📅 Tier 2: VaultKey4 OR 2-of-3 keys (after 3 days) → 📅 Tier 3: VaultKey2 OR 2-of-5 keys (after 7 days) → 📅 Final: VaultKey1 OR TestnetKey (after 14 days)',
             useCase: 'Corporate treasury with graduated security model. Immediate access requires 2 directors (VaultKey3+VaultKey4). As time passes, recovery becomes easier but requires waiting longer. Perfect for balancing security vs. accessibility in enterprise custody.',
             technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering from most to least secure.'
+        },
+        'joint_custody': {
+            title: '🔐 3-Key Joint Custody: Negative Control System',
+            structure: 'andor(multi(2,jcKey1,jcKey2,jcKey3), or_i(...), and_v(...)) → 4-layer custody with Principal/Agent cooperation',
+            bitcoinScript: '🔒 Layer 1: 2-of-3 Principal multi (immediate) → 🕐 Layer 2: Single Agent + timelock (Jan 12, 2026) OR 2-of-3 Agent thresh + earlier timelock (Jan 1, 2026) → ⏰ Layer 3: 2-of-3 Recovery + later timelock (Feb 1, 2026)',
+            useCase: 'Sophisticated joint custody with "Negative Control" - funds cannot move without both Principal and Agent layers cooperating. Principal keys (jcKey1-3) provide 2-of-3 multisig control. Agent layer provides oversight with timelocked fallbacks. Recovery layer provides ultimate fallback after longer delays.',
+            technical: '💡 Why this structure: andor creates 3 distinct spending paths with different security models. First path (multi) requires 2-of-3 Principal signatures - most secure, immediate access. Second path (or_i) provides Agent oversight with time-based escalation. Third path (and_v) ensures recovery is possible but requires longest wait and 2-of-3 recovery keys. This prevents any single layer from unilaterally moving funds while providing multiple recovery mechanisms.<br><br>📋 Based on: <a href="https://github.com/Blockstream/miniscript-templates/blob/main/mint-005.md" target="_blank" style="color: var(--accent-color);">Blockstream MINT-005 Template</a>'
         }
     };
     
@@ -5011,6 +5030,13 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 (immediate) → 📅 Tier 1: VaultKey3 OR 2-of-3 keys (after 1 day) → 📅 Tier 2: VaultKey4 OR 2-of-3 keys (after 3 days) → 📅 Tier 3: VaultKey2 OR 2-of-5 keys (after 7 days) → 📅 Final: VaultKey1 OR TestnetKey (after 14 days)',
             useCase: 'Corporate treasury with graduated security model. Immediate access requires 2 directors (VaultKey3+VaultKey4). As time passes, recovery becomes easier but requires waiting longer. Perfect for balancing security vs. accessibility in enterprise custody.',
             technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering from most to least secure.'
+        },
+        'joint_custody': {
+            title: '🔐 3-Key Joint Custody: Negative Control System',
+            structure: 'andor(multi(2,jcKey1,jcKey2,jcKey3), or_i(...), and_v(...)) → 4-layer custody with Principal/Agent cooperation',
+            bitcoinScript: '🔒 Layer 1: 2-of-3 Principal multi (immediate) → 🕐 Layer 2: Single Agent + timelock (Jan 12, 2026) OR 2-of-3 Agent thresh + earlier timelock (Jan 1, 2026) → ⏰ Layer 3: 2-of-3 Recovery + later timelock (Feb 1, 2026)',
+            useCase: 'Sophisticated joint custody with "Negative Control" - funds cannot move without both Principal and Agent layers cooperating. Principal keys (jcKey1-3) provide 2-of-3 multisig control. Agent layer provides oversight with timelocked fallbacks. Recovery layer provides ultimate fallback after longer delays.',
+            technical: '💡 Why this structure: andor creates 3 distinct spending paths with different security models. First path (multi) requires 2-of-3 Principal signatures - most secure, immediate access. Second path (or_i) provides Agent oversight with time-based escalation. Third path (and_v) ensures recovery is possible but requires longest wait and 2-of-3 recovery keys. This prevents any single layer from unilaterally moving funds while providing multiple recovery mechanisms.<br><br>📋 Based on: <a href="https://github.com/Blockstream/miniscript-templates/blob/main/mint-005.md" target="_blank" style="color: var(--accent-color);">Blockstream MINT-005 Template</a>'
         }
     };
     
