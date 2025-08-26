@@ -1080,7 +1080,7 @@ class MiniscriptCompiler {
         const selectedType = document.querySelector('input[name="keyType"]:checked')?.value || 'compressed';
         console.log('Selected key type:', selectedType);
         
-        // Define all key pools (20 keys each)
+        // Define all key pools (compressed: 60 keys, others: 20 keys each)
         const keyPools = {
             compressed: [
                 '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
@@ -1242,7 +1242,7 @@ class MiniscriptCompiler {
     }
 
     generateCompressedPublicKey(privateKey) {
-        // 66-character compressed keys for Legacy/Segwit v0 (20 keys)
+        // 66-character compressed keys for Legacy/Segwit v0 (60 keys total)
         const compressedKeys = [
             // Original 20 keys
             '03da6a0f9b14e0c82b2e3b0e9f9f3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f',
@@ -1285,7 +1285,28 @@ class MiniscriptCompiler {
             '0242b595b5feeb32e4c5a86971542dc6d0ac1627165f22d37332085fc527d1c13f',
             '02c98f1ee625379323ecaa58806f70f784256d5fc0fe84179935590a2156b233ef',
             '030bf2c8353ed6360cc76ae447d20f3e52988ebb325057f551a6156c254b9fb9ab',
-            '02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0'
+            '02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0',
+            // Third batch - 20 additional keys
+            '03e4c0b897a93b6aec22d8a7a5675788bfe87733bd171f4f55f26b02bcc60b9967',
+            '02cc96023563fe38b3215c38977a7bbf643a1f5922da6a21f8ed193540351c276e',
+            '03d0d9724554e4055798bcbc06a1fc4d84e7167e6ff5993d3dd45f6274f8b21276',
+            '021fa9c19bbed79d9cd8d19daa786c7580b1dc49fb6bee3f8232185b4e6ddb4bc1',
+            '03d295974ab5949100b3da2d3cf4bc5ebab7abfaa698b3db21095f5ce99dc853fd',
+            '03f2cd034586b5b6e91aad965728dde595399ac08c41919bf6b1a4cd1b343ea808',
+            '02462eb2f8570e25c294bb41d2ce07c0fae64cb339d51e41705516e34db3dbab52',
+            '02384ffe04b898c398ed623bde4a6021e626e5e3672f347b4a3c5cb70f562221cd',
+            '0321866a6d38bc813e9b07c7677d387ac500ed9a40b6914ac4fb028612de948cc6',
+            '02ceed6104e12d65a7f400e2324a76b997012958501795d428b6b98e2a260114df',
+            '032acc58ef59d3184ef0c3062520c02cb0259f65b32cd454e7d0f0bc4cfd99ec18',
+            '03689fe598aad546b0d80a1fae9995a4503d8d01d35432943205ff7a43e401541a',
+            '033709f80850266879dda370543a0d2d1cd6c9862a722614d466dd93f7f47eb50a',
+            '03a32f7874fe61b2d785836c6b3afb4352f4936c153d8dbb58302aa21cb241cfdf',
+            '029aac123da5c0460e644ac9ba9c0f9347d69f24120120f9b4a2bff3a64f4c34da',
+            '02b126e068fbd19934fa1f1683053dc3841d37b6fd892b544a61a51213e26c0f69',
+            '03a6ae2758f0d081a22a9331487269b58cc117fa24114b16bc682a61c19b2bdb5e',
+            '03ab2e75bcde03002722d44821b3d7bc61ebfddb488d928edf95d842ca699e1bb9',
+            '02bffe09fc5f0204a8bef65eef4a1cb0d847f03aeb36b56306602d5fd325fbaa19',
+            '021bd9dc0dd14fd7f34ec501892a8bcb725362f20a1541b216721e64f3f4e0b73e'
         ];
         
         // 64-character X-only keys for Taproot (20 keys)
