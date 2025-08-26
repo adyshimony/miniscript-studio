@@ -997,30 +997,44 @@ Use 🏷️ to show/hide actual key values."
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <h4 style="color: var(--text-secondary);">Basic functions:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">pk(key)</code> - A single public key that must provide a signature. Most efficient for individual wallets.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">older(n)</code> - A relative timelock requiring n blocks/seconds to pass since input creation. Used for delayed access or recovery scenarios.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">after(n)</code> - An absolute timelock requiring block height or time n to be reached. Perfect for scheduled releases or vesting.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">sha256(h)</code> - A SHA256 hash preimage that must be provided to satisfy the condition. Useful for payment secrets or 2FA.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash256(h)</code> - A double-SHA256 hash preimage that must be provided. Alternative hash function for specific protocols.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">ripemd160(h)</code> - A RIPEMD160 hash preimage that must be provided. Less common, used in some specific applications.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">hash160(h)</code> - A Bitcoin hash160 preimage that must be provided. Standard Bitcoin address hash, combines SHA256+RIPEMD160.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">pk(key)</code> - Requires a signature from this public key. The key can be a variable name (Alice), hex pubkey (02abc...), or xpub descriptor ([fingerprint/path]xpub.../0/0). Most efficient for single-sig wallets - compiles directly to CHECKSIG.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">pkh(key)</code> - Requires signature AND public key revelation (pay-to-pubkey-hash style). The script verifies the pubkey hashes to the expected value before checking the signature. Slightly less efficient than pk() but hides the pubkey until spending.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">older(n)</code> - Relative timelock: requires n blocks to pass since the UTXO was created. Use n < 2^16 for block count, n ≥ 500000000 for seconds (roughly). Common values: 144 (1 day), 1008 (1 week), 4320 (1 month). Great for recovery paths.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">after(n)</code> - Absolute timelock: spendable only after block height n (if n < 500000000) or Unix timestamp n. Example: after(800000) = block 800k, after(1767225600) = Jan 1, 2026. Perfect for vesting or scheduled payments.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">sha256(h)</code> - Requires revealing a value whose SHA256 hash equals h. The hash should be 64 hex chars. Used in HTLCs, atomic swaps, and payment channels. Example: sha256(2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae)</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">hash256(h)</code> - Double SHA256 (SHA256(SHA256(x))). Bitcoin's standard hash function used in block headers and txids. Less common in scripts but available for compatibility.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">ripemd160(h)</code> - RIPEMD160 hash preimage. 40 hex chars. Rarely used alone, part of Bitcoin's address generation.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">hash160(h)</code> - SHA256 followed by RIPEMD160 (Bitcoin's address hash). 40 hex chars. Example: hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)</li>
                 </ul>
 
                 <h4 style="color: var(--text-secondary);">Logical operators:</h4>
                 <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">and(X,Y)</code> - Both conditions X and Y must be satisfied simultaneously. Great for joint control or multi-factor authentication.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">or(X,Y)</code> - Either condition X or Y must be satisfied (or both). Perfect for backup access or alternative spending paths.</li>
-                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">thresh(k,X,Y,Z,...)</code> - At least k out of the listed conditions must be satisfied. Ideal for board governance or family trusts (e.g., 2-of-3, 3-of-5).</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">and(X,Y)</code> - Both X AND Y must be satisfied. Order matters for efficiency - put the more likely to fail condition first. Example: and(pk(Alice),pk(Bob)) requires both signatures. Compiles to efficient and_v() miniscript in most cases.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">or(X,Y)</code> - Either X OR Y can satisfy (or both). The compiler chooses the optimal miniscript combinator (or_b, or_c, or_d, or_i) based on the conditions. Example: or(pk(Alice),and(pk(Bob),older(144))) - Alice immediately OR Bob after 1 day.</li>
+                    <li><code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">thresh(k,X,Y,Z,...)</code> - Exactly k out of n conditions must be satisfied. More flexible than multi() as it works with any policy fragments, not just keys. Example: thresh(2,pk(Alice),pk(Bob),pk(Charlie)) for 2-of-3. Can mix different condition types: thresh(2,pk(Alice),older(100),sha256(...))</li>
                 </ul>
 
-                <h4 style="color: var(--text-secondary);">Probability weights:</h4>
+                <h4 style="color: var(--text-secondary);">Probability weights (optimization hints):</h4>
                 <p style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px;">
-                    Add <code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">95@</code> before any condition to indicate it's used 95% of the time. This helps the compiler optimize for the common case, making transactions smaller and cheaper. Example: <code>or(95@pk(Alice),and(pk(Bob),older(144)))</code>
+                    Add <code style="background: var(--container-bg); padding: 2px 4px; border-radius: 3px;">n@</code> before any condition to indicate its relative probability/frequency of use, where n can be any number. This helps the compiler optimize the miniscript structure for smaller, cheaper transactions. The compiler places higher-probability branches in more efficient positions.
+                    <br><br>
+                    Examples:
+                    <br>• <code>or(99@pk(Alice),pk(Bob))</code> - Alice spends 99% of the time
+                    <br>• <code>or(9@pk(Alice),pk(Bob))</code> - Alice 9x more likely than Bob  
+                    <br>• <code>or(1@pk(Alice),10@pk(Bob))</code> - Bob 10x more likely
+                    <br>• <code>thresh(2,10@pk(Alice),10@pk(Bob),1@pk(Charlie))</code> - Charlie rarely participates
+                    <br><br>
+                    The actual numbers don't matter, only their relative ratios. Use any scale that makes sense: 1-10, percentages (95@), or weights (1000@). Without weights, the compiler assumes equal probability.
                 </p>
 
                 <p style="margin: 15px 0 10px 0; font-size: 14px; color: var(--text-muted);">
-                    <strong>Note:</strong> Policy language provides a high-level, human-readable way to express spending conditions that compile to miniscript. 
-                    Keys can be variable names (Alice, Bob) or full hex public keys. Policies are automatically optimized during compilation.
+                    <strong>Important notes:</strong>
+                    <br>• Policy is a high-level language that compiles to miniscript, which then compiles to Bitcoin Script
+                    <br>• Keys can be: variable names (Alice), hex pubkeys (02abc...), or descriptors ([fingerprint/path]xpub...)
+                    <br>• The compiler automatically chooses optimal miniscript fragments (and_v vs and_b, or_i vs or_d, etc.)
+                    <br>• All policies must be satisfiable (no impossible conditions like and(pk(A),0))
+                    <br>• Maximum script size is 520 bytes for P2SH, 10,000 bytes for P2WSH
+                    <br>• Time values: blocks use small numbers (144), Unix timestamps are large (1767225600)
                 </p>
 
                 <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
