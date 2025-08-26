@@ -1085,6 +1085,32 @@
                     </p>
                 </div>
 
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">0</code> - Always False
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Pushes false (0) onto the stack.<br>
+                        <strong>Script:</strong> <code>0</code><br>
+                        <strong>When to use:</strong> Creating provably unspendable branches or testing.<br>
+                        <strong>Example:</strong> <code>or_i(pk(Alice),0)</code> - Only Alice can spend<br>
+                        <strong>Why use:</strong> Explicit false conditions, often for disabled branches.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">1</code> - Always True  
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Pushes true (1) onto the stack.<br>
+                        <strong>Script:</strong> <code>1</code><br>
+                        <strong>When to use:</strong> Creating always satisfiable conditions or testing.<br>
+                        <strong>Example:</strong> <code>and_v(1,pk(Alice))</code> - Effectively just requires Alice<br>
+                        <strong>Why use:</strong> Placeholder conditions or always-satisfied requirements.
+                    </p>
+                </div>
+
                 <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px;">⏰ Time-based Fragments</h3>
 
                 <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
@@ -1380,6 +1406,32 @@
                         <strong>When to use:</strong> Normalizing boolean values.<br>
                         <strong>Example:</strong> <code>t:or_i(pk(A),pk(B))</code><br>
                         <strong>Why use:</strong> Ensures consistent 0/1 output.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">j:</code> - Size Check Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Adds SIZE 0NOTEQUAL check (non-zero size).<br>
+                        <strong>Script:</strong> <code>SIZE 0NOTEQUAL IF &lt;expr&gt; ENDIF</code><br>
+                        <strong>When to use:</strong> Ensuring input has non-zero size before evaluation.<br>
+                        <strong>Example:</strong> <code>j:pk(Alice)</code> - Requires non-empty signature<br>
+                        <strong>Why use:</strong> Malleability protection, ensuring witness data present.
+                    </p>
+                </div>
+
+                <div style="margin: 15px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <h4 style="color: var(--text-secondary); margin: 0 0 10px 0;">
+                        <code style="background: var(--info-bg); padding: 3px 6px; border-radius: 3px;">n:</code> - Nonzero Wrapper
+                    </h4>
+                    <p style="margin: 8px 0; color: var(--text-color); font-size: 13px; line-height: 1.5;">
+                        <strong>What it does:</strong> Converts any non-zero value to 1.<br>
+                        <strong>Script:</strong> <code>DUP 0NOTEQUAL</code><br>
+                        <strong>When to use:</strong> Normalizing non-zero values to boolean true.<br>
+                        <strong>Example:</strong> <code>n:older(100)</code> - Ensures boolean output<br>
+                        <strong>Why use:</strong> Type normalization for certain operations.
                     </p>
                 </div>
 
