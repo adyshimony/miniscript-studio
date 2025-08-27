@@ -780,7 +780,7 @@
     <!-- Corner ribbon for GitHub -->
     <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" class="corner-ribbon-left" title="View source on GitHub">
         <svg width="50" height="50" viewBox="0 0 50 50" class="corner-svg corner-svg-left">
-            <polygon points="0,0 50,0 0,50" fill="var(--ribbon-bg)" />
+            <polygon points="0,0 50,0 0,50" fill="var(--ribbon-bg)" class="corner-polygon" />
             <text x="24" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(-45 25 25)">🐙</text>
         </svg>
     </a>
@@ -788,7 +788,7 @@
     <!-- Corner ribbon for beer donation -->
     <a href="https://coinos.io/adys/receive" target="_blank" class="corner-ribbon-right" title="Buy me a beer 🍺">
         <svg width="50" height="50" viewBox="0 0 50 50" class="corner-svg corner-svg-right">
-            <polygon points="0,0 50,0 50,50" fill="var(--ribbon-bg)" />
+            <polygon points="0,0 50,0 50,50" fill="var(--ribbon-bg)" class="corner-polygon" />
             <text x="26" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(45 25 25)">🍺</text>
         </svg>
     </a>
@@ -821,26 +821,28 @@
             opacity: 0.8;
         }
         
-        /* Mobile: make ribbons absolute and smaller */
+        /* Mobile: hide corner ribbons and show bottom icons */
         @media (max-width: 768px) {
             .corner-ribbon-left, .corner-ribbon-right {
-                position: absolute !important;
+                display: none !important;
             }
-            .corner-svg {
-                position: absolute !important;
-                width: 35px !important;
-                height: 35px !important;
+            .mobile-icons {
+                display: flex !important;
             }
-            .corner-svg text {
-                font-size: 11px !important;
+            .mobile-icons a:hover {
+                background: var(--hover-bg) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
             }
-            .corner-svg-left text {
-                x: 17 !important;
-                y: 13 !important;
+            .main-content {
+                padding-bottom: 0 !important;
             }
-            .corner-svg-right text {
-                x: 19 !important;
-                y: 13 !important;
+            .container {
+                margin-bottom: 2px !important;
+            }
+            body, html {
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
             }
         }
         /* Theme toggle button styles */
@@ -2007,6 +2009,17 @@ Use 🏷️ to show/hide actual key values."
             </div>
         </details>
 
+        <!-- Mobile-only icons section -->
+        <div class="mobile-icons" style="display: none; height: 20px; align-items: center; justify-content: center; margin-top: 5px; border-top: 1px solid var(--border-color);">
+            <div style="margin-top: 7px;">
+                <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="display: inline-block; margin: 0 6px; padding: 2px 6px; background: var(--container-bg); border: none; border-radius: 3px; color: var(--text-color); text-decoration: none; font-size: 12px; line-height: 1; transition: all 0.2s;" title="View source on GitHub">
+                    🐙 View source
+                </a>
+                <a href="https://coinos.io/adys/receive" target="_blank" style="display: inline-block; margin: 0 6px; padding: 2px 6px; background: var(--container-bg); border: none; border-radius: 3px; color: var(--text-color); text-decoration: none; font-size: 12px; line-height: 1; transition: all 0.2s;" title="Buy me a beer 🍺">
+                    🍺 Buy me a beer
+                </a>
+            </div>
+        </div>
         
         </div>
         
