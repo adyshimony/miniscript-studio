@@ -954,8 +954,12 @@ Use 🏷️ to show/hide actual key values."
                         <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
                     </div>
                 </div>
-                
-                <div class="policy-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; margin-top: 34px; overflow-wrap: break-word; word-wrap: break-word;" id="policy-description">
+            </div>
+            
+            <!-- Policy error and description side by side -->
+            <div style="display: flex; gap: 20px; margin-top: 15px; align-items: flex-start;">
+                <div id="policy-errors" style="flex: 1; min-width: 0;"></div>
+                <div class="policy-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; overflow-wrap: break-word; word-wrap: break-word;" id="policy-description">
                     <div class="description-content">
                         <h5 style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 14px;">📄 Click an example to see description</h5>
                         <p style="margin: 0; color: var(--secondary-text); font-size: 13px; line-height: 1.4;">Click any policy example button to learn about its spending conditions and use cases.</p>
@@ -1002,8 +1006,6 @@ Use 🏷️ to show/hide actual key values."
                 }
             </style>
         </div>
-        
-        <div id="policy-errors" style="margin-bottom: 20px;"></div>
         
         <div class="input-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -1072,8 +1074,12 @@ Use 🏷️ to show/hide actual key values."
                         <button onclick="showMiniscriptDescription('vault_complex'); loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(TestnetKey)),after(1768435200)),and_v(or_c(pkh(VaultKey2),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2),a:pkh(TestnetKey),a:pkh(VaultKey1))),after(1767830400))),and_v(or_c(pkh(VaultKey4),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2),a:pkh(TestnetKey))),after(1767484800))),and_v(or_c(pkh(VaultKey3),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2))),after(1767312000))),and_v(v:pk(VaultKey3),pk(VaultKey4)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🏦 Complex Vault</button>
                     </div>
                 </div>
-                
-                <div class="miniscript-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; margin-top: 34px; overflow-wrap: break-word; word-wrap: break-word;" id="miniscript-description">
+            </div>
+            
+            <!-- Miniscript error and description side by side -->
+            <div style="display: flex; gap: 20px; margin-top: 15px; align-items: flex-start;">
+                <div id="miniscript-messages" style="flex: 1; min-width: 0;"></div>
+                <div class="miniscript-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; overflow-wrap: break-word; word-wrap: break-word;" id="miniscript-description">
                     <div class="description-content">
                         <h5 style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 14px;">⚙️ Click an example to see description</h5>
                         <p style="margin: 0; color: var(--secondary-text); font-size: 13px; line-height: 1.4;">Click any miniscript example button to learn about its structure and Bitcoin Script patterns.</p>
@@ -1138,8 +1144,6 @@ Use 🏷️ to show/hide actual key values."
                 </div>
             </div>
         </div>
-        
-        <div id="miniscript-messages" style="margin-bottom: 20px;"></div>
         
         <div class="results-section" id="results" style="margin-bottom: 20px;">
         </div>
