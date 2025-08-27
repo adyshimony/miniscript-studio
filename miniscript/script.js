@@ -1657,10 +1657,10 @@ class MiniscriptCompiler {
             return;
         }
         
-        // Extract all keys from expression
+        // Extract all keys from expression (auto-detect hex vs variables)
         const allKeys = this.extractKeysFromExpression(expression);
         if (allKeys.length === 0) {
-            this.showPolicyError('No keys found in the policy expression');
+            this.showPolicyError('All keys in this expression are already defined as variables. No new keys to extract.');
             return;
         }
         
@@ -1673,7 +1673,7 @@ class MiniscriptCompiler {
         });
         
         if (newKeys.length === 0) {
-            this.showPolicyError('Found existing variables in expression: ' + existingVariableErrors.join(', ') + '. These variables are already defined and cannot be extracted again.');
+            this.showPolicyError('All keys in this expression are already defined as variables (' + existingVariableErrors.join(', ') + '). No new keys to extract.');
             return;
         }
         
@@ -1695,10 +1695,10 @@ class MiniscriptCompiler {
             return;
         }
         
-        // Extract all keys from expression
+        // Extract all keys from expression (auto-detect hex vs variables)
         const allKeys = this.extractKeysFromExpression(expression);
         if (allKeys.length === 0) {
-            this.showMiniscriptError('No keys found in the miniscript expression');
+            this.showMiniscriptError('All keys in this expression are already defined as variables. No new keys to extract.');
             return;
         }
         
@@ -1857,9 +1857,7 @@ class MiniscriptCompiler {
             // pk(VarName), pkh(VarName), pk_k(VarName), pk_h(VarName)
             /\b(?:pk|pkh|pk_k|pk_h)\(([A-Za-z_][A-Za-z0-9_]*)\)/g,
             // multi(threshold,VarName1,VarName2,...)
-            /\bmulti\([0-9]+,([A-Za-z_][A-Za-z0-9_,\s]*)\)/g,
-            // Inside thresh(), and(), or() - look for bare variable names
-            /\b(?:thresh|and|or)\([^)]*\b([A-Za-z_][A-Za-z0-9_]*)\b[^)]*\)/g
+            /\bmulti\([0-9]+,([A-Za-z_][A-Za-z0-9_,\s]*)\)/g
         ];
         
         const foundVariables = new Set();
