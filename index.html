@@ -6,6 +6,7 @@
     <title>Miniscript Compiler</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔨</text></svg>">
     <style>
+        /* Dark theme (default) */
         :root {
             --bg-gradient: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
             --container-bg: #2d3748;
@@ -27,6 +28,37 @@
             --warning-bg: #44337a;
             --warning-border: #9f7aea;
             --secondary-text: #cbd5e0;
+            --modal-bg: #1f2937;
+            --code-bg: #1a202c;
+            --ribbon-bg: #1a202c;
+        }
+        
+        /* Light theme */
+        [data-theme="light"] {
+            --bg-gradient: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);
+            --container-bg: #ffffff;
+            --text-color: #2d3748;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --border-color: #e2e8f0;
+            --border-focus: #4299e1;
+            --button-secondary-bg: #e2e8f0;
+            --button-secondary-hover: #cbd5e0;
+            --info-bg: #f7fafc;
+            --success-bg: #c6f6d5;
+            --success-border: #48bb78;
+            --error-bg: #fed7d7;
+            --error-border: #f56565;
+            --error-text: #c53030;
+            --accent-color: #3182ce;
+            --hover-bg: #f7fafc;
+            --warning-bg: #e9d8fd;
+            --warning-border: #b794f4;
+            --secondary-text: #4a5568;
+            --input-bg: #e2e8f0;
+            --modal-bg: #ffffff;
+            --code-bg: #f7fafc;
+            --ribbon-bg: #2d3748;
         }
 
         body {
@@ -52,6 +84,7 @@
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             margin-bottom: 20px;
+            position: relative;
         }
         
         h1 {
@@ -77,7 +110,7 @@
             width: 100%;
             height: 70px;
             padding: 10px 15px;
-            border: 2px solid var(--border-color);
+            border: 2px solid var(--border-color) !important;
             border-radius: 8px;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 14px;
@@ -86,6 +119,24 @@
             background: var(--container-bg);
             color: var(--text-color);
             box-sizing: border-box;
+            outline: none;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .textarea-like {
+            width: 100%;
+            min-height: 60px;
+            padding: 10px;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+            background: var(--container-bg);
+            color: var(--text-color);
+            box-sizing: border-box;
+            outline: none;
         }
 
         /* Make editable inputs brighter to show they're editable */
@@ -93,13 +144,42 @@
         #expression-input,
         #key-name-input,
         #key-value-input,
+        #script-hex-display,
         #script-asm-display {
             filter: brightness(1.3);
         }
         
+        [data-theme="light"] #policy-input,
+        [data-theme="light"] #expression-input {
+            filter: brightness(1) !important;
+            background: var(--input-bg) !important;
+            border: 2px solid var(--border-color) !important;
+        }
+        
+        [data-theme="light"] #key-name-input,
+        [data-theme="light"] #key-value-input {
+            filter: brightness(1) !important;
+            background: var(--input-bg) !important;
+            border: 2px solid var(--border-color) !important;
+        }
+        
+        [data-theme="light"] #script-hex-display,
+        [data-theme="light"] #script-asm-display {
+            filter: brightness(1) !important;
+            background: var(--input-bg) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+        
+        /* Force borders to remain visible after JavaScript innerHTML updates */
+        [data-theme="light"] #policy-input[contenteditable],
+        [data-theme="light"] #expression-input[contenteditable] {
+            border: 2px solid var(--border-color) !important;
+            background: var(--input-bg) !important;
+        }
+        
         #policy-input:focus, #expression-input:focus {
-            outline: none;
-            border-color: var(--border-focus);
+            outline: none !important;
+            border: 2px solid var(--border-focus) !important;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
@@ -272,22 +352,46 @@
         }
         
         .primary-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #4a5568;
+            color: #e2e8f0;
         }
         
         .primary-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(61, 69, 83, 0.3);
+            background: #4a5568;
         }
         
         .secondary-btn {
-            background: var(--button-secondary-bg);
-            color: var(--text-secondary);
+            background: #4a5568;
+            color: #e2e8f0;
         }
         
         .secondary-btn:hover {
-            background: var(--button-secondary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(61, 69, 83, 0.3);
+            background: #4a5568;
+        }
+        
+        /* Light theme button overrides */
+        [data-theme="light"] .primary-btn {
+            background: #cbd5e0;
+            color: #475569;
+        }
+        
+        [data-theme="light"] .primary-btn:hover {
+            background: #a0aec0;
+            box-shadow: 0 5px 15px rgba(160, 174, 192, 0.4);
+        }
+        
+        [data-theme="light"] .secondary-btn {
+            background: #cbd5e0;
+            color: #475569;
+        }
+        
+        [data-theme="light"] .secondary-btn:hover {
+            background: #a0aec0;
+            box-shadow: 0 5px 15px rgba(160, 174, 192, 0.4);
         }
         
         .danger-btn {
@@ -676,7 +780,7 @@
     <!-- Corner ribbon for GitHub -->
     <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" class="corner-ribbon-left" title="View source on GitHub">
         <svg width="50" height="50" viewBox="0 0 50 50" class="corner-svg corner-svg-left">
-            <polygon points="0,0 50,0 0,50" fill="#1a202c" />
+            <polygon points="0,0 50,0 0,50" fill="var(--ribbon-bg)" />
             <text x="24" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(-45 25 25)">🐙</text>
         </svg>
     </a>
@@ -684,7 +788,7 @@
     <!-- Corner ribbon for beer donation -->
     <a href="https://coinos.io/adys/receive" target="_blank" class="corner-ribbon-right" title="Buy me a beer 🍺">
         <svg width="50" height="50" viewBox="0 0 50 50" class="corner-svg corner-svg-right">
-            <polygon points="0,0 50,0 50,50" fill="#1a202c" />
+            <polygon points="0,0 50,0 50,50" fill="var(--ribbon-bg)" />
             <text x="26" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(45 25 25)">🍺</text>
         </svg>
     </a>
@@ -739,10 +843,54 @@
                 y: 13 !important;
             }
         }
+        /* Theme toggle button styles */
+        .theme-toggle {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            min-height: 28px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            font-size: 14px;
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            line-height: 1;
+        }
+        
+        .theme-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        @media (max-width: 768px) {
+            .theme-toggle {
+                width: 24px;
+                height: 24px;
+                min-width: 24px;
+                min-height: 24px;
+                font-size: 12px;
+                top: 15px;
+                right: 20px;
+            }
+        }
     </style>
     
     <div class="main-content">
         <div class="container">
+            <!-- Theme toggle button -->
+            <button id="floating-theme-toggle" class="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+                <span id="theme-icon">☀️</span>
+            </button>
+            
             <h1>🔨 Miniscript compiler</h1>
         
         <div class="input-section">
@@ -1661,6 +1809,18 @@ Use 🏷️ to show/hide actual key values."
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">⚙️ Settings</summary>
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div style="display: grid; gap: 15px;">
+                    <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                        <div>
+                            <strong style="color: var(--text-color);">🎨 Theme:</strong>
+                            <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                                Choose between dark and light theme. Overrides system preference.
+                            </p>
+                        </div>
+                        <select id="theme-selector" style="margin-left: 20px; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 13px; cursor: pointer;">
+                            <option value="dark">🌙 Dark</option>
+                            <option value="light">☀️ Light</option>
+                        </select>
+                    </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <strong style="color: var(--text-color);">🏃 Auto-compile on load:</strong>
@@ -2095,6 +2255,146 @@ Use 🏷️ to show/hide actual key values."
                 checkbox.checked = false;
             }
         };
+
+        // Theme switching functionality
+        function initTheme() {
+            const themeSelector = document.getElementById('theme-selector');
+            const floatingToggle = document.getElementById('floating-theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            
+            // Apply saved theme
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if (themeSelector) {
+                themeSelector.value = savedTheme;
+            }
+            
+            // Update floating button icon (show what you can switch TO)
+            if (themeIcon) {
+                themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            }
+            
+            // Force apply styling for all editable elements after theme is set
+            setTimeout(() => {
+                if (window.compiler && window.compiler.enforceElementStyling) {
+                    const policyInput = document.getElementById('policy-input');
+                    const expressionInput = document.getElementById('expression-input');
+                    const scriptHex = document.getElementById('script-hex-display');
+                    const scriptAsm = document.getElementById('script-asm-display');
+                    const addressDisplay = document.getElementById('address-display');
+                    if (policyInput) window.compiler.enforceElementStyling(policyInput);
+                    if (expressionInput) window.compiler.enforceElementStyling(expressionInput);
+                    if (scriptHex) window.compiler.enforceElementStyling(scriptHex);
+                    if (scriptAsm) window.compiler.enforceElementStyling(scriptAsm);
+                    if (addressDisplay) window.compiler.enforceElementStyling(addressDisplay);
+                }
+            }, 100);
+            
+            // Listen for theme changes
+            if (themeSelector) {
+                themeSelector.addEventListener('change', function(e) {
+                    const newTheme = e.target.value;
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    
+                    // Update floating button icon (show what you can switch TO)
+                    const themeIcon = document.getElementById('theme-icon');
+                    if (themeIcon) {
+                        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                    }
+                    
+                    if (window.compiler) {
+                        const policyInput = document.getElementById('policy-input');
+                        const expressionInput = document.getElementById('expression-input');
+                        const scriptHex = document.getElementById('script-hex-display');
+                        const scriptAsm = document.getElementById('script-asm-display');
+                        const addressDisplay = document.getElementById('address-display');
+                        
+                        if (newTheme === 'light' && window.compiler.enforceElementStyling) {
+                            // Apply light theme styling
+                            setTimeout(() => {
+                                if (policyInput) window.compiler.enforceElementStyling(policyInput);
+                                if (expressionInput) window.compiler.enforceElementStyling(expressionInput);
+                                if (scriptHex) window.compiler.enforceElementStyling(scriptHex);
+                                if (scriptAsm) window.compiler.enforceElementStyling(scriptAsm);
+                                if (addressDisplay) window.compiler.enforceElementStyling(addressDisplay);
+                            }, 50);
+                        } else if (newTheme === 'dark') {
+                            // Clear forced styles to let CSS take over
+                            [policyInput, expressionInput, scriptHex, scriptAsm, addressDisplay].forEach(element => {
+                                if (element) {
+                                    element.style.removeProperty('border');
+                                    element.style.removeProperty('background');
+                                    element.style.removeProperty('filter');
+                                    element.style.removeProperty('border-radius');
+                                    element.style.removeProperty('padding');
+                                    element.style.removeProperty('box-shadow');
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // Listen for floating toggle button clicks
+            if (floatingToggle) {
+                floatingToggle.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                    
+                    // Update theme
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    
+                    // Sync with settings selector
+                    if (themeSelector) {
+                        themeSelector.value = newTheme;
+                    }
+                    
+                    // Update floating button icon (show what you can switch TO)
+                    if (themeIcon) {
+                        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                    }
+                    
+                    // Apply same theme change logic as settings selector
+                    if (window.compiler) {
+                        const policyInput = document.getElementById('policy-input');
+                        const expressionInput = document.getElementById('expression-input');
+                        const scriptHex = document.getElementById('script-hex-display');
+                        const scriptAsm = document.getElementById('script-asm-display');
+                        const addressDisplay = document.getElementById('address-display');
+                        
+                        if (newTheme === 'light' && window.compiler.enforceElementStyling) {
+                            setTimeout(() => {
+                                if (policyInput) window.compiler.enforceElementStyling(policyInput);
+                                if (expressionInput) window.compiler.enforceElementStyling(expressionInput);
+                                if (scriptHex) window.compiler.enforceElementStyling(scriptHex);
+                                if (scriptAsm) window.compiler.enforceElementStyling(scriptAsm);
+                                if (addressDisplay) window.compiler.enforceElementStyling(addressDisplay);
+                            }, 50);
+                        } else if (newTheme === 'dark') {
+                            [policyInput, expressionInput, scriptHex, scriptAsm, addressDisplay].forEach(element => {
+                                if (element) {
+                                    element.style.removeProperty('border');
+                                    element.style.removeProperty('background');
+                                    element.style.removeProperty('filter');
+                                    element.style.removeProperty('border-radius');
+                                    element.style.removeProperty('padding');
+                                    element.style.removeProperty('box-shadow');
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Initialize theme on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTheme);
+        } else {
+            initTheme();
+        }
 
     </script>
 

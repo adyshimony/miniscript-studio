@@ -373,7 +373,87 @@ class MiniscriptCompiler {
                 this.addKeyVariable();
             }
         });
+        
+        // Setup focus events for border styling
+        this.setupFocusEvents();
+        
+        // Override innerHTML for contenteditable elements to ensure styling persists
+        this.overrideInnerHTMLForStyling();
+    }
+    
+    overrideInnerHTMLForStyling() {
+        const policyInput = document.getElementById('policy-input');
+        const expressionInput = document.getElementById('expression-input');
+        
+        [policyInput, expressionInput].forEach(element => {
+            if (element) {
+                const originalDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+                Object.defineProperty(element, 'innerHTML', {
+                    set: function(value) {
+                        originalDescriptor.set.call(this, value);
+                        // Force reapply styling after innerHTML change
+                        if (window.compiler && window.compiler.enforceElementStyling) {
+                            setTimeout(() => window.compiler.enforceElementStyling(this), 0);
+                        }
+                    },
+                    get: originalDescriptor.get,
+                    configurable: true
+                });
+            }
+        });
 
+    }
+    
+    setupFocusEvents() {
+        // Add focus/blur events for all editable elements to handle border styling
+        const elements = [
+            'policy-input',
+            'expression-input', 
+            'script-hex-display',
+            'script-asm-display'
+        ];
+        
+        elements.forEach(elementId => {
+            // Use event delegation since script textareas are created dynamically
+            document.addEventListener('focusin', (e) => {
+                if (e.target.id === elementId) {
+                    this.handleElementFocus(e.target, true);
+                }
+            });
+            
+            document.addEventListener('focusout', (e) => {
+                if (e.target.id === elementId) {
+                    this.handleElementFocus(e.target, false);
+                }
+            });
+        });
+    }
+    
+    handleElementFocus(element, isFocused) {
+        if (document.documentElement.getAttribute('data-theme') === 'light') {
+            const isMainInput = element.id === 'policy-input' || element.id === 'expression-input';
+            const isScriptField = element.id === 'script-hex-display' || element.id === 'script-asm-display';
+            
+            if (isFocused) {
+                // Focus state - bolder border
+                if (isMainInput) {
+                    element.style.setProperty('border', '2px solid #4299e1', 'important');
+                    element.style.setProperty('box-shadow', '0 0 0 3px rgba(66, 153, 225, 0.1)', 'important');
+                } else if (isScriptField) {
+                    element.style.setProperty('border', '1px solid #4299e1', 'important');
+                    element.style.setProperty('box-shadow', '0 0 0 2px rgba(66, 153, 225, 0.1)', 'important');
+                }
+            } else {
+                // Blur state - normal border
+                if (isMainInput) {
+                    element.style.setProperty('border', '2px solid #cbd5e0', 'important');
+                    element.style.removeProperty('box-shadow');
+                } else if (isScriptField) {
+                    element.style.setProperty('border', '1px solid #cbd5e0', 'important');
+                    element.style.removeProperty('box-shadow');
+                }
+            }
+        }
     }
 
     compileExpression() {
@@ -691,6 +771,8 @@ class MiniscriptCompiler {
         // Only update HTML if it actually changed
         if (policyInput.innerHTML !== highlightedHTML) {
             policyInput.innerHTML = highlightedHTML;
+            // Force reapply styling after innerHTML change
+            this.enforceElementStyling(policyInput);
             // Restore cursor position
             this.restoreCursor(policyInput, caretOffset);
         }
@@ -751,12 +833,53 @@ class MiniscriptCompiler {
         // Only update HTML if it actually changed
         if (expressionInput.innerHTML !== highlightedHTML) {
             expressionInput.innerHTML = highlightedHTML;
+            // Force reapply styling after innerHTML change
+            this.enforceElementStyling(expressionInput);
             // Restore cursor position
             this.restoreCursor(expressionInput, caretOffset);
         }
         
         // Store the last highlighted text
         expressionInput.dataset.lastHighlightedText = text;
+    }
+    
+    enforceElementStyling(element) {
+        // Force reapply CSS styles that might be lost after innerHTML changes
+        console.log('Enforcing styling for element:', element.id, 'theme:', document.documentElement.getAttribute('data-theme'));
+        
+        if (document.documentElement.getAttribute('data-theme') === 'light') {
+            // Force light theme styling for contenteditable elements
+            if (element.id === 'policy-input' || element.id === 'expression-input') {
+                console.log('Applying light theme styles to:', element.id);
+                element.style.setProperty('border', '2px solid #cbd5e0', 'important');
+                element.style.setProperty('background', '#e2e8f0', 'important');
+                element.style.setProperty('filter', 'brightness(1)', 'important');
+                element.style.setProperty('border-radius', '8px', 'important');
+                element.style.setProperty('padding', '10px 15px', 'important');
+                
+                // Force a repaint
+                element.offsetHeight;
+            } else if (element.id === 'script-hex-display' || element.id === 'script-asm-display') {
+                console.log('Applying light theme styles to script field:', element.id);
+                element.style.setProperty('border', '1px solid #cbd5e0', 'important');
+                element.style.setProperty('background', '#e2e8f0', 'important');
+                element.style.setProperty('filter', 'brightness(1)', 'important');
+                element.style.setProperty('border-radius', '4px', 'important');
+                element.style.setProperty('padding', '10px', 'important');
+                
+                // Force a repaint
+                element.offsetHeight;
+            } else if (element.id === 'address-display') {
+                console.log('Applying light theme styles to address display:', element.id);
+                element.style.setProperty('border', '1px solid #cbd5e0', 'important');
+                element.style.setProperty('background', '#e2e8f0', 'important');
+                element.style.setProperty('border-radius', '4px', 'important');
+                element.style.setProperty('padding', '10px', 'important');
+                
+                // Force a repaint
+                element.offsetHeight;
+            }
+        }
     }
 
     applyMiniscriptSyntaxHighlighting(text) {
@@ -2959,7 +3082,7 @@ class MiniscriptCompiler {
                     </button>
                 </div>
             </div>
-            <textarea id="script-hex-display" placeholder="Hex script will appear here after compilation, or paste your own and lift it..." style="width: 100%; min-height: 60px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);"></textarea>
+            <textarea id="script-hex-display" placeholder="Hex script will appear here after compilation, or paste your own and lift it..." class="textarea-like"></textarea>
         `;
         resultsDiv.appendChild(scriptDiv);
         
@@ -2987,7 +3110,7 @@ class MiniscriptCompiler {
                     </button>
                 </div>
             </div>
-            <textarea id="script-asm-display" placeholder="ASM script will appear here after compilation, or paste your own and lift it..." style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);"></textarea>
+            <textarea id="script-asm-display" placeholder="ASM script will appear here after compilation, or paste your own and lift it..." class="textarea-like" style="min-height: 80px;"></textarea>
         `;
         resultsDiv.appendChild(scriptAsmDiv);
         
@@ -3003,11 +3126,21 @@ class MiniscriptCompiler {
                     </button>
                 </div>
             </div>
-            <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted); font-style: italic;">
+            <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted); font-style: italic;">
                 Address will appear here after compilation
             </div>
         `;
         resultsDiv.appendChild(addressDiv);
+        
+        // Apply light theme styling to newly created elements
+        if (document.documentElement.getAttribute('data-theme') === 'light') {
+            const scriptHex = document.getElementById('script-hex-display');
+            const scriptAsm = document.getElementById('script-asm-display');
+            const addressDisplay = document.getElementById('address-display');
+            if (scriptHex) this.enforceElementStyling(scriptHex);
+            if (scriptAsm) this.enforceElementStyling(scriptAsm);
+            if (addressDisplay) this.enforceElementStyling(addressDisplay);
+        }
         
         // Add event listeners for the empty sections
         this.attachEmptyResultsListeners();
@@ -3055,7 +3188,7 @@ class MiniscriptCompiler {
             miniscriptDiv.className = 'result-box info';
             miniscriptDiv.innerHTML = `
                 <h4>🔄 Compiled miniscript</h4>
-                <textarea readonly style="width: 100%; min-height: 60px; margin-top: 10px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box;">${result.compiled_miniscript}</textarea>
+                <textarea readonly class="textarea-like" style="margin-top: 10px;">${result.compiled_miniscript}</textarea>
             `;
             resultsDiv.appendChild(miniscriptDiv);
         }
@@ -3076,7 +3209,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-hex-display" style="width: 100%; min-height: 60px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);">${result.script}</textarea>
+                <textarea id="script-hex-display" class="textarea-like">${result.script}</textarea>
             `;
             
             // Add event listeners for the buttons
@@ -3159,7 +3292,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-asm-display" style="width: 100%; min-height: 80px; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); resize: vertical; color: var(--text-color); box-sizing: border-box; filter: brightness(1.3);">${currentAsm}</textarea>
+                <textarea id="script-asm-display" class="textarea-like" style="min-height: 80px;">${currentAsm}</textarea>
             `;
             
             // Add event listener for toggle button
@@ -3256,7 +3389,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--info-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
                     ${result.address}
                 </div>
             `;
@@ -3283,6 +3416,16 @@ class MiniscriptCompiler {
                 </div>
             `;
             resultsDiv.appendChild(noAddressDiv);
+        }
+        
+        // Apply light theme styling to newly created script elements
+        if (document.documentElement.getAttribute('data-theme') === 'light') {
+            const scriptHex = document.getElementById('script-hex-display');
+            const scriptAsm = document.getElementById('script-asm-display');
+            const addressDisplay = document.getElementById('address-display');
+            if (scriptHex) this.enforceElementStyling(scriptHex);
+            if (scriptAsm) this.enforceElementStyling(scriptAsm);
+            if (addressDisplay) this.enforceElementStyling(addressDisplay);
         }
     }
 
