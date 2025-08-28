@@ -4485,10 +4485,15 @@ window.loadPolicyExample = function(example) {
 
 // Global function to show policy descriptions
 window.showPolicyDescription = function(exampleId) {
+    // Check if descriptions are disabled
+    if (localStorage.getItem('showDescriptions') === 'false') {
+        return;
+    }
+    
     const panel = document.getElementById('policy-description');
     const contentDiv = panel.querySelector('.description-content');
     
-    const descriptions = {
+        const descriptions = {
         'single': {
             title: '📄 Single Key Policy',
             conditions: '🔓 Alice: Immediate spending (no restrictions)',
@@ -4647,8 +4652,14 @@ window.showPolicyDescription = function(exampleId) {
     }
 };
 
+
 // Global function to show miniscript descriptions
 window.showMiniscriptDescription = function(exampleId) {
+    // Check if descriptions are disabled
+    if (localStorage.getItem('showDescriptions') === 'false') {
+        return;
+    }
+    
     const panel = document.getElementById('miniscript-description');
     const contentDiv = panel.querySelector('.description-content');
     
@@ -4889,6 +4900,11 @@ window.handleReplaceKeysChange = function(isChecked) {
 
 // Make description functions globally available
 window.showPolicyDescription = function(exampleId) {
+    // Check if descriptions are disabled
+    if (localStorage.getItem('showDescriptions') === 'false') {
+        return;
+    }
+    
     const panel = document.getElementById('policy-description');
     const contentDiv = panel.querySelector('.description-content');
     
@@ -5049,6 +5065,11 @@ window.showPolicyDescription = function(exampleId) {
 };
 
 window.showMiniscriptDescription = function(exampleId) {
+    // Check if descriptions are disabled
+    if (localStorage.getItem('showDescriptions') === 'false') {
+        return;
+    }
+    
     const panel = document.getElementById('miniscript-description');
     const contentDiv = panel.querySelector('.description-content');
     

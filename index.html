@@ -1939,6 +1939,18 @@ Use 🏷️ to show/hide actual key values."
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
+                            <strong style="color: var(--text-color);">📖 Show descriptions:</strong>
+                            <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                                Display helpful descriptions when clicking example buttons. Turn off if you're a miniscript master who doesn't need explanations! 🧙‍♂️
+                            </p>
+                        </div>
+                        <label class="toggle-switch" style="margin-left: 20px;">
+                            <input type="checkbox" id="show-descriptions-setting" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
                             <strong style="color: var(--text-color);">🔗 Share format:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Choose how shared URLs are formatted. URL encoding preserves special characters in readable format. JSON creates compact base64-encoded URLs that include all state.
@@ -2016,6 +2028,12 @@ Use 🏷️ to show/hide actual key values."
     <script>
         // Global functions that need to be available immediately
         window.showPolicyDescription = function(exampleId) {
+            // Check if descriptions are enabled
+            const showDescriptions = localStorage.getItem('showDescriptions') !== 'false';
+            if (!showDescriptions) {
+                return;
+            }
+            
             const panel = document.getElementById('policy-description');
             const contentDiv = panel.querySelector('.description-content');
             
@@ -2128,6 +2146,12 @@ Use 🏷️ to show/hide actual key values."
         };
 
         window.showMiniscriptDescription = function(exampleId) {
+            // Check if descriptions are enabled
+            const showDescriptions = localStorage.getItem('showDescriptions') !== 'false';
+            if (!showDescriptions) {
+                return;
+            }
+            
             const panel = document.getElementById('miniscript-description');
             const contentDiv = panel.querySelector('.description-content');
             
@@ -2540,6 +2564,33 @@ Use 🏷️ to show/hide actual key values."
             }
             if (autoCompileSetting) {
                 autoCompileSetting.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+            
+            // Show descriptions setting
+            const showDescriptionsSetting = document.getElementById('show-descriptions-setting');
+            // Default to true if not set, or if set to anything other than 'false'
+            const savedShowDescriptions = localStorage.getItem('showDescriptions') !== 'false';
+            if (showDescriptionsSetting) {
+                showDescriptionsSetting.checked = savedShowDescriptions;
+                showDescriptionsSetting.addEventListener('change', (e) => {
+                    const newValue = String(e.target.checked);
+                    localStorage.setItem('showDescriptions', newValue);
+                    // Hide all description panels when turned off
+                    if (!e.target.checked) {
+                        const policyDesc = document.getElementById('policy-description');
+                        const miniscriptDesc = document.getElementById('miniscript-description');
+                        if (policyDesc) policyDesc.style.display = 'none';
+                        if (miniscriptDesc) miniscriptDesc.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Also hide descriptions on page load if setting is off
+            if (!savedShowDescriptions) {
+                const policyDesc = document.getElementById('policy-description');
+                const miniscriptDesc = document.getElementById('miniscript-description');
+                if (policyDesc) policyDesc.style.display = 'none';
+                if (miniscriptDesc) miniscriptDesc.style.display = 'none';
             }
         });
 
