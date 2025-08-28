@@ -927,10 +927,19 @@ Use 🏷️ to show/hide actual key values."
                 class="policy-editor"
             ></div>
             
-            <div class="button-group" style="margin-top: 15px;">
-                <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
-                <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
-                <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
+                <div class="button-group">
+                    <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
+                    <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
+                    <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Auto-compile</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-compile-policy">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             
             <!-- Policy description panel aligned with examples -->
@@ -1003,10 +1012,19 @@ Use 🏷️ to show/hide actual key values."
                 class="miniscript-editor"
             ></div>
             
-            <div class="button-group" style="margin-top: 15px;">
-                <button id="compile-btn" class="primary-btn">🔨 Compile</button>
-                <button id="save-btn" class="secondary-btn">💾 Save</button>
-                <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
+                <div class="button-group">
+                    <button id="compile-btn" class="primary-btn">🔨 Compile</button>
+                    <button id="save-btn" class="secondary-btn">💾 Save</button>
+                    <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Auto-compile</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-compile-miniscript">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             
             <!-- Miniscript description panel aligned with examples -->
@@ -2492,6 +2510,38 @@ Use 🏷️ to show/hide actual key values."
         } else {
             initTheme();
         }
+        
+        // Auto-compile checkbox synchronization
+        document.addEventListener('DOMContentLoaded', function() {
+            const autoCompileSetting = document.getElementById('auto-compile-setting');
+            const autoCompilePolicy = document.getElementById('auto-compile-policy');
+            const autoCompileMiniscript = document.getElementById('auto-compile-miniscript');
+            
+            // Initialize checkboxes with saved setting
+            const savedAutoCompile = localStorage.getItem('autoCompile') === 'true';
+            if (autoCompilePolicy) autoCompilePolicy.checked = savedAutoCompile;
+            if (autoCompileMiniscript) autoCompileMiniscript.checked = savedAutoCompile;
+            if (autoCompileSetting) autoCompileSetting.checked = savedAutoCompile;
+            
+            // Sync all checkboxes when any one changes
+            function syncAutoCompile(checked) {
+                localStorage.setItem('autoCompile', checked);
+                if (autoCompileSetting) autoCompileSetting.checked = checked;
+                if (autoCompilePolicy) autoCompilePolicy.checked = checked;
+                if (autoCompileMiniscript) autoCompileMiniscript.checked = checked;
+            }
+            
+            // Add event listeners
+            if (autoCompilePolicy) {
+                autoCompilePolicy.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+            if (autoCompileMiniscript) {
+                autoCompileMiniscript.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+            if (autoCompileSetting) {
+                autoCompileSetting.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+        });
 
     </script>
 

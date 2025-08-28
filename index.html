@@ -927,14 +927,24 @@ Use 🏷️ to show/hide actual key values."
                 class="policy-editor"
             ></div>
             
-            <div class="button-group" style="margin-top: 15px;">
-                <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
-                <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
-                <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
+                <div class="button-group">
+                    <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
+                    <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
+                    <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Auto-compile</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-compile-policy">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             
-            <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
-                <div class="examples-buttons" style="flex: 1; min-width: 0;">
+            <!-- Policy description panel aligned with examples -->
+            <div style="display: flex; gap: 20px; align-items: flex-start; margin-top: 15px;">
+                <div style="flex: 1;">
                     <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
                         <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
@@ -954,11 +964,6 @@ Use 🏷️ to show/hide actual key values."
                         <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Policy error and description side by side -->
-            <div style="display: flex; gap: 20px; margin-top: 15px; align-items: flex-start;">
-                <div id="policy-errors" style="flex: 1; min-width: 0;"></div>
                 <div class="policy-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; overflow-wrap: break-word; word-wrap: break-word;" id="policy-description">
                     <div class="description-content">
                         <h5 style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 14px;">📄 Click an example to see description</h5>
@@ -967,44 +972,9 @@ Use 🏷️ to show/hide actual key values."
                 </div>
             </div>
             
-            <!-- Mobile responsive CSS -->
-            <style>
-                @media (max-width: 768px) {
-                    .examples-section {
-                        flex-direction: column !important;
-                        gap: 15px !important;
-                    }
-                    
-                    .policy-description-panel {
-                        margin-top: 0 !important;
-                        flex: none !important;
-                        max-width: none !important;
-                        width: 100% !important;
-                        margin-left: 0 !important;
-                        margin-right: 0 !important;
-                        box-sizing: border-box !important;
-                    }
-                    
-                    #policy-description {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                    }
-                }
-                
-                @media (max-width: 1024px) and (min-width: 769px) {
-                    .policy-description-panel {
-                        flex: 0 0 250px !important;
-                        width: 250px !important;
-                    }
-                }
-                
-                @media (max-width: 1200px) and (min-width: 1025px) {
-                    .policy-description-panel {
-                        flex: 0 0 280px !important;
-                        width: 280px !important;
-                    }
-                }
-            </style>
+            <!-- Policy error messages -->
+            <div id="policy-errors" style="margin-top: 15px;"></div>
+            
         </div>
         
         <div class="input-section">
@@ -1042,14 +1012,24 @@ Use 🏷️ to show/hide actual key values."
                 class="miniscript-editor"
             ></div>
             
-            <div class="button-group" style="margin-top: 15px;">
-                <button id="compile-btn" class="primary-btn">🔨 Compile</button>
-                <button id="save-btn" class="secondary-btn">💾 Save</button>
-                <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
+                <div class="button-group">
+                    <button id="compile-btn" class="primary-btn">🔨 Compile</button>
+                    <button id="save-btn" class="secondary-btn">💾 Save</button>
+                    <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Auto-compile</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-compile-miniscript">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             
-            <div class="examples-section" style="margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; overflow: hidden;">
-                <div class="examples-buttons" style="flex: 1; min-width: 0;">
+            <!-- Miniscript description panel aligned with examples -->
+            <div style="display: flex; gap: 20px; align-items: flex-start; margin-top: 15px;">
+                <div style="flex: 1;">
                     <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="miniscript-examples-title">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="miniscript-buttons-start">
                         <button onclick="showMiniscriptDescription('pkh'); loadExample('pkh(Alice)')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Pay-to-pubkey-hash</button>
@@ -1074,11 +1054,6 @@ Use 🏷️ to show/hide actual key values."
                         <button onclick="showMiniscriptDescription('vault_complex'); loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(TestnetKey)),after(1768435200)),and_v(or_c(pkh(VaultKey2),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2),a:pkh(TestnetKey),a:pkh(VaultKey1))),after(1767830400))),and_v(or_c(pkh(VaultKey4),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2),a:pkh(TestnetKey))),after(1767484800))),and_v(or_c(pkh(VaultKey3),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2))),after(1767312000))),and_v(v:pk(VaultKey3),pk(VaultKey4)))')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🏦 Complex Vault</button>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Miniscript error and description side by side -->
-            <div style="display: flex; gap: 20px; margin-top: 15px; align-items: flex-start;">
-                <div id="miniscript-messages" style="flex: 1; min-width: 0;"></div>
                 <div class="miniscript-description-panel" style="flex: 0 0 300px; width: 300px; background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: none; overflow-wrap: break-word; word-wrap: break-word;" id="miniscript-description">
                     <div class="description-content">
                         <h5 style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 14px;">⚙️ Click an example to see description</h5>
@@ -1087,44 +1062,9 @@ Use 🏷️ to show/hide actual key values."
                 </div>
             </div>
             
-            <!-- Miniscript Mobile responsive CSS -->
-            <style>
-                @media (max-width: 768px) {
-                    .examples-section:has(.miniscript-description-panel) {
-                        flex-direction: column !important;
-                        gap: 15px !important;
-                    }
-                    
-                    .miniscript-description-panel {
-                        margin-top: 0 !important;
-                        flex: none !important;
-                        max-width: none !important;
-                        width: 100% !important;
-                        margin-left: 0 !important;
-                        margin-right: 0 !important;
-                        box-sizing: border-box !important;
-                    }
-                    
-                    #miniscript-description {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                    }
-                }
-                
-                @media (max-width: 1024px) and (min-width: 769px) {
-                    .miniscript-description-panel {
-                        flex: 0 0 250px !important;
-                        width: 250px !important;
-                    }
-                }
-                
-                @media (max-width: 1200px) and (min-width: 1025px) {
-                    .miniscript-description-panel {
-                        flex: 0 0 280px !important;
-                        width: 280px !important;
-                    }
-                }
-            </style>
+            <!-- Miniscript error messages -->
+            <div id="miniscript-messages" style="margin-top: 15px;"></div>
+            
             
             <div class="context-section" style="margin-top: 20px;">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Script context:</label>
@@ -2072,7 +2012,7 @@ Use 🏷️ to show/hide actual key values."
         </div>
     </div>
     
-    <script type="module" src="script.js"></script>
+    <script type="module" src="/miniscript/script.js"></script>
     <script>
         // Global functions that need to be available immediately
         window.showPolicyDescription = function(exampleId) {
@@ -2570,6 +2510,38 @@ Use 🏷️ to show/hide actual key values."
         } else {
             initTheme();
         }
+        
+        // Auto-compile checkbox synchronization
+        document.addEventListener('DOMContentLoaded', function() {
+            const autoCompileSetting = document.getElementById('auto-compile-setting');
+            const autoCompilePolicy = document.getElementById('auto-compile-policy');
+            const autoCompileMiniscript = document.getElementById('auto-compile-miniscript');
+            
+            // Initialize checkboxes with saved setting
+            const savedAutoCompile = localStorage.getItem('autoCompile') === 'true';
+            if (autoCompilePolicy) autoCompilePolicy.checked = savedAutoCompile;
+            if (autoCompileMiniscript) autoCompileMiniscript.checked = savedAutoCompile;
+            if (autoCompileSetting) autoCompileSetting.checked = savedAutoCompile;
+            
+            // Sync all checkboxes when any one changes
+            function syncAutoCompile(checked) {
+                localStorage.setItem('autoCompile', checked);
+                if (autoCompileSetting) autoCompileSetting.checked = checked;
+                if (autoCompilePolicy) autoCompilePolicy.checked = checked;
+                if (autoCompileMiniscript) autoCompileMiniscript.checked = checked;
+            }
+            
+            // Add event listeners
+            if (autoCompilePolicy) {
+                autoCompilePolicy.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+            if (autoCompileMiniscript) {
+                autoCompileMiniscript.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+            if (autoCompileSetting) {
+                autoCompileSetting.addEventListener('change', (e) => syncAutoCompile(e.target.checked));
+            }
+        });
 
     </script>
 
