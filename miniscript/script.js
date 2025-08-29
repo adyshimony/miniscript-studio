@@ -507,6 +507,7 @@ class MiniscriptCompiler {
                 delete expressionInput.dataset.lastHighlightedText;
                 this.highlightMiniscriptSyntax();
                 
+                
                 // Debug: Log all available fields
                 console.log('=== ALL COMPILATION RESULT FIELDS ===');
                 console.log('success:', result.success);
@@ -638,6 +639,7 @@ class MiniscriptCompiler {
                 // Clear the highlighting cache and re-highlight
                 delete expressionInput.dataset.lastHighlightedText;
                 this.highlightMiniscriptSyntax();
+                
                 
                 // Always set toggle button to "Hide Key Names" state after compilation if we replaced keys
                 const toggleBtn = document.getElementById('key-names-toggle');
@@ -879,8 +881,33 @@ class MiniscriptCompiler {
             expressionInput.innerHTML = highlightedHTML;
             // Force reapply styling after innerHTML change
             this.enforceElementStyling(expressionInput);
-            // Restore cursor position
-            this.restoreCursor(expressionInput, caretOffset);
+            
+            // Always position cursor at end instead of restoring original position
+            const range = document.createRange();
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            
+            // Find the last text node to ensure we're at the very end
+            const walker = document.createTreeWalker(
+                expressionInput,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            let lastTextNode = null;
+            while (walker.nextNode()) {
+                lastTextNode = walker.currentNode;
+            }
+            
+            if (lastTextNode) {
+                range.setStart(lastTextNode, lastTextNode.textContent.length);
+                range.setEnd(lastTextNode, lastTextNode.textContent.length);
+            } else {
+                range.selectNodeContents(expressionInput);
+                range.collapse(false);
+            }
+            
+            sel.addRange(range);
         }
         
         // Store the last highlighted text
@@ -4392,33 +4419,52 @@ window.loadExample = function(example) {
     // Set the content
     expressionInput.textContent = example;
     
-    if (isMobile) {
-        // Mobile approach - focus, position cursor at end, then blur to prevent keyboard
-        expressionInput.focus();
-        const range = document.createRange();
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        range.selectNodeContents(expressionInput);
-        range.collapse(false);
-        sel.addRange(range);
-        setTimeout(() => expressionInput.blur(), 0);
-    } else {
-        // Desktop - focus and position cursor at end
-        expressionInput.focus();
-        const range = document.createRange();
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        range.selectNodeContents(expressionInput);
-        range.collapse(false);
-        sel.addRange(range);
-    }
-    
     // Clear the "last highlighted text" to force re-highlighting
     delete expressionInput.dataset.lastHighlightedText;
     
     if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
         window.compiler.highlightMiniscriptSyntax();
     }
+    
+    // Position cursor at end AFTER highlighting (for both mobile and desktop)
+    const positionCursorAtEnd = () => {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        
+        // Find the last text node to ensure we're at the very end
+        const walker = document.createTreeWalker(
+            expressionInput,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        let lastTextNode = null;
+        while (walker.nextNode()) {
+            lastTextNode = walker.currentNode;
+        }
+        
+        if (lastTextNode) {
+            range.setStart(lastTextNode, lastTextNode.textContent.length);
+            range.setEnd(lastTextNode, lastTextNode.textContent.length);
+        } else {
+            range.selectNodeContents(expressionInput);
+            range.collapse(false);
+        }
+        
+        sel.addRange(range);
+        
+        // Blur on mobile to prevent keyboard popup
+        if (isMobile) {
+            setTimeout(() => expressionInput.blur(), 10);
+        }
+    };
+    
+    // Try multiple times to ensure cursor positioning sticks
+    // NOTE: The input event listener triggers highlighting after 500ms, so we need to position cursor after that
+    setTimeout(positionCursorAtEnd, 600);  // After the 500ms delayed highlighting
+    setTimeout(positionCursorAtEnd, 700);  // Extra attempt to ensure it sticks
+    setTimeout(positionCursorAtEnd, 800);
     if (window.compiler && window.compiler.initializeEmptyResults) {
         window.compiler.initializeEmptyResults();
     }
