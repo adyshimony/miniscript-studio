@@ -5946,3 +5946,33 @@ window.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Corner buttons setting handler
+document.addEventListener('DOMContentLoaded', function() {
+    const hideCornerButtonsSetting = document.getElementById('hide-corner-buttons-setting');
+    const beerButton = document.querySelector('a[href*="coinos.io"]');
+    const githubButton = document.querySelector('a[href*="github.com"]');
+    
+    // Load saved setting
+    const hideCornerButtons = localStorage.getItem('hideCornerButtons') === 'true';
+    if (hideCornerButtonsSetting) {
+        hideCornerButtonsSetting.checked = hideCornerButtons;
+    }
+    
+    // Apply initial state
+    function updateCornerButtonsVisibility(hide) {
+        if (beerButton) beerButton.style.display = hide ? 'none' : 'block';
+        if (githubButton) githubButton.style.display = hide ? 'none' : 'block';
+    }
+    
+    updateCornerButtonsVisibility(hideCornerButtons);
+    
+    // Handle setting changes
+    if (hideCornerButtonsSetting) {
+        hideCornerButtonsSetting.addEventListener('change', function() {
+            const hide = this.checked;
+            localStorage.setItem('hideCornerButtons', hide);
+            updateCornerButtonsVisibility(hide);
+        });
+    }
+});
