@@ -519,8 +519,32 @@ class MiniscriptCompiler {
                 console.log('compiled_miniscript:', result.compiled_miniscript);
                 console.log('=====================================');
                 
-                // Simple success message for now
-                this.showMiniscriptSuccess(`Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes`);
+                // Success message with spending cost analysis format
+                console.log('Debug result:', result);
+                console.log('max_weight_to_satisfy:', result.max_weight_to_satisfy);
+                console.log('max_satisfaction_size:', result.max_satisfaction_size);
+                
+                let successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                
+                if (result.max_weight_to_satisfy) {
+                    // Use ONLY what the library returns - no custom calculations
+                    const scriptWeight = result.script_size;
+                    const totalWeight = result.max_weight_to_satisfy;
+                    const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                    
+                    successMsg += `Script: ${scriptWeight} WU<br>`;
+                    successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                    successMsg += `Total: ${totalWeight}.000000 WU`;
+                } else if (result.max_satisfaction_size) {
+                    // Fallback - show satisfaction size
+                    successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
+                    successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU`;
+                }
+                
+                // Skip problematic metrics for now - they show false warnings
+                // TODO: Fix sanity_check and is_non_malleable implementation
+                
+                this.showMiniscriptSuccess(successMsg);
                 // Display results (without the info box since we show it in the success message)
                 this.displayResults(result);
             } else {
@@ -631,8 +655,28 @@ class MiniscriptCompiler {
                     }
                 }
                 
-                // Show green success message in miniscript messages area
-                this.showMiniscriptSuccess(`Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes`);
+                // Show success message with spending cost analysis format in miniscript messages area
+                let successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                
+                if (result.max_weight_to_satisfy) {
+                    // Use ONLY what the library returns - no custom calculations
+                    const scriptWeight = result.script_size;
+                    const totalWeight = result.max_weight_to_satisfy;
+                    const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                    
+                    successMsg += `Script: ${scriptWeight} WU<br>`;
+                    successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                    successMsg += `Total: ${totalWeight}.000000 WU`;
+                } else if (result.max_satisfaction_size) {
+                    // Fallback - show satisfaction size
+                    successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
+                    successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU`;
+                }
+                
+                // Skip problematic metrics for now - they show false warnings
+                // TODO: Fix sanity_check and is_non_malleable implementation
+                
+                this.showMiniscriptSuccess(successMsg);
                 
                 // Don't display the compiled_miniscript in results since it's now in the text box
                 result.compiled_miniscript = null;

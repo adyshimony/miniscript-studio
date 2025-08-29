@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey, ScriptContext};
 use miniscript::policy::Liftable;
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf};
 use bitcoin::blockdata::script::{Builder, PushBytesBuf};
@@ -21,6 +21,10 @@ pub struct CompilationResult {
     pub script_size: Option<usize>,
     pub miniscript_type: Option<String>,
     pub compiled_miniscript: Option<String>,
+    pub max_satisfaction_size: Option<usize>,
+    pub max_weight_to_satisfy: Option<u64>,
+    pub sanity_check: Option<bool>,
+    pub is_non_malleable: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -456,7 +460,7 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
     console_log!("Compiling policy: {} with context: {}", policy, context);
     
     let result = match compile_policy_to_miniscript(policy, context) {
-        Ok((script, script_asm, address, script_size, ms_type, miniscript)) => CompilationResult {
+        Ok((script, script_asm, address, script_size, ms_type, miniscript, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => CompilationResult {
             success: true,
             error: None,
             script: Some(script),
@@ -465,6 +469,10 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
             script_size: Some(script_size),
             miniscript_type: Some(ms_type),
             compiled_miniscript: Some(miniscript),
+            max_satisfaction_size,
+            max_weight_to_satisfy,
+            sanity_check,
+            is_non_malleable,
         },
         Err(e) => CompilationResult {
             success: false,
@@ -475,6 +483,10 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
             script_size: None,
             miniscript_type: None,
             compiled_miniscript: None,
+            max_satisfaction_size: None,
+            max_weight_to_satisfy: None,
+            sanity_check: None,
+            is_non_malleable: None,
         }
     };
     
@@ -487,7 +499,7 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
     console_log!("Compiling miniscript: {} with context: {}", expression, context);
     
     let result = match compile_expression(expression, context) {
-        Ok((script, script_asm, address, script_size, ms_type)) => CompilationResult {
+        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => CompilationResult {
             success: true,
             error: None,
             script: Some(script),
@@ -496,6 +508,10 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
             script_size: Some(script_size),
             miniscript_type: Some(ms_type),
             compiled_miniscript: None,
+            max_satisfaction_size,
+            max_weight_to_satisfy,
+            sanity_check,
+            is_non_malleable,
         },
         Err(e) => CompilationResult {
             success: false,
@@ -506,13 +522,17 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
             script_size: None,
             miniscript_type: None,
             compiled_miniscript: None,
+            max_satisfaction_size: None,
+            max_weight_to_satisfy: None,
+            sanity_check: None,
+            is_non_malleable: None,
         }
     };
     
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-fn compile_expression(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String), String> {
+fn compile_expression(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     console_log!("=== COMPILE_EXPRESSION CALLED ===");
     console_log!("Expression length: {}", expression.len());
     console_log!("Expression: {}", expression);
@@ -555,12 +575,22 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
                     let script_size = script.len();
                     
+                    // Calculate weight using descriptor for Legacy
+                    console_log!("Creating Legacy descriptor for weight calculation");
+                    let desc = Descriptor::new_sh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
+                    let max_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
+                    console_log!("Legacy max_weight_to_satisfy: {} WU", max_weight.to_wu());
+                    let max_satisfaction_size = Some((max_weight.to_wu() as f64 / 4.0) as usize); // Convert WU to bytes estimate
+                    let max_weight_to_satisfy = Some(max_weight.to_wu());
+                    let sanity_check = ms.sanity_check().is_ok();
+                    let is_non_malleable = ms.is_non_malleable();
+                    
                     let address = match Address::p2sh(&script, network) {
                         Ok(addr) => Some(addr.to_string()),
                         Err(_) => None,
                     };
                     
-                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string()))
+                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
@@ -584,7 +614,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                         // Only return validation message for multipath or wildcard descriptors
                         if desc.is_multipath() || desc.has_wildcard() {
                             let validation_msg = "✅ Valid multipath/wildcard descriptor (cannot generate concrete script without derivation index)".to_string();
-                            Ok((validation_msg.clone(), validation_msg, None, 0, "Segwit v0 Descriptor".to_string()))
+                            Ok((validation_msg.clone(), validation_msg, None, 0, "Segwit v0 Descriptor".to_string(), None, None, None, None))
                         } else {
                             // For concrete descriptors, derive to get concrete keys  
                             let derived_desc = desc.at_derivation_index(0).map_err(|e| format!("Derivation failed: {}", e))?;
@@ -595,7 +625,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                             
                             let address = Some(Address::p2wsh(&script, network).to_string());
                             
-                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string()))
+                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), None, None, None, None))
                         }
                     }
                     Err(e) => Err(format!("Descriptor parsing failed: {}", e))
@@ -610,7 +640,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     
                     let address = Some(Address::p2wsh(&script, network).to_string());
                     
-                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string()))
+                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), None, None, None, None))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
@@ -634,7 +664,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     // Generate Taproot address
                     let address = generate_taproot_address(&script, network);
                     
-                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string()))
+                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), None, None, None, None))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
@@ -650,7 +680,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
     }
 }
 
-fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String), String> {
+fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     if policy.trim().is_empty() {
         return Err("Empty policy - please enter a policy expression".to_string());
     }
@@ -686,12 +716,22 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let script_size = script.len();
                             let miniscript_str = ms.to_string();
                             
+                            // For Legacy context compiled as P2SH, just use the Legacy descriptor
+                            console_log!("Creating Legacy P2SH descriptor for weight calculation");
+                            let desc = Descriptor::new_sh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
+                            let max_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
+                            console_log!("Legacy P2SH max_weight_to_satisfy: {} WU", max_weight.to_wu());
+                            let max_satisfaction_size = Some((max_weight.to_wu() as f64 / 4.0) as usize); // Convert WU to bytes estimate
+                            let max_weight_to_satisfy = Some(max_weight.to_wu());
+                            let sanity_check = ms.sanity_check().is_ok();
+                            let is_non_malleable = ms.is_non_malleable();
+                            
                             let address = match Address::p2sh(&script, network) {
                                 Ok(addr) => Some(addr.to_string()),
                                 Err(_) => None,
                             };
                             
-                            Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str))
+                            Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                         }
                         Err(e) => Err(format!("Legacy compilation failed: {}", e))
                     }
@@ -705,9 +745,25 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let script_size = script.len();
                             let miniscript_str = ms.to_string();
                             
+                            // Calculate weight using descriptor max_weight_to_satisfy method
+                            console_log!("Creating Segwit descriptor for weight calculation");
+                            let desc = Descriptor::new_wsh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
+                            let total_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
+                            console_log!("Segwit total max_weight_to_satisfy: {} WU", total_weight.to_wu());
+                            console_log!("Script size: {} bytes", script_size);
+                            
+                            // Use ONLY what the library returns - no hardcoding or custom logic
+                            console_log!("Using library total weight: {} WU", total_weight.to_wu());
+                            
+                            // Return the raw library values
+                            let max_satisfaction_size = Some(total_weight.to_wu() as usize);
+                            let max_weight_to_satisfy = Some(total_weight.to_wu());
+                            let sanity_check = ms.sanity_check().is_ok();
+                            let is_non_malleable = ms.is_non_malleable();
+                            
                             let address = Some(Address::p2wsh(&script, network).to_string());
                             
-                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str))
+                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                         }
                         Err(e) => Err(format!("Segwit v0 compilation failed: {}", e))
                     }
@@ -728,9 +784,23 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                             let script_size = script.len();
                             let miniscript_str = ms.to_string();
                             
+                            // For Taproot, estimate satisfaction size based on miniscript pattern
+                            console_log!("Estimating Taproot satisfaction size");
+                            let miniscript_str_check = ms.to_string();
+                            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str_check.starts_with("pk(") {
+                                // For pk(), it's just a signature (64 bytes for Schnorr)
+                                console_log!("Taproot pk() detected, estimating 64 bytes");
+                                (Some(64), Some(64u64))
+                            } else {
+                                console_log!("Taproot complex script, cannot estimate");
+                                (None, None)
+                            };
+                            let sanity_check = ms.sanity_check().is_ok();
+                            let is_non_malleable = ms.is_non_malleable();
+                            
                             let address = generate_taproot_address(&script, network);
                             
-                            Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str))
+                            Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                         }
                         Err(e) => Err(format!("Taproot compilation failed: {}", e))
                     }
@@ -752,12 +822,18 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                                     let script_size = script.len();
                                     let miniscript_str = ms.to_string();
                                     
+                                    // Calculate additional metrics
+                                    let max_satisfaction_size = ms.max_satisfaction_size().ok();
+                                    let max_weight_to_satisfy = ms.max_satisfaction_size().ok().map(|size| size as u64);
+                                    let sanity_check = ms.sanity_check().is_ok();
+                                    let is_non_malleable = ms.is_non_malleable();
+                                    
                                     let address = match Address::p2sh(&script, network) {
                                         Ok(addr) => Some(addr.to_string()),
                                         Err(_) => None,
                                     };
                                     
-                                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str))
+                                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                                 }
                                 Err(e) => Err(format!("Legacy compilation failed: {}", e))
                             }
@@ -783,9 +859,15 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                                     let script_size = script.len();
                                     let miniscript_str = ms.to_string();
                                     
+                                    // Calculate additional metrics
+                                    let max_satisfaction_size = ms.max_satisfaction_size().ok();
+                                    let max_weight_to_satisfy = ms.max_satisfaction_size().ok().map(|size| size as u64);
+                                    let sanity_check = ms.sanity_check().is_ok();
+                                    let is_non_malleable = ms.is_non_malleable();
+                                    
                                     let address = Some(Address::p2wsh(&script, network).to_string());
                                     
-                                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str))
+                                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                                 }
                                 Err(e) => {
                                     let error_msg = format!("{}", e);
@@ -818,10 +900,24 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                                     let script_size = script.len();
                                     let miniscript_str = ms.to_string();
                                     
+                                    // For Taproot, estimate satisfaction size based on miniscript pattern
+                                    console_log!("Estimating Taproot satisfaction size (policy compilation)");
+                                    let miniscript_str_check = ms.to_string();
+                                    let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str_check.starts_with("pk(") {
+                                        // For pk(), it's just a signature (64 bytes for Schnorr)
+                                        console_log!("Taproot pk() detected, estimating 64 bytes");
+                                        (Some(64), Some(64u64))
+                                    } else {
+                                        console_log!("Taproot complex script, cannot estimate");
+                                        (None, None)
+                                    };
+                                    let sanity_check = ms.sanity_check().is_ok();
+                                    let is_non_malleable = ms.is_non_malleable();
+                                    
                                     // Generate Taproot address
                                     let address = generate_taproot_address(&script, network);
                                     
-                                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str))
+                                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                                 }
                                 Err(e) => {
                                     let error_msg = format!("{}", e);
