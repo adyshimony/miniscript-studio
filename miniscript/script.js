@@ -3124,7 +3124,7 @@ class MiniscriptCompiler {
                     </button>
                 </div>
             </div>
-            <textarea id="script-hex-display" placeholder="Hex script will appear here after compilation, or paste your own and lift it..." class="textarea-like"></textarea>
+            <textarea id="script-hex-display" placeholder="Hex script will appear here after compilation, or paste your own and lift it..." class="textarea-like" spellcheck="false"></textarea>
         `;
         resultsDiv.appendChild(scriptDiv);
         
@@ -3152,7 +3152,7 @@ class MiniscriptCompiler {
                     </button>
                 </div>
             </div>
-            <textarea id="script-asm-display" placeholder="ASM script will appear here after compilation, or paste your own and lift it..." class="textarea-like" style="min-height: 80px;"></textarea>
+            <textarea id="script-asm-display" placeholder="ASM script will appear here after compilation, or paste your own and lift it..." class="textarea-like" style="min-height: 80px;" spellcheck="false"></textarea>
         `;
         resultsDiv.appendChild(scriptAsmDiv);
         
@@ -3251,7 +3251,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-hex-display" class="textarea-like">${result.script}</textarea>
+                <textarea id="script-hex-display" class="textarea-like" spellcheck="false">${result.script}</textarea>
             `;
             
             // Add event listeners for the buttons
@@ -3334,7 +3334,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-asm-display" class="textarea-like" style="min-height: 80px;">${currentAsm}</textarea>
+                <textarea id="script-asm-display" class="textarea-like" style="min-height: 80px;" spellcheck="false">${currentAsm}</textarea>
             `;
             
             // Add event listener for toggle button
@@ -4387,7 +4387,31 @@ window.generateKey = function() {
 // Global function to load examples
 window.loadExample = function(example) {
     const expressionInput = document.getElementById('expression-input');
+    const isMobile = window.innerWidth <= 768;
+    
+    // Set the content
     expressionInput.textContent = example;
+    
+    if (isMobile) {
+        // Mobile approach - focus, position cursor at end, then blur to prevent keyboard
+        expressionInput.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        range.selectNodeContents(expressionInput);
+        range.collapse(false);
+        sel.addRange(range);
+        setTimeout(() => expressionInput.blur(), 0);
+    } else {
+        // Desktop - focus and position cursor at end
+        expressionInput.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        range.selectNodeContents(expressionInput);
+        range.collapse(false);
+        sel.addRange(range);
+    }
     
     // Clear the "last highlighted text" to force re-highlighting
     delete expressionInput.dataset.lastHighlightedText;
@@ -4455,7 +4479,31 @@ window.loadPolicyExample = function(example) {
     console.log('🚀 loadPolicyExample (from script.js) called with:', example);
     
     const policyInput = document.getElementById('policy-input');
+    const isMobile = window.innerWidth <= 768;
+    
+    // Set the content
     policyInput.textContent = example;
+    
+    if (isMobile) {
+        // Mobile approach - focus, position cursor at end, then blur to prevent keyboard
+        policyInput.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        range.selectNodeContents(policyInput);
+        range.collapse(false);
+        sel.addRange(range);
+        setTimeout(() => policyInput.blur(), 0);
+    } else {
+        // Desktop - focus and position cursor at end
+        policyInput.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        range.selectNodeContents(policyInput);
+        range.collapse(false);
+        sel.addRange(range);
+    }
     
     // Clear the "last highlighted text" to force re-highlighting
     delete policyInput.dataset.lastHighlightedText;
