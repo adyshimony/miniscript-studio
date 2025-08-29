@@ -4460,7 +4460,17 @@ window.loadPolicyExample = function(example) {
     // Clear the "last highlighted text" to force re-highlighting
     delete policyInput.dataset.lastHighlightedText;
     
-    document.getElementById('expression-input').innerHTML = '';
+    // Check if auto-compile is enabled to show appropriate message
+    const autoCompile = document.getElementById('auto-compile-setting');
+    const expressionInput = document.getElementById('expression-input');
+    
+    if (autoCompile && autoCompile.checked) {
+        // Show compiling message instead of clearing to avoid placeholder flash
+        expressionInput.innerHTML = '<span style="color: var(--text-secondary); font-style: italic;">Compiling...</span>';
+    } else {
+        expressionInput.innerHTML = '';
+    }
+    
     if (window.compiler && window.compiler.initializeEmptyResults) {
         window.compiler.initializeEmptyResults();
     }
