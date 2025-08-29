@@ -983,7 +983,6 @@
                 id="policy-input" 
                 contenteditable="true"
                 spellcheck="false"
-                data-placeholder="Enter your policy here or click an example below.&#10;Use 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section.&#10;Use 📐 to indent, 🧹 to remove extra chars.&#10;Compilation results and errors appear below in the miniscript & script editors.&#10;🔗 Share your work with others."
                 class="policy-editor"
             ></div>
             
@@ -1068,7 +1067,6 @@
                 id="expression-input" 
                 contenteditable="true"
                 spellcheck="false"
-                data-placeholder="Enter your miniscript here or click an example below. Use 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section. Use 📐 to format, 🧹 to clean extra chars, and ⬆️ to lift your expression back to policy. 🔗 Share your work with others."
                 class="miniscript-editor"
             ></div>
             
@@ -2685,11 +2683,11 @@
             // Store the full and simple placeholder texts
             const placeholders = {
                 policy: {
-                    full: "Enter your policy here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section.\nUse 📐 to indent, 🧹 to remove extra chars.\nCompilation results and errors appear below in the miniscript & script editors.\n🔗 Share your work with others.",
+                    full: "Enter your policy here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names or create variables from your raw keys, or create them manually in the key variable section. Use 📐 to indent, 🧹 to remove extra chars.\nCompilation results and errors appear below in the miniscript & script editors. 🔗 Share your work with others.\nYou can turn off these tips and example descriptions in the settings.",
                     simple: "Enter your policy here..."
                 },
                 miniscript: {
-                    full: "Enter your miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section.\nUse 📐 to format, 🧹 to clean extra chars, and ⬆️ to lift your expression back to policy.\n🔗 Share your work with others.",
+                    full: "Enter your miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names or create variables from your raw keys, or create them manually in the key variable section. Use 📐 to format, 🧹 to clean extra chars, and ⬆️ to lift your expression back to policy. 🔗 Share your work with others.\nYou can turn off these tips and example descriptions in the settings.",
                     simple: "Enter your miniscript here..."
                 }
             };
@@ -2709,14 +2707,15 @@
             
             if (simplePlaceholdersSetting) {
                 simplePlaceholdersSetting.checked = savedSimplePlaceholders;
-                // Apply saved preference on load
-                updatePlaceholders(savedSimplePlaceholders);
                 
                 simplePlaceholdersSetting.addEventListener('change', (e) => {
                     localStorage.setItem('simplePlaceholders', String(e.target.checked));
                     updatePlaceholders(e.target.checked);
                 });
             }
+            
+            // Set initial placeholders on page load (single source of truth)
+            updatePlaceholders(savedSimplePlaceholders);
             
             // Also hide descriptions on page load if setting is off
             if (!savedShowDescriptions) {
