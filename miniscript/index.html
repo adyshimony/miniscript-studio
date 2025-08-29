@@ -30,7 +30,7 @@
             --secondary-text: #cbd5e0;
             --modal-bg: #1f2937;
             --code-bg: #1a202c;
-            --ribbon-bg: #1a202c;
+            --ribbon-bg: transparent;
         }
         
         /* Light theme */
@@ -58,7 +58,7 @@
             --input-bg: #e2e8f0;
             --modal-bg: #ffffff;
             --code-bg: #f7fafc;
-            --ribbon-bg: #2d3748;
+            --ribbon-bg: transparent;
         }
 
         body {
@@ -842,21 +842,11 @@
     </style>
 </head>
 <body>
-    <!-- Corner ribbon for GitHub -->
-    <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" class="corner-ribbon-left" title="View source on GitHub">
-        <svg width="50" height="50" viewBox="0 0 50 50" class="corner-svg corner-svg-left">
-            <polygon points="0,0 50,0 0,50" fill="var(--ribbon-bg)" class="corner-polygon" />
-            <text x="24" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(-45 25 25)">🐙</text>
-        </svg>
-    </a>
+    <!-- Beer button -->
+    <a href="https://coinos.io/adys/receive" target="_blank" style="position: fixed; top: 10px; left: 10px; z-index: 1000; font-size: 16px; text-decoration: none; transform: rotate(-45deg);" title="Buy me a beer 🍺">🍺</a>
     
-    <!-- Corner ribbon for beer donation -->
-    <a href="https://coinos.io/adys/receive" target="_blank" class="corner-ribbon-right" title="Buy me a beer 🍺">
-        <svg width="50" height="50" viewBox="0 0 50 50" class="corner-svg corner-svg-right">
-            <polygon points="0,0 50,0 50,50" fill="var(--ribbon-bg)" class="corner-polygon" />
-            <text x="26" y="18" text-anchor="middle" fill="white" font-size="14" transform="rotate(45 25 25)">🍺</text>
-        </svg>
-    </a>
+    <!-- GitHub button -->
+    <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="position: fixed; top: 10px; right: 11px; z-index: 1000; font-size: 16px; text-decoration: none;" title="View source on GitHub">🐙</a>
     
     <style>
         .corner-ribbon-left, .corner-ribbon-right {
