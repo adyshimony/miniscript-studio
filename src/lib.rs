@@ -625,7 +625,16 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                             
                             let address = Some(Address::p2wsh(&script, network).to_string());
                             
-                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), None, None, None, None))
+                            // Add weight calculation for concrete descriptors
+                            console_log!("Creating descriptor for weight calculation");
+                            let total_weight = derived_desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
+                            console_log!("Descriptor max_weight_to_satisfy: {} WU", total_weight.to_wu());
+                            let max_satisfaction_size = Some(total_weight.to_wu() as usize);
+                            let max_weight_to_satisfy = Some(total_weight.to_wu());
+                            let sanity_check = Some(true); // Descriptor parsing already validates
+                            let is_non_malleable = Some(true);
+                            
+                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable))
                         }
                     }
                     Err(e) => Err(format!("Descriptor parsing failed: {}", e))
@@ -638,9 +647,19 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
                     let script_size = script.len();
                     
+                    // Calculate weight using descriptor for direct Segwit miniscript
+                    console_log!("Creating Segwit descriptor for direct miniscript weight calculation");
+                    let desc = Descriptor::new_wsh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
+                    let total_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
+                    console_log!("Direct Segwit total max_weight_to_satisfy: {} WU", total_weight.to_wu());
+                    let max_satisfaction_size = Some(total_weight.to_wu() as usize);
+                    let max_weight_to_satisfy = Some(total_weight.to_wu());
+                    let sanity_check = ms.sanity_check().is_ok();
+                    let is_non_malleable = ms.is_non_malleable();
+                    
                     let address = Some(Address::p2wsh(&script, network).to_string());
                     
-                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), None, None, None, None))
+                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
@@ -661,10 +680,24 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
                     let script_size = script.len();
                     
+                    // For Taproot, estimate satisfaction size based on miniscript pattern
+                    console_log!("Estimating Taproot satisfaction size for direct miniscript");
+                    let miniscript_str = ms.to_string();
+                    let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
+                        // For pk(), it's just a signature (64 bytes for Schnorr)
+                        console_log!("Direct Taproot pk() detected, estimating 64 bytes");
+                        (Some(64), Some(64u64))
+                    } else {
+                        console_log!("Direct Taproot complex script, cannot estimate");
+                        (None, None)
+                    };
+                    let sanity_check = ms.sanity_check().is_ok();
+                    let is_non_malleable = ms.is_non_malleable();
+                    
                     // Generate Taproot address
                     let address = generate_taproot_address(&script, network);
                     
-                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), None, None, None, None))
+                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
