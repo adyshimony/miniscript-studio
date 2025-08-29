@@ -915,7 +915,6 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
             font-size: 14px;
             position: absolute;
             top: 20px;
@@ -924,8 +923,7 @@
         }
         
         .theme-toggle:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            /* Simple flat hover - no 3D effects */
         }
         
         @media (max-width: 768px) {
@@ -1975,10 +1973,9 @@ Use 🏷️ to show/hide actual key values."
                                 Choose between dark and light theme. Overrides system preference.
                             </p>
                         </div>
-                        <select id="theme-selector" style="margin-left: 20px; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); font-size: 13px; cursor: pointer;">
-                            <option value="dark">🌙 Dark</option>
-                            <option value="light">☀️ Light</option>
-                        </select>
+                        <button id="theme-selector" class="theme-toggle" style="margin-left: 20px; position: relative; top: auto; right: auto;" title="Toggle theme" aria-label="Toggle theme">
+                            <span id="settings-theme-icon">☀️</span>
+                        </button>
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
@@ -2467,17 +2464,19 @@ Use 🏷️ to show/hide actual key values."
             const themeSelector = document.getElementById('theme-selector');
             const floatingToggle = document.getElementById('floating-theme-toggle');
             const themeIcon = document.getElementById('theme-icon');
+            const settingsThemeIcon = document.getElementById('settings-theme-icon');
             const savedTheme = localStorage.getItem('theme') || 'dark';
             
             // Apply saved theme
             document.documentElement.setAttribute('data-theme', savedTheme);
-            if (themeSelector) {
-                themeSelector.value = savedTheme;
-            }
             
-            // Update floating button icon (show what you can switch TO)
+            // Update both theme button icons (show what you can switch TO)
+            const iconToShow = savedTheme === 'dark' ? '☀️' : '🌙';
             if (themeIcon) {
-                themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+                themeIcon.textContent = iconToShow;
+            }
+            if (settingsThemeIcon) {
+                settingsThemeIcon.textContent = iconToShow;
             }
             
             // Force apply styling for all editable elements after theme is set
@@ -2496,17 +2495,25 @@ Use 🏷️ to show/hide actual key values."
                 }
             }, 100);
             
-            // Listen for theme changes
+            // Listen for theme changes from settings button
             if (themeSelector) {
-                themeSelector.addEventListener('change', function(e) {
-                    const newTheme = e.target.value;
+                themeSelector.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                    
+                    // Update theme
                     document.documentElement.setAttribute('data-theme', newTheme);
                     localStorage.setItem('theme', newTheme);
                     
-                    // Update floating button icon (show what you can switch TO)
+                    // Update both button icons (show what you can switch TO)
+                    const iconToShow = newTheme === 'dark' ? '☀️' : '🌙';
                     const themeIcon = document.getElementById('theme-icon');
+                    const settingsThemeIcon = document.getElementById('settings-theme-icon');
                     if (themeIcon) {
-                        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                        themeIcon.textContent = iconToShow;
+                    }
+                    if (settingsThemeIcon) {
+                        settingsThemeIcon.textContent = iconToShow;
                     }
                     
                     if (window.compiler) {
@@ -2552,14 +2559,14 @@ Use 🏷️ to show/hide actual key values."
                     document.documentElement.setAttribute('data-theme', newTheme);
                     localStorage.setItem('theme', newTheme);
                     
-                    // Sync with settings selector
-                    if (themeSelector) {
-                        themeSelector.value = newTheme;
-                    }
-                    
-                    // Update floating button icon (show what you can switch TO)
+                    // Update both button icons (show what you can switch TO)
+                    const iconToShow = newTheme === 'dark' ? '☀️' : '🌙';
                     if (themeIcon) {
-                        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                        themeIcon.textContent = iconToShow;
+                    }
+                    const settingsThemeIcon = document.getElementById('settings-theme-icon');
+                    if (settingsThemeIcon) {
+                        settingsThemeIcon.textContent = iconToShow;
                     }
                     
                     // Apply same theme change logic as settings selector
