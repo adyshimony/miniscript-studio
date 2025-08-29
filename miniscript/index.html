@@ -196,6 +196,7 @@
             content: attr(data-placeholder);
             color: var(--text-muted);
             pointer-events: none;
+            white-space: pre-line;
         }
         
         /* Syntax highlighting colors */
@@ -241,6 +242,7 @@
             content: attr(data-placeholder);
             color: var(--text-muted);
             pointer-events: none;
+            white-space: pre-line;
         }
         
         /* Miniscript-specific syntax highlighting colors */
@@ -981,7 +983,7 @@
                 id="policy-input" 
                 contenteditable="true"
                 spellcheck="false"
-                data-placeholder="Enter your policy here or click an example below. Use 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section. Use 📐 to indent, 🧹 to remove extra chars. Compilation results and errors appear below in the miniscript & script editors. 🔗 Share your work with others."
+                data-placeholder="Enter your policy here or click an example below.&#10;Use 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section.&#10;Use 📐 to indent, 🧹 to remove extra chars.&#10;Compilation results and errors appear below in the miniscript & script editors.&#10;🔗 Share your work with others."
                 class="policy-editor"
             ></div>
             
@@ -2008,6 +2010,18 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
+                            <strong style="color: var(--text-color);">💡 Hide editor tips:</strong>
+                            <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                                Hide the helpful tips and instructions that appear in empty editors. Turn on for a cleaner interface with just "Enter your policy/miniscript here..." instead of detailed guidance.
+                            </p>
+                        </div>
+                        <label class="toggle-switch" style="margin-left: 20px;">
+                            <input type="checkbox" id="simple-placeholders-setting">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
                             <strong style="color: var(--text-color);">🔗 Share format:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Choose how shared URLs are formatted. URL encoding preserves special characters in readable format and is better for simple expressions. JSON creates base64-encoded URLs that include all state.
@@ -2661,6 +2675,46 @@
                         if (policyDesc) policyDesc.style.display = 'none';
                         if (miniscriptDesc) miniscriptDesc.style.display = 'none';
                     }
+                });
+            }
+            
+            // Simple placeholders setting
+            const simplePlaceholdersSetting = document.getElementById('simple-placeholders-setting');
+            const savedSimplePlaceholders = localStorage.getItem('simplePlaceholders') === 'true';
+            
+            // Store the full and simple placeholder texts
+            const placeholders = {
+                policy: {
+                    full: "Enter your policy here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section.\nUse 📐 to indent, 🧹 to remove extra chars.\nCompilation results and errors appear below in the miniscript & script editors.\n🔗 Share your work with others.",
+                    simple: "Enter your policy here..."
+                },
+                miniscript: {
+                    full: "Enter your miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names and create variables from your raw keys, or create them manually in the key variable section.\nUse 📐 to format, 🧹 to clean extra chars, and ⬆️ to lift your expression back to policy.\n🔗 Share your work with others.",
+                    simple: "Enter your miniscript here..."
+                }
+            };
+            
+            // Function to update placeholders
+            function updatePlaceholders(useSimple) {
+                const policyInput = document.getElementById('policy-input');
+                const miniscriptInput = document.getElementById('expression-input');
+                
+                if (policyInput) {
+                    policyInput.setAttribute('data-placeholder', useSimple ? placeholders.policy.simple : placeholders.policy.full);
+                }
+                if (miniscriptInput) {
+                    miniscriptInput.setAttribute('data-placeholder', useSimple ? placeholders.miniscript.simple : placeholders.miniscript.full);
+                }
+            }
+            
+            if (simplePlaceholdersSetting) {
+                simplePlaceholdersSetting.checked = savedSimplePlaceholders;
+                // Apply saved preference on load
+                updatePlaceholders(savedSimplePlaceholders);
+                
+                simplePlaceholdersSetting.addEventListener('change', (e) => {
+                    localStorage.setItem('simplePlaceholders', String(e.target.checked));
+                    updatePlaceholders(e.target.checked);
                 });
             }
             
