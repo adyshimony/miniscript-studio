@@ -108,7 +108,7 @@
         
         #policy-input, #expression-input {
             width: 100%;
-            height: 70px;
+            height: 100px;
             padding: 10px 15px;
             border: 2px solid var(--border-color) !important;
             border-radius: 8px;
@@ -189,7 +189,7 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             line-height: 1.4;
-            min-height: 70px;
+            min-height: 140px;
         }
         
         .policy-editor:empty::before {
@@ -623,34 +623,99 @@
                 margin-bottom: 20px;
             }
             
-            .button-group {
-                gap: 8px;
-                flex-direction: column;
+            /* Mobile: Compile/Save/Clear buttons in horizontal line */
+            #compile-policy-btn, #save-policy-btn, #clear-policy-btn,
+            #compile-btn, #save-btn, #clear-btn {
+                font-size: 13px !important;
+                padding: 10px 12px !important;
+            }
+            
+            /* Mobile: Hide auto-compile containers and theme toggle */
+            .auto-compile-container {
+                display: none !important;
+            }
+            
+            /* Mobile: Hide floating theme toggle (available in settings) */
+            #floating-theme-toggle {
+                display: none !important;
+            }
+            
+            /* Mobile: Force button containers to take full width */
+            div[style*="display: flex"][style*="justify-content: space-between"] .button-group {
+                width: 100% !important;
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 6px !important;
             }
 
-            .button-group button {
-                font-size: 14px !important;
-                padding: 12px !important;
-                min-width: auto;
-                width: 100%;
+            div[style*="display: flex"][style*="justify-content: space-between"] .button-group button {
+                font-size: 12px !important;
+                padding: 12px 8px !important;
+                min-width: 0 !important;
+                flex: 1 !important;
+                white-space: nowrap !important;
             }
 
+            /* Mobile: Reorganize layout - move description panels above examples, full width */
+            div[style*="display: flex"][style*="gap: 20px"][style*="align-items: flex-start"] {
+                flex-direction: column !important;
+                gap: 15px !important;
+            }
+            
+            /* Mobile: Description panels full width and repositioned */
+            .policy-description-panel,
+            .miniscript-description-panel {
+                flex: none !important;
+                width: calc(100% - 32px) !important; /* Account for container padding */
+                max-width: 100% !important;
+                min-width: 0 !important;
+                order: -1 !important; /* Move above examples */
+                margin-bottom: 10px;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+
+            /* Mobile: Example buttons in grid */
             .examples-section .button-group {
-                display: grid;
+                display: grid !important;
                 grid-template-columns: repeat(4, 1fr);
                 gap: 8px;
+                flex-direction: unset !important;
             }
 
             .examples-section .button-group button {
                 font-size: 10px !important;
                 padding: 6px 8px !important;
                 width: 100%;
+                flex: unset !important;
             }
 
+            /* Mobile: Consistent text area styling */
             #policy-input, #expression-input {
                 font-size: 16px;
                 padding: 12px 15px;
-                height: 75px;
+            }
+            
+            /* Mobile: Fix settings items layout to prevent overflow */
+            .setting-item {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
+            }
+            
+            .setting-item > div:first-child {
+                width: 100% !important;
+            }
+            
+            .setting-item > label,
+            .setting-item > select {
+                align-self: flex-end !important;
+                flex-shrink: 0 !important;
             }
 
             .add-key-form input {
@@ -922,7 +987,7 @@
             <div 
                 id="policy-input" 
                 contenteditable="true"
-                data-placeholder="Enter your policy here (will be compiled to miniscript). Click any example button below to get started.
+                data-placeholder="Enter your policy here. Click any example button below to get started.
 Use 🏷️ to show/hide actual key values."
                 class="policy-editor"
             ></div>
@@ -933,9 +998,9 @@ Use 🏷️ to show/hide actual key values."
                     <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
                     <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="color: var(--text-secondary); font-size: 14px;">Auto-compile</span>
-                    <label class="toggle-switch">
+                <div class="auto-compile-container" style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Auto compile</span>
+                    <label class="toggle-switch" title="Toggle auto-compilation when loading examples or saved expressions">
                         <input type="checkbox" id="auto-compile-policy">
                         <span class="toggle-slider"></span>
                     </label>
@@ -1018,9 +1083,9 @@ Use 🏷️ to show/hide actual key values."
                     <button id="save-btn" class="secondary-btn">💾 Save</button>
                     <button id="clear-btn" class="secondary-btn">🗑️ Clear</button>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="color: var(--text-secondary); font-size: 14px;">Auto-compile</span>
-                    <label class="toggle-switch">
+                <div class="auto-compile-container" style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 14px;">Auto compile</span>
+                    <label class="toggle-switch" title="Toggle auto-compilation when loading examples or saved expressions">
                         <input type="checkbox" id="auto-compile-miniscript">
                         <span class="toggle-slider"></span>
                     </label>
@@ -1900,7 +1965,7 @@ Use 🏷️ to show/hide actual key values."
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🏃 Auto-compile on load:</strong>
+                        <strong style="color: var(--text-color);">🏃 Auto compile:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             When loading an example or a saved expression, it can be automatically compiled to show results immediately. This behavior can be toggled on/off in the Settings section below. When off, expressions load but wait for manual compilation.
                         </p>
@@ -1927,12 +1992,12 @@ Use 🏷️ to show/hide actual key values."
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">🏃 Auto-compile on load:</strong>
+                            <strong style="color: var(--text-color);">🏃 Auto compile:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Automatically compile policies and miniscripts when loading from examples or saved expressions. When disabled, expressions load but require manual compilation.
                             </p>
                         </div>
-                        <label class="toggle-switch" style="margin-left: 20px;">
+                        <label class="toggle-switch" style="margin-left: 20px;" title="Toggle auto-compilation when loading examples or saved expressions">
                             <input type="checkbox" id="auto-compile-setting">
                             <span class="toggle-slider"></span>
                         </label>
