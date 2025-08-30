@@ -545,7 +545,16 @@ class MiniscriptCompiler {
                 // Skip problematic metrics for now - they show false warnings
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
-                this.showMiniscriptSuccess(successMsg);
+                // Pass the normalized miniscript for tree visualization (if available)
+                // For direct miniscript compilation, the result now includes compiled_miniscript
+                let treeExpression = result.compiled_miniscript || expression;
+                
+                // Replace hex keys with key names if we have them
+                if (result.compiled_miniscript && this.keyVariables.size > 0) {
+                    treeExpression = this.replaceKeysWithNames(result.compiled_miniscript);
+                }
+                
+                this.showMiniscriptSuccess(successMsg, treeExpression);
                 // Display results (without the info box since we show it in the success message)
                 this.displayResults(result);
             } else {
@@ -678,7 +687,8 @@ class MiniscriptCompiler {
                 // Skip problematic metrics for now - they show false warnings
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
-                this.showMiniscriptSuccess(successMsg);
+                // Pass the compiled miniscript expression for tree visualization
+                this.showMiniscriptSuccess(successMsg, displayMiniscript);
                 
                 // Don't display the compiled_miniscript in results since it's now in the text box
                 result.compiled_miniscript = null;
@@ -3572,12 +3582,467 @@ class MiniscriptCompiler {
         `;
     }
 
-    showMiniscriptSuccess(message) {
+    // Tree parsing functions
+    parseMiniscriptTree(expression) {
+        // Remove whitespace for parsing
+        expression = expression.trim();
+        
+        // Parse the expression into a tree structure
+        const tree = this.parseNode(expression);
+        return tree;
+    }
+    
+    parseNode(expr) {
+        expr = expr.trim();
+        if (!expr) return null;
+        
+        // Check for wrappers (v:, s:, a:, c:, d:, j:, n:, l:, u:, t:, etc.)
+        // Multiple wrappers can be combined like "snl:" or "vc:"
+        const wrapperMatch = expr.match(/^([vscdjnltua]+):/);
+        if (wrapperMatch) {
+            const wrapper = wrapperMatch[1];
+            const rest = expr.substring(wrapper.length + 1);
+            return {
+                type: 'wrapper',
+                wrapper: wrapper + ':',
+                child: this.parseNode(rest)
+            };
+        }
+        
+        // Check for function/fragment with arguments (including underscores for pk_k, pk_h, etc.)
+        const funcMatch = expr.match(/^([a-z_]+)\((.*)\)$/);
+        if (funcMatch) {
+            const funcName = funcMatch[1];
+            const argsStr = funcMatch[2];
+            
+            // Special handling for different fragment types
+            const fragmentInfo = this.getFragmentInfo(funcName);
+            
+            // Parse arguments
+            const args = this.parseArguments(argsStr);
+            
+            return {
+                type: 'fragment',
+                name: funcName,
+                scriptOp: fragmentInfo.scriptOp,
+                args: args
+            };
+        }
+        
+        // Terminal node (key variable, number, hash, etc.)
+        return {
+            type: 'terminal',
+            value: expr
+        };
+    }
+    
+    parseArguments(argsStr) {
+        const args = [];
+        let current = '';
+        let depth = 0;
+        
+        for (let i = 0; i < argsStr.length; i++) {
+            const char = argsStr[i];
+            if (char === '(' ) depth++;
+            else if (char === ')') depth--;
+            
+            if (char === ',' && depth === 0) {
+                args.push(this.parseNode(current.trim()));
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        if (current.trim()) {
+            args.push(this.parseNode(current.trim()));
+        }
+        
+        return args;
+    }
+    
+    getFragmentInfo(name) {
+        // Map miniscript fragments to their Bitcoin Script representations
+        // Only show non-obvious mappings
+        const fragmentMap = {
+            'and_v': { scriptOp: null },
+            'and_b': { scriptOp: null },
+            'and_n': { scriptOp: null },
+            'andor': { scriptOp: null },
+            'or_b': { scriptOp: null },
+            'or_c': { scriptOp: null },
+            'or_d': { scriptOp: null },
+            'or_i': { scriptOp: '[if]' },  // Uses OP_IF/OP_ELSE/OP_ENDIF
+            'thresh': { scriptOp: null },  // Will show (X of Y) instead
+            'multi': { scriptOp: '[checkmultisig]' },  // Uses OP_CHECKMULTISIG
+            'pk': { scriptOp: null },
+            'pk_k': { scriptOp: null },
+            'pk_h': { scriptOp: null },
+            'pkh': { scriptOp: null },
+            'older': { scriptOp: '[csv]' },  // OP_CHECKSEQUENCEVERIFY
+            'after': { scriptOp: '[cltv]' },  // OP_CHECKLOCKTIMEVERIFY
+            'sha256': { scriptOp: null },
+            'hash256': { scriptOp: null },
+            'ripemd160': { scriptOp: null },
+            'hash160': { scriptOp: null }
+        };
+        
+        return fragmentMap[name] || { scriptOp: null };
+    }
+    
+    formatTreeAsScriptCompilation(tree, indent = 0) {
+        if (!tree) return '';
+        
+        const spaces = '    '.repeat(indent);
+        
+        if (tree.type === 'wrapper') {
+            // Split multiple wrappers (e.g., "vc:" -> "v: c:")
+            const wrappers = tree.wrapper.replace(':', '').split('').join(': ') + ':';
+            
+            // Format child
+            if (tree.child.type === 'fragment') {
+                // Check if it's a simple key function that should be inline
+                if ((tree.child.name === 'pk_k' || tree.child.name === 'pk_h' || tree.child.name === 'pk' || tree.child.name === 'pkh') 
+                    && tree.child.args && tree.child.args.length === 1 && tree.child.args[0].type === 'terminal') {
+                    // Format inline: a: pkh(VaultKey4)
+                    return `${wrappers} ${tree.child.name}(${tree.child.args[0].value})`;
+                }
+                
+                // For thresh with wrapper, special formatting
+                if (tree.child.name === 'thresh' && tree.child.args && tree.child.args.length > 0) {
+                    const threshold = tree.child.args[0].type === 'terminal' ? tree.child.args[0].value : '?';
+                    const total = tree.child.args.length - 1;
+                    const scriptOp = tree.child.scriptOp ? ` ${tree.child.scriptOp}` : '';
+                    let output = `${wrappers} ${tree.child.name}(${threshold} of ${total})${scriptOp}`;
+                    
+                    // Add the key arguments (skip first one which is the threshold)
+                    for (let i = 1; i < tree.child.args.length; i++) {
+                        output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(tree.child.args[i], indent + 1);
+                    }
+                    return output;
+                }
+                
+                // For other wrapped fragments, show wrapper and fragment name on same line
+                const scriptOp = tree.child.scriptOp ? ` ${tree.child.scriptOp}` : '';
+                let output = `${wrappers} ${tree.child.name}${scriptOp}`;
+                
+                // Add fragment arguments indented
+                if (tree.child.args && tree.child.args.length > 0) {
+                    for (const arg of tree.child.args) {
+                        output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(arg, indent + 1);
+                    }
+                }
+                return output;
+            } else {
+                // For wrapped terminals or other wrappers
+                const childFormatted = this.formatTreeAsScriptCompilation(tree.child, indent);
+                return `${wrappers} ${childFormatted}`;
+            }
+        } else if (tree.type === 'fragment') {
+            const scriptOp = tree.scriptOp ? ` ${tree.scriptOp}` : '';
+            
+            // For simple terminal functions (pk, pkh, pk_k, pk_h), format inline
+            if ((tree.name === 'pk_k' || tree.name === 'pk_h' || tree.name === 'pk' || tree.name === 'pkh') 
+                && tree.args && tree.args.length === 1 && tree.args[0].type === 'terminal') {
+                return `${tree.name}(${tree.args[0].value})`;
+            }
+            
+            // For thresh, show count inline
+            if (tree.name === 'thresh' && tree.args && tree.args.length > 0) {
+                const threshold = tree.args[0].type === 'terminal' ? tree.args[0].value : '?';
+                const total = tree.args.length - 1;
+                let output = `${tree.name}(${threshold} of ${total})${scriptOp}`;
+                
+                // Add the key arguments (skip first one which is the threshold)
+                for (let i = 1; i < tree.args.length; i++) {
+                    output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(tree.args[i], indent + 1);
+                }
+                return output;
+            }
+            
+            // For multi, show count inline like thresh
+            if (tree.name === 'multi' && tree.args && tree.args.length > 0) {
+                const threshold = tree.args[0].type === 'terminal' ? tree.args[0].value : '?';
+                const total = tree.args.length - 1;
+                let output = `${tree.name}(${threshold} of ${total})${scriptOp}`;
+                
+                // Add the key arguments (skip first one which is the threshold)
+                for (let i = 1; i < tree.args.length; i++) {
+                    output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(tree.args[i], indent + 1);
+                }
+                return output;
+            }
+            
+            // For after/older with single number argument, format inline
+            if ((tree.name === 'after' || tree.name === 'older') 
+                && tree.args && tree.args.length === 1 && tree.args[0].type === 'terminal') {
+                return `${tree.name}(${tree.args[0].value})${scriptOp}`;
+            }
+            
+            // Special case for andor (3 arguments) - show the [or] and [and] structure
+            if (tree.name === 'andor' && tree.args && tree.args.length === 3) {
+                let output = `${tree.name} [or]\n`;
+                // First show the [and] branch with first two arguments
+                output += spaces + '    andor [and]\n';
+                output += spaces + '        ' + this.formatTreeAsScriptCompilation(tree.args[0], indent + 2) + '\n';
+                output += spaces + '        ' + this.formatTreeAsScriptCompilation(tree.args[1], indent + 2) + '\n';
+                // Then show the third argument (the "else" branch)
+                output += spaces + '    ' + this.formatTreeAsScriptCompilation(tree.args[2], indent + 1);
+                return output;
+            }
+            
+            // Default fragment formatting
+            let output = `${tree.name}${scriptOp}`;
+            if (tree.args && tree.args.length > 0) {
+                for (const arg of tree.args) {
+                    output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(arg, indent + 1);
+                }
+            }
+            return output;
+        } else if (tree.type === 'terminal') {
+            return tree.value;
+        }
+        
+        return '';
+    }
+    
+    formatTreeAsVerticalHierarchy(tree) {
+        // First, build the tree structure with positioning
+        const nodeInfo = this.calculateNodePositions(tree, 0, 0);
+        const lines = this.renderBinaryTree(nodeInfo);
+        return lines.join('\n');
+    }
+    
+    calculateNodePositions(tree, depth, position) {
+        if (!tree) return null;
+        
+        // Helper to format node text
+        const formatNode = (node) => {
+            if (node.type === 'wrapper') {
+                const wrappers = node.wrapper.replace(':', '').split('').join(': ') + ':';
+                if (node.child.type === 'fragment' && 
+                    (node.child.name === 'pk_k' || node.child.name === 'pk_h' || node.child.name === 'pk' || node.child.name === 'pkh') &&
+                    node.child.args && node.child.args.length === 1 && node.child.args[0].type === 'terminal') {
+                    return `${wrappers} ${node.child.name}(${node.child.args[0].value})`;
+                }
+                return wrappers + ' ' + formatNode(node.child);
+            } else if (node.type === 'fragment') {
+                if ((node.name === 'pk_k' || node.name === 'pk_h' || node.name === 'pk' || node.name === 'pkh') 
+                    && node.args && node.args.length === 1 && node.args[0].type === 'terminal') {
+                    return `${node.name}(${node.args[0].value})`;
+                } else if ((node.name === 'thresh' || node.name === 'multi') && node.args && node.args.length > 0) {
+                    const threshold = node.args[0].type === 'terminal' ? node.args[0].value : '?';
+                    const total = node.args.length - 1;
+                    return `${node.name}(${threshold}/${total})`;
+                } else if ((node.name === 'after' || node.name === 'older') 
+                    && node.args && node.args.length === 1 && node.args[0].type === 'terminal') {
+                    return `${node.name}(${node.args[0].value})`;
+                }
+                return node.name;
+            } else if (node.type === 'terminal') {
+                return node.value;
+            }
+            return '';
+        };
+        
+        const nodeText = formatNode(tree);
+        
+        // Get children
+        let children = [];
+        if (tree.type === 'wrapper' && tree.child.type === 'fragment' && tree.child.args) {
+            if (!((tree.child.name === 'pk_k' || tree.child.name === 'pk_h' || tree.child.name === 'pk' || tree.child.name === 'pkh') 
+                && tree.child.args.length === 1)) {
+                children = tree.child.args;
+            }
+        } else if (tree.type === 'fragment' && tree.args) {
+            if (tree.name === 'thresh' || tree.name === 'multi') {
+                children = tree.args.slice(1);
+            } else if (!((tree.name === 'pk_k' || tree.name === 'pk_h' || tree.name === 'pk' || tree.name === 'pkh' || 
+                         tree.name === 'after' || tree.name === 'older') && tree.args.length === 1)) {
+                children = tree.args;
+            }
+        }
+        
+        const childNodes = [];
+        let nextPosition = position;
+        
+        for (let i = 0; i < children.length; i++) {
+            const childNode = this.calculateNodePositions(children[i], depth + 1, nextPosition);
+            if (childNode) {
+                childNodes.push(childNode);
+                nextPosition = childNode.rightmostPosition + 4; // spacing between siblings
+            }
+        }
+        
+        // Calculate this node's position based on children
+        let nodePosition = position;
+        if (childNodes.length > 0) {
+            const leftmost = childNodes[0].position;
+            const rightmost = childNodes[childNodes.length - 1].position;
+            nodePosition = Math.floor((leftmost + rightmost) / 2);
+        }
+        
+        return {
+            text: nodeText,
+            position: nodePosition,
+            rightmostPosition: Math.max(nodePosition + nodeText.length, nextPosition - 4),
+            depth: depth,
+            children: childNodes
+        };
+    }
+    
+    renderBinaryTree(nodeInfo) {
+        if (!nodeInfo) return [];
+        
+        // Find the maximum depth and width
+        const allNodes = this.flattenNodes(nodeInfo);
+        const maxDepth = Math.max(...allNodes.map(n => n.depth));
+        const maxWidth = Math.max(...allNodes.map(n => n.position + n.text.length));
+        
+        // Create lines array
+        const lines = [];
+        for (let d = 0; d <= maxDepth * 2; d++) {
+            lines[d] = ' '.repeat(maxWidth + 10);
+        }
+        
+        // Place all nodes
+        this.placeNodesInLines(nodeInfo, lines);
+        
+        // Draw connectors
+        this.drawConnectors(nodeInfo, lines);
+        
+        // Clean up lines (remove trailing spaces)
+        return lines.map(line => line.replace(/\s+$/, ''));
+    }
+    
+    flattenNodes(nodeInfo) {
+        if (!nodeInfo) return [];
+        
+        let nodes = [nodeInfo];
+        for (const child of nodeInfo.children) {
+            nodes = nodes.concat(this.flattenNodes(child));
+        }
+        return nodes;
+    }
+    
+    placeNodesInLines(nodeInfo, lines) {
+        if (!nodeInfo) return;
+        
+        const lineIndex = nodeInfo.depth * 2;
+        const pos = nodeInfo.position;
+        
+        // Place the node text
+        for (let i = 0; i < nodeInfo.text.length; i++) {
+            if (pos + i < lines[lineIndex].length) {
+                lines[lineIndex] = lines[lineIndex].substring(0, pos + i) + 
+                                  nodeInfo.text[i] + 
+                                  lines[lineIndex].substring(pos + i + 1);
+            }
+        }
+        
+        // Place children
+        for (const child of nodeInfo.children) {
+            this.placeNodesInLines(child, lines);
+        }
+    }
+    
+    drawConnectors(nodeInfo, lines) {
+        if (!nodeInfo || nodeInfo.children.length === 0) return;
+        
+        const parentLineIndex = nodeInfo.depth * 2;
+        const connectorLineIndex = parentLineIndex + 1;
+        const parentPos = nodeInfo.position + Math.floor(nodeInfo.text.length / 2);
+        
+        if (nodeInfo.children.length === 1) {
+            // Single child - draw vertical line
+            const childPos = nodeInfo.children[0].position + Math.floor(nodeInfo.children[0].text.length / 2);
+            const pos = Math.min(parentPos, childPos);
+            if (pos < lines[connectorLineIndex].length) {
+                lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '│' + lines[connectorLineIndex].substring(pos + 1);
+            }
+        } else if (nodeInfo.children.length > 1) {
+            // Multiple children - draw connector
+            const leftChild = nodeInfo.children[0];
+            const rightChild = nodeInfo.children[nodeInfo.children.length - 1];
+            const leftPos = leftChild.position + Math.floor(leftChild.text.length / 2);
+            const rightPos = rightChild.position + Math.floor(rightChild.text.length / 2);
+            
+            // Draw horizontal line
+            for (let pos = leftPos; pos <= rightPos; pos++) {
+                if (pos < lines[connectorLineIndex].length) {
+                    if (pos === leftPos) {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '┌' + lines[connectorLineIndex].substring(pos + 1);
+                    } else if (pos === rightPos) {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '┐' + lines[connectorLineIndex].substring(pos + 1);
+                    } else if (pos === parentPos) {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '┼' + lines[connectorLineIndex].substring(pos + 1);
+                    } else {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '─' + lines[connectorLineIndex].substring(pos + 1);
+                    }
+                }
+            }
+            
+            // Draw vertical lines to middle children
+            for (let i = 1; i < nodeInfo.children.length - 1; i++) {
+                const childPos = nodeInfo.children[i].position + Math.floor(nodeInfo.children[i].text.length / 2);
+                if (childPos < lines[connectorLineIndex].length) {
+                    lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, childPos) + '┬' + lines[connectorLineIndex].substring(childPos + 1);
+                }
+            }
+        }
+        
+        // Draw connectors for children
+        for (const child of nodeInfo.children) {
+            this.drawConnectors(child, lines);
+        }
+    }
+
+    showMiniscriptSuccess(message, expression = null) {
         const messagesDiv = document.getElementById('miniscript-messages');
+        let treeHtml = '';
+        
+        // Generate tree visualization if expression is provided
+        if (expression) {
+            try {
+                // Get tree display setting from select dropdown
+                const treeDisplaySetting = document.getElementById('tree-display-setting');
+                // Default depends on device type
+                const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const defaultMode = isMobile ? 'script-compilation' : 'visual-hierarchy';
+                const treeDisplayMode = treeDisplaySetting ? treeDisplaySetting.value : defaultMode;
+                
+                if (treeDisplayMode !== 'hidden') {
+                    const tree = this.parseMiniscriptTree(expression);
+                    let treeFormatted = '';
+                    let treeTitle = '';
+                    
+                    if (treeDisplayMode === 'script-compilation') {
+                        treeFormatted = this.formatTreeAsScriptCompilation(tree);
+                        treeTitle = 'Script Compilation View';
+                    } else if (treeDisplayMode === 'visual-hierarchy') {
+                        treeFormatted = this.formatTreeAsVerticalHierarchy(tree);
+                        treeTitle = 'Visual Hierarchy View';
+                    }
+                    
+                    if (treeFormatted) {
+                        treeHtml = `
+                            <div style="margin-top: 15px;">
+                                <strong>Tree structure (${treeTitle})</strong>
+                                <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error generating tree:', error);
+            }
+        }
+        
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>✅ Success</h4>
                 <div style="margin-top: 10px;">${message}</div>
+                ${treeHtml}
             </div>
         `;
     }
@@ -5968,8 +6433,91 @@ window.shareMiniscriptExpression = function(event) {
     });
 };
 
+// Function to update tree display when settings change
+function updateTreeDisplay() {
+    // Find the last successful compilation result
+    const miniscriptMessages = document.getElementById('miniscript-messages');
+    if (!miniscriptMessages || !miniscriptMessages.innerHTML.includes('✅ Success')) {
+        return; // No successful compilation to update
+    }
+    
+    // Get the current expression from the miniscript input
+    const expressionInput = document.getElementById('expression-input');
+    const expression = expressionInput ? expressionInput.textContent.trim() : '';
+    
+    if (!expression || !window.compiler) {
+        return;
+    }
+    
+    // Extract the original message text without the tree structure
+    const successBox = miniscriptMessages.querySelector('.result-box.success');
+    if (!successBox) return;
+    
+    const messageDiv = successBox.querySelector('div[style*="margin-top: 10px"]');
+    if (!messageDiv) return;
+    
+    // Get text content before any tree structure div
+    let messageText = '';
+    const childNodes = messageDiv.childNodes;
+    for (let node of childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            messageText += node.textContent;
+        } else if (node.tagName && node.tagName.toLowerCase() !== 'div') {
+            messageText += node.outerHTML;
+        } else if (node.tagName === 'BR') {
+            messageText += '<br>';
+        } else {
+            // Stop at the first div (likely the tree structure)
+            break;
+        }
+    }
+    
+    // Re-render with the extracted message
+    if (messageText) {
+        window.compiler.showMiniscriptSuccess(messageText, expression);
+    }
+}
+
 // Load shared content from URL on page load
 window.addEventListener('DOMContentLoaded', function() {
+    // Handle mobile vs desktop tree display settings
+    const isMobile = window.innerWidth <= 768 || 
+                      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(navigator.userAgent) ||
+                      ('ontouchstart' in window) ||
+                      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    const treeDisplaySetting = document.getElementById('tree-display-setting');
+    const visualHierarchyOption = document.getElementById('visual-hierarchy-option');
+    
+    console.log('Screen width:', window.innerWidth);
+    console.log('User agent:', navigator.userAgent);
+    console.log('Touch support:', 'ontouchstart' in window);
+    console.log('Mobile detected:', isMobile);
+    
+    if (isMobile) {
+        // Hide the entire tree display setting on mobile and force Script Compilation
+        const treeSettingItem = treeDisplaySetting ? treeDisplaySetting.closest('.setting-item') : null;
+        if (treeSettingItem) {
+            treeSettingItem.style.display = 'none';
+        }
+        if (treeDisplaySetting) {
+            treeDisplaySetting.value = 'script-compilation';
+        }
+        console.log('Mobile detected - hiding tree settings, using script-compilation');
+    } else {
+        // Set Visual Hierarchy as default on desktop
+        if (treeDisplaySetting) {
+            treeDisplaySetting.value = 'visual-hierarchy';
+        }
+        console.log('Desktop detected - using visual-hierarchy');
+    }
+    
+    // Add event listener to update tree display when setting changes
+    if (treeDisplaySetting) {
+        treeDisplaySetting.addEventListener('change', function() {
+            updateTreeDisplay();
+        });
+    }
+    
     // Parse hash fragment
     const hash = window.location.hash.substring(1); // Remove the #
     

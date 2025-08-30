@@ -4006,7 +4006,10 @@ class MiniscriptCompiler {
             try {
                 // Get tree display setting from select dropdown
                 const treeDisplaySetting = document.getElementById('tree-display-setting');
-                const treeDisplayMode = treeDisplaySetting ? treeDisplaySetting.value : 'visual-hierarchy';
+                // Default depends on device type
+                const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const defaultMode = isMobile ? 'script-compilation' : 'visual-hierarchy';
+                const treeDisplayMode = treeDisplaySetting ? treeDisplaySetting.value : defaultMode;
                 
                 if (treeDisplayMode !== 'hidden') {
                     const tree = this.parseMiniscriptTree(expression);
@@ -4024,7 +4027,7 @@ class MiniscriptCompiler {
                     if (treeFormatted) {
                         treeHtml = `
                             <div style="margin-top: 15px;">
-                                <strong>Tree structure (${treeTitle}):</strong>
+                                <strong>Tree structure (${treeTitle})</strong>
                                 <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
                             </div>
                         `;
@@ -6430,8 +6433,91 @@ window.shareMiniscriptExpression = function(event) {
     });
 };
 
+// Function to update tree display when settings change
+function updateTreeDisplay() {
+    // Find the last successful compilation result
+    const miniscriptMessages = document.getElementById('miniscript-messages');
+    if (!miniscriptMessages || !miniscriptMessages.innerHTML.includes('✅ Success')) {
+        return; // No successful compilation to update
+    }
+    
+    // Get the current expression from the miniscript input
+    const expressionInput = document.getElementById('expression-input');
+    const expression = expressionInput ? expressionInput.textContent.trim() : '';
+    
+    if (!expression || !window.compiler) {
+        return;
+    }
+    
+    // Extract the original message text without the tree structure
+    const successBox = miniscriptMessages.querySelector('.result-box.success');
+    if (!successBox) return;
+    
+    const messageDiv = successBox.querySelector('div[style*="margin-top: 10px"]');
+    if (!messageDiv) return;
+    
+    // Get text content before any tree structure div
+    let messageText = '';
+    const childNodes = messageDiv.childNodes;
+    for (let node of childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            messageText += node.textContent;
+        } else if (node.tagName && node.tagName.toLowerCase() !== 'div') {
+            messageText += node.outerHTML;
+        } else if (node.tagName === 'BR') {
+            messageText += '<br>';
+        } else {
+            // Stop at the first div (likely the tree structure)
+            break;
+        }
+    }
+    
+    // Re-render with the extracted message
+    if (messageText) {
+        window.compiler.showMiniscriptSuccess(messageText, expression);
+    }
+}
+
 // Load shared content from URL on page load
 window.addEventListener('DOMContentLoaded', function() {
+    // Handle mobile vs desktop tree display settings
+    const isMobile = window.innerWidth <= 768 || 
+                      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(navigator.userAgent) ||
+                      ('ontouchstart' in window) ||
+                      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    const treeDisplaySetting = document.getElementById('tree-display-setting');
+    const visualHierarchyOption = document.getElementById('visual-hierarchy-option');
+    
+    console.log('Screen width:', window.innerWidth);
+    console.log('User agent:', navigator.userAgent);
+    console.log('Touch support:', 'ontouchstart' in window);
+    console.log('Mobile detected:', isMobile);
+    
+    if (isMobile) {
+        // Hide the entire tree display setting on mobile and force Script Compilation
+        const treeSettingItem = treeDisplaySetting ? treeDisplaySetting.closest('.setting-item') : null;
+        if (treeSettingItem) {
+            treeSettingItem.style.display = 'none';
+        }
+        if (treeDisplaySetting) {
+            treeDisplaySetting.value = 'script-compilation';
+        }
+        console.log('Mobile detected - hiding tree settings, using script-compilation');
+    } else {
+        // Set Visual Hierarchy as default on desktop
+        if (treeDisplaySetting) {
+            treeDisplaySetting.value = 'visual-hierarchy';
+        }
+        console.log('Desktop detected - using visual-hierarchy');
+    }
+    
+    // Add event listener to update tree display when setting changes
+    if (treeDisplaySetting) {
+        treeDisplaySetting.addEventListener('change', function() {
+            updateTreeDisplay();
+        });
+    }
+    
     // Parse hash fragment
     const hash = window.location.hash.substring(1); // Remove the #
     
