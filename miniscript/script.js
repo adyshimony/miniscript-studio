@@ -3807,9 +3807,194 @@ class MiniscriptCompiler {
     }
     
     formatTreeAsVerticalHierarchy(tree) {
-        // Placeholder for future vertical hierarchy mode
-        // Will be implemented when settings toggle is added
-        return 'Vertical hierarchy view coming soon...';
+        // First, build the tree structure with positioning
+        const nodeInfo = this.calculateNodePositions(tree, 0, 0);
+        const lines = this.renderBinaryTree(nodeInfo);
+        return lines.join('\n');
+    }
+    
+    calculateNodePositions(tree, depth, position) {
+        if (!tree) return null;
+        
+        // Helper to format node text
+        const formatNode = (node) => {
+            if (node.type === 'wrapper') {
+                const wrappers = node.wrapper.replace(':', '').split('').join(': ') + ':';
+                if (node.child.type === 'fragment' && 
+                    (node.child.name === 'pk_k' || node.child.name === 'pk_h' || node.child.name === 'pk' || node.child.name === 'pkh') &&
+                    node.child.args && node.child.args.length === 1 && node.child.args[0].type === 'terminal') {
+                    return `${wrappers} ${node.child.name}(${node.child.args[0].value})`;
+                }
+                return wrappers + ' ' + formatNode(node.child);
+            } else if (node.type === 'fragment') {
+                if ((node.name === 'pk_k' || node.name === 'pk_h' || node.name === 'pk' || node.name === 'pkh') 
+                    && node.args && node.args.length === 1 && node.args[0].type === 'terminal') {
+                    return `${node.name}(${node.args[0].value})`;
+                } else if ((node.name === 'thresh' || node.name === 'multi') && node.args && node.args.length > 0) {
+                    const threshold = node.args[0].type === 'terminal' ? node.args[0].value : '?';
+                    const total = node.args.length - 1;
+                    return `${node.name}(${threshold}/${total})`;
+                } else if ((node.name === 'after' || node.name === 'older') 
+                    && node.args && node.args.length === 1 && node.args[0].type === 'terminal') {
+                    return `${node.name}(${node.args[0].value})`;
+                }
+                return node.name;
+            } else if (node.type === 'terminal') {
+                return node.value;
+            }
+            return '';
+        };
+        
+        const nodeText = formatNode(tree);
+        
+        // Get children
+        let children = [];
+        if (tree.type === 'wrapper' && tree.child.type === 'fragment' && tree.child.args) {
+            if (!((tree.child.name === 'pk_k' || tree.child.name === 'pk_h' || tree.child.name === 'pk' || tree.child.name === 'pkh') 
+                && tree.child.args.length === 1)) {
+                children = tree.child.args;
+            }
+        } else if (tree.type === 'fragment' && tree.args) {
+            if (tree.name === 'thresh' || tree.name === 'multi') {
+                children = tree.args.slice(1);
+            } else if (!((tree.name === 'pk_k' || tree.name === 'pk_h' || tree.name === 'pk' || tree.name === 'pkh' || 
+                         tree.name === 'after' || tree.name === 'older') && tree.args.length === 1)) {
+                children = tree.args;
+            }
+        }
+        
+        const childNodes = [];
+        let nextPosition = position;
+        
+        for (let i = 0; i < children.length; i++) {
+            const childNode = this.calculateNodePositions(children[i], depth + 1, nextPosition);
+            if (childNode) {
+                childNodes.push(childNode);
+                nextPosition = childNode.rightmostPosition + 4; // spacing between siblings
+            }
+        }
+        
+        // Calculate this node's position based on children
+        let nodePosition = position;
+        if (childNodes.length > 0) {
+            const leftmost = childNodes[0].position;
+            const rightmost = childNodes[childNodes.length - 1].position;
+            nodePosition = Math.floor((leftmost + rightmost) / 2);
+        }
+        
+        return {
+            text: nodeText,
+            position: nodePosition,
+            rightmostPosition: Math.max(nodePosition + nodeText.length, nextPosition - 4),
+            depth: depth,
+            children: childNodes
+        };
+    }
+    
+    renderBinaryTree(nodeInfo) {
+        if (!nodeInfo) return [];
+        
+        // Find the maximum depth and width
+        const allNodes = this.flattenNodes(nodeInfo);
+        const maxDepth = Math.max(...allNodes.map(n => n.depth));
+        const maxWidth = Math.max(...allNodes.map(n => n.position + n.text.length));
+        
+        // Create lines array
+        const lines = [];
+        for (let d = 0; d <= maxDepth * 2; d++) {
+            lines[d] = ' '.repeat(maxWidth + 10);
+        }
+        
+        // Place all nodes
+        this.placeNodesInLines(nodeInfo, lines);
+        
+        // Draw connectors
+        this.drawConnectors(nodeInfo, lines);
+        
+        // Clean up lines (remove trailing spaces)
+        return lines.map(line => line.replace(/\s+$/, ''));
+    }
+    
+    flattenNodes(nodeInfo) {
+        if (!nodeInfo) return [];
+        
+        let nodes = [nodeInfo];
+        for (const child of nodeInfo.children) {
+            nodes = nodes.concat(this.flattenNodes(child));
+        }
+        return nodes;
+    }
+    
+    placeNodesInLines(nodeInfo, lines) {
+        if (!nodeInfo) return;
+        
+        const lineIndex = nodeInfo.depth * 2;
+        const pos = nodeInfo.position;
+        
+        // Place the node text
+        for (let i = 0; i < nodeInfo.text.length; i++) {
+            if (pos + i < lines[lineIndex].length) {
+                lines[lineIndex] = lines[lineIndex].substring(0, pos + i) + 
+                                  nodeInfo.text[i] + 
+                                  lines[lineIndex].substring(pos + i + 1);
+            }
+        }
+        
+        // Place children
+        for (const child of nodeInfo.children) {
+            this.placeNodesInLines(child, lines);
+        }
+    }
+    
+    drawConnectors(nodeInfo, lines) {
+        if (!nodeInfo || nodeInfo.children.length === 0) return;
+        
+        const parentLineIndex = nodeInfo.depth * 2;
+        const connectorLineIndex = parentLineIndex + 1;
+        const parentPos = nodeInfo.position + Math.floor(nodeInfo.text.length / 2);
+        
+        if (nodeInfo.children.length === 1) {
+            // Single child - draw vertical line
+            const childPos = nodeInfo.children[0].position + Math.floor(nodeInfo.children[0].text.length / 2);
+            const pos = Math.min(parentPos, childPos);
+            if (pos < lines[connectorLineIndex].length) {
+                lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '│' + lines[connectorLineIndex].substring(pos + 1);
+            }
+        } else if (nodeInfo.children.length > 1) {
+            // Multiple children - draw connector
+            const leftChild = nodeInfo.children[0];
+            const rightChild = nodeInfo.children[nodeInfo.children.length - 1];
+            const leftPos = leftChild.position + Math.floor(leftChild.text.length / 2);
+            const rightPos = rightChild.position + Math.floor(rightChild.text.length / 2);
+            
+            // Draw horizontal line
+            for (let pos = leftPos; pos <= rightPos; pos++) {
+                if (pos < lines[connectorLineIndex].length) {
+                    if (pos === leftPos) {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '┌' + lines[connectorLineIndex].substring(pos + 1);
+                    } else if (pos === rightPos) {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '┐' + lines[connectorLineIndex].substring(pos + 1);
+                    } else if (pos === parentPos) {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '┼' + lines[connectorLineIndex].substring(pos + 1);
+                    } else {
+                        lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, pos) + '─' + lines[connectorLineIndex].substring(pos + 1);
+                    }
+                }
+            }
+            
+            // Draw vertical lines to middle children
+            for (let i = 1; i < nodeInfo.children.length - 1; i++) {
+                const childPos = nodeInfo.children[i].position + Math.floor(nodeInfo.children[i].text.length / 2);
+                if (childPos < lines[connectorLineIndex].length) {
+                    lines[connectorLineIndex] = lines[connectorLineIndex].substring(0, childPos) + '┬' + lines[connectorLineIndex].substring(childPos + 1);
+                }
+            }
+        }
+        
+        // Draw connectors for children
+        for (const child of nodeInfo.children) {
+            this.drawConnectors(child, lines);
+        }
     }
 
     showMiniscriptSuccess(message, expression = null) {
@@ -3819,16 +4004,31 @@ class MiniscriptCompiler {
         // Generate tree visualization if expression is provided
         if (expression) {
             try {
-                const tree = this.parseMiniscriptTree(expression);
-                const treeFormatted = this.formatTreeAsScriptCompilation(tree);
+                // Get tree display setting from select dropdown
+                const treeDisplaySetting = document.getElementById('tree-display-setting');
+                const treeDisplayMode = treeDisplaySetting ? treeDisplaySetting.value : 'visual-hierarchy';
                 
-                if (treeFormatted) {
-                    treeHtml = `
-                        <div style="margin-top: 15px;">
-                            <strong>Tree structure:</strong>
-                            <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
-                        </div>
-                    `;
+                if (treeDisplayMode !== 'hidden') {
+                    const tree = this.parseMiniscriptTree(expression);
+                    let treeFormatted = '';
+                    let treeTitle = '';
+                    
+                    if (treeDisplayMode === 'script-compilation') {
+                        treeFormatted = this.formatTreeAsScriptCompilation(tree);
+                        treeTitle = 'Script Compilation View';
+                    } else if (treeDisplayMode === 'visual-hierarchy') {
+                        treeFormatted = this.formatTreeAsVerticalHierarchy(tree);
+                        treeTitle = 'Visual Hierarchy View';
+                    }
+                    
+                    if (treeFormatted) {
+                        treeHtml = `
+                            <div style="margin-top: 15px;">
+                                <strong>Tree structure (${treeTitle}):</strong>
+                                <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
+                            </div>
+                        `;
+                    }
                 }
             } catch (error) {
                 console.error('Error generating tree:', error);
