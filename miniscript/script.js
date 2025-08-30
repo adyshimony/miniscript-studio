@@ -4105,9 +4105,19 @@ class MiniscriptCompiler {
         for (const [name, value] of sortedVariables) {
             const marker = `__TEMP_KEY_${tempIndex}__`;
             tempMarkers.set(marker, name);
-            // Use regex with word boundaries to match complete hex strings only
-            // This prevents matching "02abc..." when looking for "abc..."
-            const regex = new RegExp('\\b' + this.escapeRegex(value) + '\\b', 'g');
+            
+            // For descriptor keys (containing [ or / or '), use exact string matching
+            // For simple hex keys, use word boundaries
+            const escapedValue = this.escapeRegex(value);
+            let regex;
+            if (value.includes('[') || value.includes('/') || value.includes("'") || value.includes('<') || value.includes('>')) {
+                // Descriptor key - use exact matching without word boundaries
+                regex = new RegExp(escapedValue, 'g');
+            } else {
+                // Simple hex key - use word boundaries
+                regex = new RegExp('\\b' + escapedValue + '\\b', 'g');
+            }
+            
             processedText = processedText.replace(regex, marker);
             tempIndex++;
         }
