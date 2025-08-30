@@ -457,6 +457,13 @@ class MiniscriptCompiler {
     }
 
     compileExpression() {
+        // Prevent concurrent compilations
+        if (this.isCompiling) {
+            console.log('Compilation already in progress, skipping duplicate call');
+            return;
+        }
+        this.isCompiling = true;
+        
         const expression = document.getElementById('expression-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
         
@@ -465,11 +472,13 @@ class MiniscriptCompiler {
         
         if (!expression) {
             this.showMiniscriptError('Please enter a miniscript expression.');
+            this.isCompiling = false;
             return;
         }
 
         if (!this.wasm) {
             this.showMiniscriptError('Compiler not ready, please wait and try again.');
+            this.isCompiling = false;
             return;
         }
 
@@ -568,6 +577,8 @@ class MiniscriptCompiler {
             compileBtn.textContent = originalText;
             compileBtn.disabled = false;
             this.showMiniscriptError(`Compilation failed: ${error.message}`);
+        } finally {
+            this.isCompiling = false;
         }
     }
 
@@ -1710,12 +1721,21 @@ class MiniscriptCompiler {
         this.keyVariables.set('recKey2', '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765');
         this.keyVariables.set('recKey3', '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
         
+        // Liana wallet descriptor keys for multi-tier recovery vault example
+        this.keyVariables.set('LianaDesc1', '[b883f127/48\'/1\'/2\'/2\']tpubDEP7MLK6TGe1EWhKGpMWdQQCvMmS6pRjCyN7PW24afniPJYdfeMMUb2fau3xTku6EPgA68oGuR4hSCTUpu2bqaoYrLn2UmhkytXXSzxcaqt/0/0');
+        this.keyVariables.set('LianaDesc2', '[636adf3f/48\'/1\'/2\'/2\']tpubDFnPUtXZhnftEFD5vg4LfVoApf5ZVB8Nkrf8CNe9pT9j1EEPXssJnMgAjmvbTChHugnkfVfsmGafFnE6gwoifJNybSasAJ316dRpsP86EFb/0/0');
+        this.keyVariables.set('LianaDesc3', '[b883f127/48\'/1\'/3\'/2\']tpubDFPMBua4idthySDayX1GxgXgPbpaEVfU7GwMc1HAfneknhqov5syrNuq4NVdSVWa2mPVP3BD6f2pGB98pMsbnVvWqrxcLgwv9PbEWyLJ6cW/0/0');
+        this.keyVariables.set('LianaDesc4', '[636adf3f/48\'/1\'/1\'/2\']tpubDDvF2khuoBBj8vcSjQfa7iKaxsQZE7YjJ7cJL8A8eaneadMPKbHSpoSr4JD1F5LUvWD82HCxdtSppGfrMUmiNbFxrA2EHEVLnrdCFNFe75D/0/0');
+        this.keyVariables.set('LianaDesc5', '[636adf3f/48\'/1\'/0\'/2\']tpubDEE9FvWbG4kg4gxDNrALgrWLiHwNMXNs8hk6nXNPw4VHKot16xd2251vwi2M6nsyQTkak5FJNHVHkCcuzmvpSbWHdumX3DxpDm89iTfSBaL/0/0');
+        this.keyVariables.set('LianaDesc6', '[b883f127/48\'/1\'/0\'/2\']tpubDET11c81MZjJvsqBikGXfn1YUzXofoYQ4HkueCrH7kE94MYkdyBvGzyikBd2KrcBAFZWDB6nLmTa8sJ381rWSQj8qFvqiidxqn6aQv1wrJw/0/0');
+        this.keyVariables.set('LianaDesc7', '[b883f127/48\'/1\'/1\'/2\']tpubDEA6SKh5epTZXebgZtcNxpLj6CeZ9UhgHGoGArACFE7QHCgx76vwkzJMP5wQ9yYEc6g9qSGW8EVzn4PhRxiFz1RUvAXBg7txFnvZFv62uFL/0/0');
+        
         this.saveKeyVariables();
         this.displayKeyVariables();
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 34 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKeys). Continue?')) {
+        if (confirm('This will restore 41 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKeys), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -5469,6 +5489,13 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: '🔒 Layer 1: 2-of-3 Principal multi (immediate) → 🕐 Layer 2: Single Agent + timelock (Jan 12, 2026) OR 2-of-3 Agent thresh + earlier timelock (Jan 1, 2026) → ⏰ Layer 3: 2-of-3 Recovery + later timelock (Feb 1, 2026)',
             useCase: 'Sophisticated joint custody with "Negative Control" - funds cannot move without both Principal and Agent layers cooperating. Principal keys (jcKey1-3) provide 2-of-3 multisig control. Agent layer provides oversight with timelocked fallbacks. Recovery layer provides ultimate fallback after longer delays.',
             technical: '💡 Why this structure: andor creates 3 distinct spending paths with different security models. First path (multi) requires 2-of-3 Principal signatures - most secure, immediate access. Second path (or_i) provides Agent oversight with time-based escalation. Third path (and_v) ensures recovery is possible but requires longest wait and 2-of-3 recovery keys. This prevents any single layer from unilaterally moving funds while providing multiple recovery mechanisms.<br><br>📋 Based on: <a href="https://github.com/Blockstream/miniscript-templates/blob/main/mint-005.md" target="_blank" style="color: var(--accent-color);">Blockstream MINT-005 Template</a>'
+        },
+        'liana_wallet': {
+            title: '🦎 Liana Wallet: Multi-Tier Recovery Vault',
+            structure: 'or_i(and_v(v:thresh(1,...),older(20)),or_i(and_v(v:pkh(...),older(19)),or_d(multi(2,...),and_v(v:pkh(...),older(18))))) → 4-path timelocked recovery system',
+            bitcoinScript: '🔒 Path 1: Any 1-of-3 Primary keys after 20 blocks → 🕐 Path 2: Recovery Key after 19 blocks → 💰 Path 3: 2-of-2 Backup multisig (immediate) → ⏰ Path 4: Final Recovery key after 18 blocks',
+            useCase: 'Professional Bitcoin custody solution with graduated recovery paths. Liana Wallet implements a sophisticated multi-tier system where different spending conditions become available over time. Primary keys provide flexible 1-of-3 access after short delay, recovery keys activate after medium delay, backup multisig works immediately, and final recovery ensures funds are never lost.',
+            technical: '💡 Why this Liana structure: Nested or_i creates 4 distinct spending paths with different security/time tradeoffs. thresh(1,...) allows any single primary key after 20-block cooling period (prevents rushed decisions). Recovery paths activate at different times (19, 18 blocks) providing multiple fallback options. or_d ensures backup multisig can be used immediately without evaluating complex recovery conditions. This design balances security (time delays) with usability (multiple recovery options) and prevents single points of failure.<br><br>📋 Based on: <a href="https://github.com/wizardsardine/liana/blob/master/doc/USAGE.md" target="_blank" style="color: var(--accent-color);">Liana Wallet Documentation</a>'
         }
     };
     
@@ -5897,6 +5924,13 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: '🔒 Layer 1: 2-of-3 Principal multi (immediate) → 🕐 Layer 2: Single Agent + timelock (Jan 12, 2026) OR 2-of-3 Agent thresh + earlier timelock (Jan 1, 2026) → ⏰ Layer 3: 2-of-3 Recovery + later timelock (Feb 1, 2026)',
             useCase: 'Sophisticated joint custody with "Negative Control" - funds cannot move without both Principal and Agent layers cooperating. Principal keys (jcKey1-3) provide 2-of-3 multisig control. Agent layer provides oversight with timelocked fallbacks. Recovery layer provides ultimate fallback after longer delays.',
             technical: '💡 Why this structure: andor creates 3 distinct spending paths with different security models. First path (multi) requires 2-of-3 Principal signatures - most secure, immediate access. Second path (or_i) provides Agent oversight with time-based escalation. Third path (and_v) ensures recovery is possible but requires longest wait and 2-of-3 recovery keys. This prevents any single layer from unilaterally moving funds while providing multiple recovery mechanisms.<br><br>📋 Based on: <a href="https://github.com/Blockstream/miniscript-templates/blob/main/mint-005.md" target="_blank" style="color: var(--accent-color);">Blockstream MINT-005 Template</a>'
+        },
+        'liana_wallet': {
+            title: '🦎 Liana Wallet: Multi-Tier Recovery Vault',
+            structure: 'or_i(and_v(v:thresh(1,...),older(20)),or_i(and_v(v:pkh(...),older(19)),or_d(multi(2,...),and_v(v:pkh(...),older(18))))) → 4-path timelocked recovery system',
+            bitcoinScript: '🔒 Path 1: Any 1-of-3 Primary keys after 20 blocks → 🕐 Path 2: Recovery Key after 19 blocks → 💰 Path 3: 2-of-2 Backup multisig (immediate) → ⏰ Path 4: Final Recovery key after 18 blocks',
+            useCase: 'Professional Bitcoin custody solution with graduated recovery paths. Liana Wallet implements a sophisticated multi-tier system where different spending conditions become available over time. Primary keys provide flexible 1-of-3 access after short delay, recovery keys activate after medium delay, backup multisig works immediately, and final recovery ensures funds are never lost.',
+            technical: '💡 Why this Liana structure: Nested or_i creates 4 distinct spending paths with different security/time tradeoffs. thresh(1,...) allows any single primary key after 20-block cooling period (prevents rushed decisions). Recovery paths activate at different times (19, 18 blocks) providing multiple fallback options. or_d ensures backup multisig can be used immediately without evaluating complex recovery conditions. This design balances security (time delays) with usability (multiple recovery options) and prevents single points of failure.<br><br>📋 Based on: <a href="https://github.com/wizardsardine/liana/blob/master/doc/USAGE.md" target="_blank" style="color: var(--accent-color);">Liana Wallet Documentation</a>'
         }
     };
     
@@ -6790,6 +6824,10 @@ window.addEventListener('DOMContentLoaded', function() {
                 'miniscript-joint_custody': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('joint_custody');
                     if (window.loadExample) window.loadExample('andor(multi(2,jcKey1,jcKey2,jcKey3),or_i(and_v(v:pkh(saKey),after(1768176000)),thresh(2,pk(jcAg1),s:pk(jcAg2),s:pk(jcAg3),snl:after(1767225600))),and_v(v:thresh(2,pkh(recKey1),a:pkh(recKey2),a:pkh(recKey3)),after(1769817600)))', 'joint_custody');
+                },
+                'miniscript-liana_wallet': () => {
+                    if (window.showMiniscriptDescription) window.showMiniscriptDescription('liana_wallet');
+                    if (window.loadExample) window.loadExample('or_i(and_v(v:thresh(1,pkh(LianaDesc1),a:pkh(LianaDesc2),a:pkh(LianaDesc3)),older(20)),or_i(and_v(v:pkh(LianaDesc4),older(19)),or_d(multi(2,LianaDesc5,LianaDesc6),and_v(v:pkh(LianaDesc7),older(18)))))', 'liana_wallet');
                 },
                 'miniscript-full_descriptor': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('full_descriptor');
