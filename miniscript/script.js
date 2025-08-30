@@ -719,6 +719,11 @@ class MiniscriptCompiler {
         this.clearPolicyErrors();
         this.clearMiniscriptMessages(); // Clear the success message too
         
+        // Reset description states to default (expanded)
+        if (window.resetDescriptionStates) {
+            window.resetDescriptionStates();
+        }
+        
         // Reset the "Show key names" checkbox since we cleared the miniscript
         const toggleBtn = document.getElementById('key-names-toggle');
         if (toggleBtn) {
@@ -4215,6 +4220,11 @@ class MiniscriptCompiler {
         this.initializeEmptyResults();
         this.clearMiniscriptMessages();
         
+        // Reset description states to default (expanded)
+        if (window.resetDescriptionStates) {
+            window.resetDescriptionStates();
+        }
+        
         // Clear and uncheck the "Show key names" checkbox
         const toggleBtn = document.getElementById('key-names-toggle');
         if (toggleBtn) {
@@ -5134,7 +5144,7 @@ window.showPolicyDescription = function(exampleId) {
     
         const descriptions = {
         'single': {
-            title: '📄 Single Key Policy',
+            title: '📄 Single Key Policy NEW',
             conditions: '🔓 Alice: Immediate spending (no restrictions)',
             useCase: '**Personal Wallet:** The simplest Bitcoin wallet structure - one person, one key. Perfect for individual users who want straightforward control over their funds. Most mobile wallets and hardware wallets use this pattern by default.',
             examples: '💡 **Real-world examples:** Personal savings account, daily spending wallet, individual trading account',
@@ -5263,8 +5273,16 @@ window.showPolicyDescription = function(exampleId) {
     
     const desc = descriptions[exampleId];
     if (desc) {
-        contentDiv.innerHTML = `
-            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+        // Update the title
+        const titleElement = document.getElementById('policy-title');
+        if (titleElement) {
+            titleElement.textContent = desc.title;
+        }
+        
+        // Update the content in the collapsible area
+        const descContent = document.getElementById('policy-content');
+        if (descContent) {
+            descContent.innerHTML = `
             <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
                 <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); white-space: pre-line; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.conditions}</div>
@@ -5287,6 +5305,7 @@ window.showPolicyDescription = function(exampleId) {
                 <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.bestFor}</div>
             </div>` : ''}
         `;
+        }
         panel.style.display = 'block';
     }
 };
@@ -5454,8 +5473,16 @@ window.showMiniscriptDescription = function(exampleId) {
     
     const desc = descriptions[exampleId];
     if (desc) {
-        contentDiv.innerHTML = `
-            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+        // Update the title
+        const titleElement = document.getElementById('miniscript-title');
+        if (titleElement) {
+            titleElement.textContent = desc.title;
+        }
+        
+        // Update the content in the collapsible area
+        const descContent = document.getElementById('miniscript-content');
+        if (descContent) {
+            descContent.innerHTML = `
             <div style="margin-bottom: 10px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Structure:</strong>
                 <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
@@ -5473,6 +5500,7 @@ window.showMiniscriptDescription = function(exampleId) {
                 <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.technical}</div>
             </div>
         `;
+        }
         panel.style.display = 'block';
     }
 };
@@ -5549,7 +5577,7 @@ window.showPolicyDescription = function(exampleId) {
     
     const descriptions = {
         'single': {
-            title: '📄 Single Key Policy',
+            title: '📄 Single Key Policy NEW',
             conditions: '🔓 Alice: Immediate spending (no restrictions)',
             useCase: 'Personal wallet with single owner. Simple and efficient for individual use.',
             security: '⚠️ Single point of failure - if Alice loses her key, funds are lost'
@@ -5675,8 +5703,16 @@ window.showPolicyDescription = function(exampleId) {
     
     const desc = descriptions[exampleId];
     if (desc) {
-        contentDiv.innerHTML = `
-            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+        // Update the title
+        const titleElement = document.getElementById('policy-title');
+        if (titleElement) {
+            titleElement.textContent = desc.title;
+        }
+        
+        // Update the content in the collapsible area
+        const descContent = document.getElementById('policy-content');
+        if (descContent) {
+            descContent.innerHTML = `
             <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
                 <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); white-space: pre-line; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.conditions}</div>
@@ -5699,6 +5735,7 @@ window.showPolicyDescription = function(exampleId) {
                 <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.bestFor}</div>
             </div>` : ''}
         `;
+        }
         panel.style.display = 'block';
     }
 };
@@ -5864,8 +5901,16 @@ window.showMiniscriptDescription = function(exampleId) {
     
     const desc = descriptions[exampleId];
     if (desc) {
-        contentDiv.innerHTML = `
-            <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
+        // Update the title
+        const titleElement = document.getElementById('miniscript-title');
+        if (titleElement) {
+            titleElement.textContent = desc.title;
+        }
+        
+        // Update the content in the collapsible area
+        const descContent = document.getElementById('miniscript-content');
+        if (descContent) {
+            descContent.innerHTML = `
             <div style="margin-bottom: 10px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Structure:</strong>
                 <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
@@ -5883,6 +5928,7 @@ window.showMiniscriptDescription = function(exampleId) {
                 <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.technical}</div>
             </div>
         `;
+        }
         panel.style.display = 'block';
     }
 };
@@ -6851,6 +6897,115 @@ window.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }
+    }
+});
+
+// Memory storage for description states
+window.descriptionStates = {
+    policyCollapsed: false,
+    miniscriptCollapsed: false
+};
+
+// Helper function to reset description states to default (expanded)
+window.resetDescriptionStates = function() {
+    // Reset policy description
+    const policyContent = document.getElementById('policy-content');
+    const policyToggle = document.getElementById('policy-toggle');
+    const policyHint = document.getElementById('policy-expand-hint');
+    
+    if (policyContent && policyToggle) {
+        policyContent.style.display = 'block';
+        if (policyHint) policyHint.style.display = 'none';
+        policyToggle.textContent = '[-]';
+        window.descriptionStates.policyCollapsed = false;
+    }
+    
+    // Reset miniscript description
+    const miniscriptContent = document.getElementById('miniscript-content');
+    const miniscriptToggle = document.getElementById('miniscript-toggle');
+    const miniscriptHint = document.getElementById('miniscript-expand-hint');
+    
+    if (miniscriptContent && miniscriptToggle) {
+        miniscriptContent.style.display = 'block';
+        if (miniscriptHint) miniscriptHint.style.display = 'none';
+        miniscriptToggle.textContent = '[-]';
+        window.descriptionStates.miniscriptCollapsed = false;
+    }
+};
+
+// Policy Description Toggle
+window.togglePolicyDescription = function() {
+    const content = document.getElementById('policy-content');
+    const toggle = document.getElementById('policy-toggle');
+    const hint = document.getElementById('policy-expand-hint');
+    
+    if (content && toggle) {
+        const isCollapsed = content.style.display === 'none';
+        
+        if (isCollapsed) {
+            content.style.display = 'block';
+            if (hint) hint.style.display = 'none';
+            toggle.textContent = '[-]';
+            window.descriptionStates.policyCollapsed = false;
+        } else {
+            content.style.display = 'none';
+            if (hint) hint.style.display = 'block';
+            toggle.textContent = '[+]';
+            window.descriptionStates.policyCollapsed = true;
+        }
+    }
+};
+
+// Miniscript Description Toggle
+window.toggleMiniscriptDescription = function() {
+    const content = document.getElementById('miniscript-content');
+    const toggle = document.getElementById('miniscript-toggle');
+    const hint = document.getElementById('miniscript-expand-hint');
+    
+    if (content && toggle) {
+        const isCollapsed = content.style.display === 'none';
+        
+        if (isCollapsed) {
+            content.style.display = 'block';
+            if (hint) hint.style.display = 'none';
+            toggle.textContent = '[-]';
+            window.descriptionStates.miniscriptCollapsed = false;
+        } else {
+            content.style.display = 'none';
+            if (hint) hint.style.display = 'block';
+            toggle.textContent = '[+]';
+            window.descriptionStates.miniscriptCollapsed = true;
+        }
+    }
+};
+
+// Initialize policy description state (default expanded)
+document.addEventListener('DOMContentLoaded', function() {
+    const content = document.getElementById('policy-content');
+    const toggle = document.getElementById('policy-toggle');
+    const hint = document.getElementById('policy-expand-hint');
+    
+    if (content && toggle) {
+        // Always start expanded
+        content.style.display = 'block';
+        if (hint) hint.style.display = 'none';
+        toggle.textContent = '[-]';
+        window.descriptionStates.policyCollapsed = false;
+    }
+});
+
+// Initialize miniscript description state (default expanded)
+document.addEventListener('DOMContentLoaded', function() {
+    const content = document.getElementById('miniscript-content');
+    const toggle = document.getElementById('miniscript-toggle');
+    const hint = document.getElementById('miniscript-expand-hint');
+    
+    if (content && toggle) {
+        // Always start expanded
+        content.style.display = 'block';
+        if (hint) hint.style.display = 'none';
+        toggle.textContent = '[-]';
+        window.descriptionStates.miniscriptCollapsed = false;
     }
 });
 
