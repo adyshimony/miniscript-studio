@@ -671,8 +671,9 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
     
     console_log!("Processing: {} -> {}", trimmed, processed_expr);
     
-    // Check if this is a descriptor (starts with wsh, sh, wpkh, etc.)
-    if processed_expr.starts_with("wsh(") || processed_expr.starts_with("sh(") || processed_expr.starts_with("wpkh(") || processed_expr.starts_with("pkh(") {
+    // Check if this is a descriptor (starts with wsh, sh, wpkh)
+    // Note: pkh() is not included here because it's commonly used as a miniscript function
+    if processed_expr.starts_with("wsh(") || processed_expr.starts_with("sh(") || processed_expr.starts_with("wpkh(") {
         console_log!("Detected descriptor format, parsing as descriptor");
         
         // Parse as descriptor
@@ -685,8 +686,8 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                 
                 // Return a success result indicating this is a valid descriptor
                 return Ok((
-                    "Range descriptors do not produce a single script".to_string(), // Message for hex field
-                    "Range descriptors do not produce a single script".to_string(), // Message for ASM field
+                    "No single script - this descriptor defines multiple paths".to_string(), // Message for hex field
+                    "No single script - this descriptor defines multiple paths".to_string(), // Message for ASM field
                     None, // No address for range descriptors
                     0,
                     "Descriptor".to_string(),

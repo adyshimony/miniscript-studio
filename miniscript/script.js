@@ -3316,7 +3316,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-hex-display" class="textarea-like" spellcheck="false">${result.script}</textarea>
+                <textarea id="script-hex-display" placeholder="Hex script will appear here after compilation, or paste your own and lift it..." class="textarea-like" spellcheck="false">${result.script}</textarea>
             `;
             
             // Add event listeners for the buttons
@@ -3399,7 +3399,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <textarea id="script-asm-display" class="textarea-like" style="min-height: 80px;" spellcheck="false">${currentAsm}</textarea>
+                <textarea id="script-asm-display" placeholder="ASM script will appear here after compilation, or paste your own and lift it..." class="textarea-like" style="min-height: 80px;" spellcheck="false">${currentAsm}</textarea>
             `;
             
             // Add event listener for toggle button
@@ -3496,7 +3496,7 @@ class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);" data-placeholder="Address will appear here after compilation">
                     ${result.address}
                 </div>
             `;
@@ -4582,11 +4582,17 @@ class MiniscriptCompiler {
             this.initializeEmptyResults();
             this.clearMiniscriptMessages();
             
-            // Clear script fields when loading saved miniscript
+            // Clear script fields when loading saved miniscript and restore placeholders
             const scriptHexDisplay = document.getElementById('script-hex-display');
             const scriptAsmDisplay = document.getElementById('script-asm-display');
-            if (scriptHexDisplay) scriptHexDisplay.value = '';
-            if (scriptAsmDisplay) scriptAsmDisplay.value = '';
+            if (scriptHexDisplay) {
+                scriptHexDisplay.value = '';
+                scriptHexDisplay.placeholder = 'Hex script will appear here after compilation, or paste your own and lift it...';
+            }
+            if (scriptAsmDisplay) {
+                scriptAsmDisplay.value = '';
+                scriptAsmDisplay.placeholder = 'ASM script will appear here after compilation, or paste your own and lift it...';
+            }
             
             // Hide description panel
             const miniscriptPanel = document.querySelector('.miniscript-description-panel');
@@ -4993,11 +4999,25 @@ window.loadExample = function(example, exampleId) {
         window.compiler.clearMiniscriptMessages();
     }
     
-    // Clear script fields when loading new miniscript example
+    // Clear script fields when loading new miniscript example and restore placeholders
     const scriptHexDisplay = document.getElementById('script-hex-display');
     const scriptAsmDisplay = document.getElementById('script-asm-display');
-    if (scriptHexDisplay) scriptHexDisplay.value = '';
-    if (scriptAsmDisplay) scriptAsmDisplay.value = '';
+    if (scriptHexDisplay) {
+        scriptHexDisplay.value = '';
+        scriptHexDisplay.placeholder = 'Hex script will appear here after compilation, or paste your own and lift it...';
+    }
+    if (scriptAsmDisplay) {
+        scriptAsmDisplay.value = '';
+        scriptAsmDisplay.placeholder = 'ASM script will appear here after compilation, or paste your own and lift it...';
+    }
+    
+    // Clear address field and restore placeholder
+    const addressDisplay = document.getElementById('address-display');
+    if (addressDisplay) {
+        addressDisplay.innerHTML = 'Address will appear here after compilation';
+        addressDisplay.style.color = 'var(--text-muted)';
+        addressDisplay.style.fontStyle = 'italic';
+    }
     
     // Update toggle button state based on loaded content
     if (window.compiler && window.compiler.containsKeyNames) {
