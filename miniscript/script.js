@@ -3267,15 +3267,6 @@ class MiniscriptCompiler {
         }
 
         // Show compiled miniscript (for policy compilation)
-        if (result.compiled_miniscript) {
-            const miniscriptDiv = document.createElement('div');
-            miniscriptDiv.className = 'result-box info';
-            miniscriptDiv.innerHTML = `
-                <h4>🔄 Compiled miniscript</h4>
-                <textarea readonly class="textarea-like" style="margin-top: 10px;">${result.compiled_miniscript}</textarea>
-            `;
-            resultsDiv.appendChild(miniscriptDiv);
-        }
 
         // Show script hex
         if (result.script) {
