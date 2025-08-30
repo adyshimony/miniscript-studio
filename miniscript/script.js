@@ -534,33 +534,45 @@ class MiniscriptCompiler {
                 console.log('max_weight_to_satisfy:', result.max_weight_to_satisfy);
                 console.log('max_satisfaction_size:', result.max_satisfaction_size);
                 
-                let successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                // Check if this is a descriptor validation (range descriptors)
+                const isDescriptorValidation = result.miniscript_type === 'Descriptor';
                 
-                if (result.max_weight_to_satisfy) {
-                    // Use ONLY what the library returns - no custom calculations
-                    const scriptWeight = result.script_size;
-                    const totalWeight = result.max_weight_to_satisfy;
-                    const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                let successMsg = '';
+                if (isDescriptorValidation && result.compiled_miniscript) {
+                    // For descriptor validation, show the validation message
+                    successMsg = result.compiled_miniscript;
+                } else {
+                    successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                     
-                    successMsg += `Script: ${scriptWeight} WU<br>`;
-                    successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                    successMsg += `Total: ${totalWeight}.000000 WU`;
-                } else if (result.max_satisfaction_size) {
-                    // Fallback - show satisfaction size
-                    successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
-                    successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU`;
+                    if (result.max_weight_to_satisfy) {
+                        // Use ONLY what the library returns - no custom calculations
+                        const scriptWeight = result.script_size;
+                        const totalWeight = result.max_weight_to_satisfy;
+                        const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                        
+                        successMsg += `Script: ${scriptWeight} WU<br>`;
+                        successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                        successMsg += `Total: ${totalWeight}.000000 WU`;
+                    } else if (result.max_satisfaction_size) {
+                        // Fallback - show satisfaction size
+                        successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
+                        successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU`;
+                    }
                 }
                 
                 // Skip problematic metrics for now - they show false warnings
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
                 // Pass the normalized miniscript for tree visualization (if available)
-                // For direct miniscript compilation, the result now includes compiled_miniscript
-                let treeExpression = result.compiled_miniscript || expression;
-                
-                // Replace hex keys with key names if we have them
-                if (result.compiled_miniscript && this.keyVariables.size > 0) {
-                    treeExpression = this.replaceKeysWithNames(result.compiled_miniscript);
+                // Skip tree for descriptor validation
+                let treeExpression = null;
+                if (!isDescriptorValidation) {
+                    treeExpression = result.compiled_miniscript || expression;
+                    
+                    // Replace hex keys with key names if we have them
+                    if (result.compiled_miniscript && this.keyVariables.size > 0) {
+                        treeExpression = this.replaceKeysWithNames(result.compiled_miniscript);
+                    }
                 }
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
@@ -4057,7 +4069,7 @@ class MiniscriptCompiler {
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>✅ Success</h4>
-                <div style="margin-top: 10px;">${message}</div>
+                <div style="margin-top: 10px; word-wrap: break-word; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap;">${message}</div>
                 ${treeHtml}
             </div>
         `;

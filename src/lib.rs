@@ -629,7 +629,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
         Network::Bitcoin
     };
     
-    // Check if expression contains descriptor keys and replace them with concrete keys
+    // Check if expression contains descriptor keys
     let processed_expr = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[") {
         console_log!("Detected descriptor keys in expression, processing...");
         match parse_descriptors(trimmed) {
@@ -638,15 +638,24 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     console_log!("No descriptors found, using original expression");
                     trimmed.to_string()
                 } else {
-                    console_log!("Found {} descriptors, replacing with concrete keys", descriptors.len());
-                    match replace_descriptors_with_keys(trimmed, &descriptors) {
-                        Ok(processed) => {
-                            console_log!("Successfully replaced descriptors with keys");
-                            processed
-                        },
-                        Err(e) => {
-                            console_log!("Failed to replace descriptors: {}", e);
-                            return Err(format!("Descriptor processing failed: {}", e));
+                    // Check if any descriptors have ranges (wildcards)
+                    let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
+                    
+                    if has_range_descriptors {
+                        // Range descriptors need to be wrapped in wsh() for the miniscript library to parse them as descriptors
+                        console_log!("Found {} descriptors with ranges, wrapping in wsh() for descriptor parsing", descriptors.len());
+                        format!("wsh({})", trimmed)
+                    } else {
+                        console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
+                        match replace_descriptors_with_keys(trimmed, &descriptors) {
+                            Ok(processed) => {
+                                console_log!("Successfully replaced descriptors with keys");
+                                processed
+                            },
+                            Err(e) => {
+                                console_log!("Failed to replace descriptors: {}", e);
+                                return Err(format!("Descriptor processing failed: {}", e));
+                            }
                         }
                     }
                 }
@@ -661,6 +670,38 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
     };
     
     console_log!("Processing: {} -> {}", trimmed, processed_expr);
+    
+    // Check if this is a descriptor (starts with wsh, sh, wpkh, etc.)
+    if processed_expr.starts_with("wsh(") || processed_expr.starts_with("sh(") || processed_expr.starts_with("wpkh(") || processed_expr.starts_with("pkh(") {
+        console_log!("Detected descriptor format, parsing as descriptor");
+        
+        // Parse as descriptor
+        match Descriptor::<DescriptorPublicKey>::from_str(&processed_expr) {
+            Ok(descriptor) => {
+                // For now, just validate that it parses correctly
+                // In a real implementation, you might want to extract more info
+                let desc_str = descriptor.to_string();
+                console_log!("Successfully parsed descriptor: {}", desc_str);
+                
+                // Return a success result indicating this is a valid descriptor
+                return Ok((
+                    "Range descriptors do not produce a single script".to_string(), // Message for hex field
+                    "Range descriptors do not produce a single script".to_string(), // Message for ASM field
+                    None, // No address for range descriptors
+                    0,
+                    "Descriptor".to_string(),
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(format!("Valid descriptor: {}", desc_str))
+                ));
+            }
+            Err(e) => {
+                return Err(format!("Descriptor parsing failed: {}", e));
+            }
+        }
+    }
     
     match context {
         "legacy" => {
