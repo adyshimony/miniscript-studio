@@ -545,7 +545,16 @@ class MiniscriptCompiler {
                 // Skip problematic metrics for now - they show false warnings
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
-                this.showMiniscriptSuccess(successMsg);
+                // Pass the normalized miniscript for tree visualization (if available)
+                // For direct miniscript compilation, the result now includes compiled_miniscript
+                let treeExpression = result.compiled_miniscript || expression;
+                
+                // Replace hex keys with key names if we have them
+                if (result.compiled_miniscript && this.keyVariables.size > 0) {
+                    treeExpression = this.replaceKeysWithNames(result.compiled_miniscript);
+                }
+                
+                this.showMiniscriptSuccess(successMsg, treeExpression);
                 // Display results (without the info box since we show it in the success message)
                 this.displayResults(result);
             } else {
@@ -678,7 +687,8 @@ class MiniscriptCompiler {
                 // Skip problematic metrics for now - they show false warnings
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
-                this.showMiniscriptSuccess(successMsg);
+                // Pass the compiled miniscript expression for tree visualization
+                this.showMiniscriptSuccess(successMsg, displayMiniscript);
                 
                 // Don't display the compiled_miniscript in results since it's now in the text box
                 result.compiled_miniscript = null;
@@ -3572,12 +3582,264 @@ class MiniscriptCompiler {
         `;
     }
 
-    showMiniscriptSuccess(message) {
+    // Tree parsing functions
+    parseMiniscriptTree(expression) {
+        // Remove whitespace for parsing
+        expression = expression.trim();
+        
+        // Parse the expression into a tree structure
+        const tree = this.parseNode(expression);
+        return tree;
+    }
+    
+    parseNode(expr) {
+        expr = expr.trim();
+        if (!expr) return null;
+        
+        // Check for wrappers (v:, s:, a:, c:, d:, j:, n:, l:, u:, t:, etc.)
+        // Multiple wrappers can be combined like "snl:" or "vc:"
+        const wrapperMatch = expr.match(/^([vscdjnltua]+):/);
+        if (wrapperMatch) {
+            const wrapper = wrapperMatch[1];
+            const rest = expr.substring(wrapper.length + 1);
+            return {
+                type: 'wrapper',
+                wrapper: wrapper + ':',
+                child: this.parseNode(rest)
+            };
+        }
+        
+        // Check for function/fragment with arguments (including underscores for pk_k, pk_h, etc.)
+        const funcMatch = expr.match(/^([a-z_]+)\((.*)\)$/);
+        if (funcMatch) {
+            const funcName = funcMatch[1];
+            const argsStr = funcMatch[2];
+            
+            // Special handling for different fragment types
+            const fragmentInfo = this.getFragmentInfo(funcName);
+            
+            // Parse arguments
+            const args = this.parseArguments(argsStr);
+            
+            return {
+                type: 'fragment',
+                name: funcName,
+                scriptOp: fragmentInfo.scriptOp,
+                args: args
+            };
+        }
+        
+        // Terminal node (key variable, number, hash, etc.)
+        return {
+            type: 'terminal',
+            value: expr
+        };
+    }
+    
+    parseArguments(argsStr) {
+        const args = [];
+        let current = '';
+        let depth = 0;
+        
+        for (let i = 0; i < argsStr.length; i++) {
+            const char = argsStr[i];
+            if (char === '(' ) depth++;
+            else if (char === ')') depth--;
+            
+            if (char === ',' && depth === 0) {
+                args.push(this.parseNode(current.trim()));
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        if (current.trim()) {
+            args.push(this.parseNode(current.trim()));
+        }
+        
+        return args;
+    }
+    
+    getFragmentInfo(name) {
+        // Map miniscript fragments to their Bitcoin Script representations
+        // Only show non-obvious mappings
+        const fragmentMap = {
+            'and_v': { scriptOp: null },
+            'and_b': { scriptOp: null },
+            'and_n': { scriptOp: null },
+            'andor': { scriptOp: null },
+            'or_b': { scriptOp: null },
+            'or_c': { scriptOp: null },
+            'or_d': { scriptOp: null },
+            'or_i': { scriptOp: '[if]' },  // Uses OP_IF/OP_ELSE/OP_ENDIF
+            'thresh': { scriptOp: null },  // Will show (X of Y) instead
+            'multi': { scriptOp: '[checkmultisig]' },  // Uses OP_CHECKMULTISIG
+            'pk': { scriptOp: null },
+            'pk_k': { scriptOp: null },
+            'pk_h': { scriptOp: null },
+            'pkh': { scriptOp: null },
+            'older': { scriptOp: '[csv]' },  // OP_CHECKSEQUENCEVERIFY
+            'after': { scriptOp: '[cltv]' },  // OP_CHECKLOCKTIMEVERIFY
+            'sha256': { scriptOp: null },
+            'hash256': { scriptOp: null },
+            'ripemd160': { scriptOp: null },
+            'hash160': { scriptOp: null }
+        };
+        
+        return fragmentMap[name] || { scriptOp: null };
+    }
+    
+    formatTreeAsScriptCompilation(tree, indent = 0) {
+        if (!tree) return '';
+        
+        const spaces = '    '.repeat(indent);
+        
+        if (tree.type === 'wrapper') {
+            // Split multiple wrappers (e.g., "vc:" -> "v: c:")
+            const wrappers = tree.wrapper.replace(':', '').split('').join(': ') + ':';
+            
+            // Format child
+            if (tree.child.type === 'fragment') {
+                // Check if it's a simple key function that should be inline
+                if ((tree.child.name === 'pk_k' || tree.child.name === 'pk_h' || tree.child.name === 'pk' || tree.child.name === 'pkh') 
+                    && tree.child.args && tree.child.args.length === 1 && tree.child.args[0].type === 'terminal') {
+                    // Format inline: a: pkh(VaultKey4)
+                    return `${wrappers} ${tree.child.name}(${tree.child.args[0].value})`;
+                }
+                
+                // For thresh with wrapper, special formatting
+                if (tree.child.name === 'thresh' && tree.child.args && tree.child.args.length > 0) {
+                    const threshold = tree.child.args[0].type === 'terminal' ? tree.child.args[0].value : '?';
+                    const total = tree.child.args.length - 1;
+                    const scriptOp = tree.child.scriptOp ? ` ${tree.child.scriptOp}` : '';
+                    let output = `${wrappers} ${tree.child.name}(${threshold} of ${total})${scriptOp}`;
+                    
+                    // Add the key arguments (skip first one which is the threshold)
+                    for (let i = 1; i < tree.child.args.length; i++) {
+                        output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(tree.child.args[i], indent + 1);
+                    }
+                    return output;
+                }
+                
+                // For other wrapped fragments, show wrapper and fragment name on same line
+                const scriptOp = tree.child.scriptOp ? ` ${tree.child.scriptOp}` : '';
+                let output = `${wrappers} ${tree.child.name}${scriptOp}`;
+                
+                // Add fragment arguments indented
+                if (tree.child.args && tree.child.args.length > 0) {
+                    for (const arg of tree.child.args) {
+                        output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(arg, indent + 1);
+                    }
+                }
+                return output;
+            } else {
+                // For wrapped terminals or other wrappers
+                const childFormatted = this.formatTreeAsScriptCompilation(tree.child, indent);
+                return `${wrappers} ${childFormatted}`;
+            }
+        } else if (tree.type === 'fragment') {
+            const scriptOp = tree.scriptOp ? ` ${tree.scriptOp}` : '';
+            
+            // For simple terminal functions (pk, pkh, pk_k, pk_h), format inline
+            if ((tree.name === 'pk_k' || tree.name === 'pk_h' || tree.name === 'pk' || tree.name === 'pkh') 
+                && tree.args && tree.args.length === 1 && tree.args[0].type === 'terminal') {
+                return `${tree.name}(${tree.args[0].value})`;
+            }
+            
+            // For thresh, show count inline
+            if (tree.name === 'thresh' && tree.args && tree.args.length > 0) {
+                const threshold = tree.args[0].type === 'terminal' ? tree.args[0].value : '?';
+                const total = tree.args.length - 1;
+                let output = `${tree.name}(${threshold} of ${total})${scriptOp}`;
+                
+                // Add the key arguments (skip first one which is the threshold)
+                for (let i = 1; i < tree.args.length; i++) {
+                    output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(tree.args[i], indent + 1);
+                }
+                return output;
+            }
+            
+            // For multi, show count inline like thresh
+            if (tree.name === 'multi' && tree.args && tree.args.length > 0) {
+                const threshold = tree.args[0].type === 'terminal' ? tree.args[0].value : '?';
+                const total = tree.args.length - 1;
+                let output = `${tree.name}(${threshold} of ${total})${scriptOp}`;
+                
+                // Add the key arguments (skip first one which is the threshold)
+                for (let i = 1; i < tree.args.length; i++) {
+                    output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(tree.args[i], indent + 1);
+                }
+                return output;
+            }
+            
+            // For after/older with single number argument, format inline
+            if ((tree.name === 'after' || tree.name === 'older') 
+                && tree.args && tree.args.length === 1 && tree.args[0].type === 'terminal') {
+                return `${tree.name}(${tree.args[0].value})${scriptOp}`;
+            }
+            
+            // Special case for andor (3 arguments) - show the [or] and [and] structure
+            if (tree.name === 'andor' && tree.args && tree.args.length === 3) {
+                let output = `${tree.name} [or]\n`;
+                // First show the [and] branch with first two arguments
+                output += spaces + '    andor [and]\n';
+                output += spaces + '        ' + this.formatTreeAsScriptCompilation(tree.args[0], indent + 2) + '\n';
+                output += spaces + '        ' + this.formatTreeAsScriptCompilation(tree.args[1], indent + 2) + '\n';
+                // Then show the third argument (the "else" branch)
+                output += spaces + '    ' + this.formatTreeAsScriptCompilation(tree.args[2], indent + 1);
+                return output;
+            }
+            
+            // Default fragment formatting
+            let output = `${tree.name}${scriptOp}`;
+            if (tree.args && tree.args.length > 0) {
+                for (const arg of tree.args) {
+                    output += '\n' + spaces + '    ' + this.formatTreeAsScriptCompilation(arg, indent + 1);
+                }
+            }
+            return output;
+        } else if (tree.type === 'terminal') {
+            return tree.value;
+        }
+        
+        return '';
+    }
+    
+    formatTreeAsVerticalHierarchy(tree) {
+        // Placeholder for future vertical hierarchy mode
+        // Will be implemented when settings toggle is added
+        return 'Vertical hierarchy view coming soon...';
+    }
+
+    showMiniscriptSuccess(message, expression = null) {
         const messagesDiv = document.getElementById('miniscript-messages');
+        let treeHtml = '';
+        
+        // Generate tree visualization if expression is provided
+        if (expression) {
+            try {
+                const tree = this.parseMiniscriptTree(expression);
+                const treeFormatted = this.formatTreeAsScriptCompilation(tree);
+                
+                if (treeFormatted) {
+                    treeHtml = `
+                        <div style="margin-top: 15px;">
+                            <strong>Tree structure:</strong>
+                            <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error generating tree:', error);
+            }
+        }
+        
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>✅ Success</h4>
                 <div style="margin-top: 10px;">${message}</div>
+                ${treeHtml}
             </div>
         `;
     }

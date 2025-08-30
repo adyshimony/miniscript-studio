@@ -499,7 +499,7 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
     console_log!("Compiling miniscript: {} with context: {}", expression, context);
     
     let result = match compile_expression(expression, context) {
-        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => CompilationResult {
+        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => CompilationResult {
             success: true,
             error: None,
             script: Some(script),
@@ -507,7 +507,7 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
             address,
             script_size: Some(script_size),
             miniscript_type: Some(ms_type),
-            compiled_miniscript: None,
+            compiled_miniscript: normalized_miniscript,
             max_satisfaction_size,
             max_weight_to_satisfy,
             sanity_check,
@@ -532,7 +532,7 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-fn compile_expression(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+fn compile_expression(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("=== COMPILE_EXPRESSION CALLED ===");
     console_log!("Expression length: {}", expression.len());
     console_log!("Expression: {}", expression);
@@ -570,6 +570,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
         "legacy" => {
             match trimmed.parse::<Miniscript<PublicKey, Legacy>>() {
                 Ok(ms) => {
+                    let normalized_miniscript = ms.to_string();
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
@@ -590,7 +591,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                         Err(_) => None,
                     };
                     
-                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
+                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable), Some(normalized_miniscript)))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
@@ -614,7 +615,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                         // Only return validation message for multipath or wildcard descriptors
                         if desc.is_multipath() || desc.has_wildcard() {
                             let validation_msg = "✅ Valid multipath/wildcard descriptor (cannot generate concrete script without derivation index)".to_string();
-                            Ok((validation_msg.clone(), validation_msg, None, 0, "Segwit v0 Descriptor".to_string(), None, None, None, None))
+                            Ok((validation_msg.clone(), validation_msg, None, 0, "Segwit v0 Descriptor".to_string(), None, None, None, None, None))
                         } else {
                             // For concrete descriptors, derive to get concrete keys  
                             let derived_desc = desc.at_derivation_index(0).map_err(|e| format!("Derivation failed: {}", e))?;
@@ -634,7 +635,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                             let sanity_check = Some(true); // Descriptor parsing already validates
                             let is_non_malleable = Some(true);
                             
-                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable))
+                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, None))
                         }
                     }
                     Err(e) => Err(format!("Descriptor parsing failed: {}", e))
@@ -642,6 +643,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
             } else {
                 match trimmed.parse::<Miniscript<PublicKey, Segwitv0>>() {
                 Ok(ms) => {
+                    let normalized_miniscript = ms.to_string();
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
@@ -659,7 +661,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     
                     let address = Some(Address::p2wsh(&script, network).to_string());
                     
-                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
+                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable), Some(normalized_miniscript)))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
@@ -675,6 +677,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
         "taproot" => {
             match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
                 Ok(ms) => {
+                    let normalized_miniscript = ms.to_string();
                     let script = ms.encode();
                     let script_hex = hex::encode(script.as_bytes());
                     let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
@@ -697,7 +700,7 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
                     // Generate Taproot address
                     let address = generate_taproot_address(&script, network);
                     
-                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
+                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable), Some(normalized_miniscript)))
                 }
                 Err(e) => {
                     let error_msg = format!("{}", e);
