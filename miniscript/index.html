@@ -138,6 +138,13 @@
             box-sizing: border-box;
             outline: none;
         }
+        
+        /* Match placeholder style to miniscript editor */
+        .textarea-like::placeholder {
+            color: var(--text-muted);
+            opacity: 1;
+            font-size: 14px;
+        }
 
         /* Make editable inputs brighter to show they're editable */
         #policy-input,
@@ -2709,11 +2716,11 @@
             // Store the full and simple placeholder texts
             const placeholders = {
                 policy: {
-                    full: "Enter your policy here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names or create variables from your raw keys, or create them manually in the key variable section. Use 📐 to indent, 🧹 to remove extra chars. Upon compile, Miniscript also will be compiled automatically. 🔗 Share your work with others.\nYou can turn off these tips and example descriptions in setting.",
+                    full: "Enter your policy here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your new policy variable names or create variables from your raw keys, or create them manually in the key variable section. Use 📐 to indent, 🧹 to remove extra chars.\nUpon compile, also miniscript will be compiled automatically.\n🔗 Share your work with others.\nYou can turn off these tips and example descriptions in setting.",
                     simple: "Enter your policy here..."
                 },
                 miniscript: {
-                    full: "Enter your miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your policy variable names or create variables from your raw keys, or create them manually in the key variable section. Use 📐 to format, 🧹 to clean extra chars, and ⬆️ to lift your expression back to policy. 🔗 Share your work with others.\nYou can turn off these tips and example descriptions in setting.",
+                    full: "Enter your miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your new miniscript variable names or create variables from your raw keys, or create them manually in the key variable section. Use 📐 to format, 🧹 to clean extra chars, and ⬆️ to lift your expression back to policy. 🔗 Share your work with others.\nYou can turn off these tips and example descriptions in setting.",
                     simple: "Enter your miniscript here..."
                 }
             };
