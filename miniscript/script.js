@@ -467,8 +467,9 @@ class MiniscriptCompiler {
         const expression = document.getElementById('expression-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
         
-        // Clear previous messages
-        this.clearMiniscriptMessages();
+        // Clear previous messages (preserve success if this is from auto-compile)
+        const isAutoCompile = this.isAutoCompiling || false;
+        this.clearMiniscriptMessages(isAutoCompile);
         
         if (!expression) {
             this.showMiniscriptError('Please enter a miniscript expression.');
@@ -614,8 +615,9 @@ class MiniscriptCompiler {
         const policy = document.getElementById('policy-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
         
-        // Clear previous errors
-        this.clearPolicyErrors();
+        // Clear previous errors (preserve success if this is from auto-compile)
+        const isAutoCompile = this.isAutoCompiling || false;
+        this.clearPolicyErrors(isAutoCompile);
         
         if (!policy) {
             this.showPolicyError('Please enter a policy expression.');
@@ -844,6 +846,21 @@ class MiniscriptCompiler {
 
     showPolicySuccess(miniscript) {
         const policyErrorsDiv = document.getElementById('policy-errors');
+        
+        // Check if we should update existing success message during auto-compile
+        if (this.isAutoCompiling) {
+            const existingSuccess = policyErrorsDiv.querySelector('.result-box.success');
+            if (existingSuccess) {
+                // Update just the miniscript code content
+                const codeBlock = existingSuccess.querySelector('code');
+                if (codeBlock) {
+                    codeBlock.textContent = miniscript;
+                }
+                return; // Don't replace the entire message box
+            }
+        }
+        
+        // Normal behavior - create new message
         policyErrorsDiv.innerHTML = `
             <div class="result-box success" style="margin: 0; text-align: left;">
                 <h4>✅ Policy compilation successful</h4>
@@ -858,7 +875,17 @@ class MiniscriptCompiler {
         `;
     }
 
-    clearPolicyErrors() {
+    clearPolicyErrors(preserveSuccess = false) {
+        if (preserveSuccess) {
+            const errorsDiv = document.getElementById('policy-errors');
+            const successBox = errorsDiv.querySelector('.result-box.success');
+            if (successBox) {
+                // Keep the success message, only clear errors
+                const errors = errorsDiv.querySelectorAll('.result-box.error');
+                errors.forEach(error => error.remove());
+                return;
+            }
+        }
         document.getElementById('policy-errors').innerHTML = '';
     }
 
@@ -4066,6 +4093,69 @@ class MiniscriptCompiler {
 
     showMiniscriptSuccess(message, expression = null) {
         const messagesDiv = document.getElementById('miniscript-messages');
+        
+        // Check if we should update existing success message during auto-compile
+        if (this.isAutoCompiling) {
+            const existingSuccess = messagesDiv.querySelector('.result-box.success');
+            if (existingSuccess) {
+                // Update the existing message content
+                const messageContent = existingSuccess.querySelector('div[style*="margin-top: 10px"]');
+                if (messageContent) {
+                    messageContent.innerHTML = message;
+                }
+                
+                // Update or generate tree visualization
+                if (expression) {
+                    try {
+                        const treeDisplaySetting = document.getElementById('tree-display-setting');
+                        const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                        const defaultMode = isMobile ? 'script-compilation' : 'visual-hierarchy';
+                        const treeDisplayMode = treeDisplaySetting ? treeDisplaySetting.value : defaultMode;
+                        
+                        if (treeDisplayMode !== 'hidden') {
+                            const tree = this.parseMiniscriptTree(expression);
+                            let treeFormatted = '';
+                            let treeTitle = '';
+                            
+                            if (treeDisplayMode === 'script-compilation') {
+                                treeFormatted = this.formatTreeAsScriptCompilation(tree);
+                                treeTitle = 'Script Compilation View';
+                            } else if (treeDisplayMode === 'visual-hierarchy') {
+                                treeFormatted = this.formatTreeAsVerticalHierarchy(tree);
+                                treeTitle = 'Visual Hierarchy View';
+                            }
+                            
+                            if (treeFormatted) {
+                                // Look for existing tree area
+                                let treeArea = existingSuccess.querySelector('div[style*="margin-top: 15px"]');
+                                if (treeArea && treeArea.querySelector('strong')) {
+                                    // Update existing tree
+                                    treeArea.querySelector('strong').textContent = `Tree structure (${treeTitle})`;
+                                    const pre = treeArea.querySelector('pre');
+                                    if (pre) {
+                                        pre.textContent = treeFormatted;
+                                    }
+                                } else {
+                                    // Add new tree area
+                                    const treeHtml = `
+                                        <div style="margin-top: 15px;">
+                                            <strong>Tree structure (${treeTitle})</strong>
+                                            <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
+                                        </div>
+                                    `;
+                                    existingSuccess.insertAdjacentHTML('beforeend', treeHtml);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error generating tree:', error);
+                    }
+                }
+                return; // Don't replace the entire message box
+            }
+        }
+        
+        // Normal behavior - create new message
         let treeHtml = '';
         
         // Generate tree visualization if expression is provided
@@ -4114,7 +4204,17 @@ class MiniscriptCompiler {
         `;
     }
 
-    clearMiniscriptMessages() {
+    clearMiniscriptMessages(preserveSuccess = false) {
+        if (preserveSuccess) {
+            const messagesDiv = document.getElementById('miniscript-messages');
+            const successBox = messagesDiv.querySelector('.result-box.success');
+            if (successBox) {
+                // Keep the success message, only clear errors
+                const errors = messagesDiv.querySelectorAll('.result-box.error');
+                errors.forEach(error => error.remove());
+                return;
+            }
+        }
         document.getElementById('miniscript-messages').innerHTML = '';
     }
 
@@ -5003,35 +5103,41 @@ window.loadExample = function(example, exampleId) {
         }, 600); // After the 500ms delayed highlighting
     }
     
-    // Clear results first, then initialize empty
-    const resultsDiv = document.getElementById('results');
-    if (resultsDiv) resultsDiv.innerHTML = '';
+    // Check if auto-compile is enabled
+    const autoCompile = document.getElementById('auto-compile-setting');
+    const shouldPreserveResults = autoCompile && autoCompile.checked;
     
-    if (window.compiler && window.compiler.initializeEmptyResults) {
-        window.compiler.initializeEmptyResults();
-    }
-    if (window.compiler && window.compiler.clearMiniscriptMessages) {
-        window.compiler.clearMiniscriptMessages();
-    }
-    
-    // Clear script fields when loading new miniscript example and restore placeholders
-    const scriptHexDisplay = document.getElementById('script-hex-display');
-    const scriptAsmDisplay = document.getElementById('script-asm-display');
-    if (scriptHexDisplay) {
-        scriptHexDisplay.value = '';
-        scriptHexDisplay.placeholder = 'Hex script will appear here after compilation, or paste your own and lift it...';
-    }
-    if (scriptAsmDisplay) {
-        scriptAsmDisplay.value = '';
-        scriptAsmDisplay.placeholder = 'ASM script will appear here after compilation, or paste your own and lift it...';
-    }
-    
-    // Clear address field and restore placeholder
-    const addressDisplay = document.getElementById('address-display');
-    if (addressDisplay) {
-        addressDisplay.innerHTML = 'Address will appear here after compilation';
-        addressDisplay.style.color = 'var(--text-muted)';
-        addressDisplay.style.fontStyle = 'italic';
+    if (!shouldPreserveResults) {
+        // Only clear if auto-compile is disabled
+        const resultsDiv = document.getElementById('results');
+        if (resultsDiv) resultsDiv.innerHTML = '';
+        
+        if (window.compiler && window.compiler.initializeEmptyResults) {
+            window.compiler.initializeEmptyResults();
+        }
+        if (window.compiler && window.compiler.clearMiniscriptMessages) {
+            window.compiler.clearMiniscriptMessages();
+        }
+        
+        // Clear script fields when loading new miniscript example and restore placeholders
+        const scriptHexDisplay = document.getElementById('script-hex-display');
+        const scriptAsmDisplay = document.getElementById('script-asm-display');
+        if (scriptHexDisplay) {
+            scriptHexDisplay.value = '';
+            scriptHexDisplay.placeholder = 'Hex script will appear here after compilation, or paste your own and lift it...';
+        }
+        if (scriptAsmDisplay) {
+            scriptAsmDisplay.value = '';
+            scriptAsmDisplay.placeholder = 'ASM script will appear here after compilation, or paste your own and lift it...';
+        }
+        
+        // Clear address field and restore placeholder
+        const addressDisplay = document.getElementById('address-display');
+        if (addressDisplay) {
+            addressDisplay.innerHTML = 'Address will appear here after compilation';
+            addressDisplay.style.color = 'var(--text-muted)';
+            addressDisplay.style.fontStyle = 'italic';
+        }
     }
     
     // Update toggle button state based on loaded content
@@ -5116,7 +5222,14 @@ window.loadPolicyExample = function(example, exampleId) {
     // Clear the "last highlighted text" to force re-highlighting
     delete policyInput.dataset.lastHighlightedText;
     
-    document.getElementById('policy-errors').innerHTML = '';
+    // Check if auto-compile is enabled
+    const autoCompile = document.getElementById('auto-compile-setting');
+    const shouldPreserveResults = autoCompile && autoCompile.checked;
+    
+    if (!shouldPreserveResults) {
+        // Only clear if auto-compile is disabled
+        document.getElementById('policy-errors').innerHTML = '';
+    }
     
     if (window.compiler && window.compiler.highlightPolicySyntax) {
         window.compiler.highlightPolicySyntax();
@@ -6320,6 +6433,11 @@ function autoCompileIfEnabled(type) {
     const autoCompile = document.getElementById('auto-compile-setting');
     if (autoCompile && autoCompile.checked) {
         setTimeout(() => {
+            // Set flag to preserve success messages during auto-compile
+            if (window.compiler) {
+                window.compiler.isAutoCompiling = true;
+            }
+            
             if (type === 'policy') {
                 const compileBtn = document.getElementById('compile-policy-btn');
                 if (compileBtn) compileBtn.click();
@@ -6327,6 +6445,13 @@ function autoCompileIfEnabled(type) {
                 const compileBtn = document.getElementById('compile-btn');
                 if (compileBtn) compileBtn.click();
             }
+            
+            // Reset flag after a short delay
+            setTimeout(() => {
+                if (window.compiler) {
+                    window.compiler.isAutoCompiling = false;
+                }
+            }, 100);
         }, 500);
     }
 }
