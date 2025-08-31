@@ -867,7 +867,7 @@ class MiniscriptCompiler {
                 <h4>✅ Policy compilation successful</h4>
                 <div style="margin-top: 10px; text-align: left;">
                     <strong>Generated miniscript:</strong><br>
-                    <code style="background: var(--input-bg); padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${miniscript}</code>
+                    <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${miniscript}</code>
                     <div style="color: var(--text-secondary); font-size: 13px; margin-top: 10px;">
                         💡 Check the miniscript below for script hex, ASM, and address details.
                     </div>
