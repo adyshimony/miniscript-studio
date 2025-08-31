@@ -567,12 +567,8 @@ class MiniscriptCompiler {
                 // Skip tree for descriptor validation
                 let treeExpression = null;
                 if (!isDescriptorValidation) {
-                    treeExpression = result.compiled_miniscript || expression;
-                    
-                    // Replace hex keys with key names if we have them
-                    if (result.compiled_miniscript && this.keyVariables.size > 0) {
-                        treeExpression = this.replaceKeysWithNames(result.compiled_miniscript);
-                    }
+                    // Use original expression for tree to preserve key names and descriptors
+                    treeExpression = expression;
                 }
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
