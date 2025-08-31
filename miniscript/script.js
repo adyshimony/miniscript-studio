@@ -555,11 +555,28 @@ class MiniscriptCompiler {
                         
                         successMsg += `Script: ${scriptWeight} WU<br>`;
                         successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                        successMsg += `Total: ${totalWeight}.000000 WU`;
+                        successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
                     } else if (result.max_satisfaction_size) {
                         // Fallback - show satisfaction size
                         successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
-                        successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU`;
+                        successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
+                    }
+                    
+                    // Add hex, asm, and address
+                    if (result.script) {
+                        successMsg += `HEX:<br>${result.script}<br><br>`;
+                    }
+                    if (result.script_asm) {
+                        // Create simplified version with key names (same as script field)
+                        const simplifiedAsm = this.simplifyAsm(result.script_asm);
+                        let finalAsm = simplifiedAsm;
+                        if (this.keyVariables.size > 0) {
+                            finalAsm = this.replaceKeysWithNames(simplifiedAsm);
+                        }
+                        successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                    }
+                    if (result.address) {
+                        successMsg += `Address:<br>${result.address}`;
                     }
                 }
                 
@@ -691,7 +708,10 @@ class MiniscriptCompiler {
                     }
                 }
                 
-                // Show success message with spending cost analysis format in miniscript messages area
+                // Show policy success message 
+                this.showPolicySuccess(displayMiniscript);
+                
+                // Show miniscript success message with spending cost analysis format
                 let successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                 
                 if (result.max_weight_to_satisfy) {
@@ -702,15 +722,29 @@ class MiniscriptCompiler {
                     
                     successMsg += `Script: ${scriptWeight} WU<br>`;
                     successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                    successMsg += `Total: ${totalWeight}.000000 WU`;
+                    successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
                 } else if (result.max_satisfaction_size) {
                     // Fallback - show satisfaction size
                     successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
-                    successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU`;
+                    successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
                 }
                 
-                // Skip problematic metrics for now - they show false warnings
-                // TODO: Fix sanity_check and is_non_malleable implementation
+                // Add hex, asm, and address
+                if (result.script) {
+                    successMsg += `HEX:<br>${result.script}<br><br>`;
+                }
+                if (result.script_asm) {
+                    // Create simplified version with key names (same as script field)
+                    const simplifiedAsm = this.simplifyAsm(result.script_asm);
+                    let finalAsm = simplifiedAsm;
+                    if (this.keyVariables.size > 0) {
+                        finalAsm = this.replaceKeysWithNames(simplifiedAsm);
+                    }
+                    successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                }
+                if (result.address) {
+                    successMsg += `Address:<br>${result.address}`;
+                }
                 
                 // Pass the compiled miniscript expression for tree visualization
                 this.showMiniscriptSuccess(successMsg, displayMiniscript);
@@ -822,6 +856,22 @@ class MiniscriptCompiler {
                 <h4>❌ Policy error</h4>
                 <div style="margin-top: 10px; text-align: left;">${message}</div>
                 ${additionalHelp}
+            </div>
+        `;
+    }
+
+    showPolicySuccess(miniscript) {
+        const policyErrorsDiv = document.getElementById('policy-errors');
+        policyErrorsDiv.innerHTML = `
+            <div class="result-box success" style="margin: 0; text-align: left;">
+                <h4>✅ Policy compilation successful</h4>
+                <div style="margin-top: 10px; text-align: left;">
+                    <strong>Generated miniscript:</strong><br>
+                    <code style="background: var(--input-bg); padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${miniscript}</code>
+                    <div style="color: var(--text-secondary); font-size: 13px; margin-top: 10px;">
+                        💡 Check the miniscript below for script hex, ASM, and address details.
+                    </div>
+                </div>
             </div>
         `;
     }
