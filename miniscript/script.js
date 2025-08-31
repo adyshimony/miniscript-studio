@@ -4992,6 +4992,11 @@ window.loadExample = function(example, exampleId) {
     setTimeout(positionCursorAtEnd, 600);  // After the 500ms delayed highlighting
     setTimeout(positionCursorAtEnd, 700);  // Extra attempt to ensure it sticks
     setTimeout(positionCursorAtEnd, 800);
+    
+    // Clear results first, then initialize empty
+    const resultsDiv = document.getElementById('results');
+    if (resultsDiv) resultsDiv.innerHTML = '';
+    
     if (window.compiler && window.compiler.initializeEmptyResults) {
         window.compiler.initializeEmptyResults();
     }
