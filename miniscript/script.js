@@ -771,27 +771,9 @@ class MiniscriptCompiler {
 
     clearPolicy() {
         document.getElementById('policy-input').innerHTML = '';
-        document.getElementById('expression-input').innerHTML = '';
-        // Clear results first, then reinitialize
-        document.getElementById('results').innerHTML = '';
-        this.initializeEmptyResults();
         this.clearPolicyErrors();
-        this.clearMiniscriptMessages(); // Clear the success message too
         
-        // Reset description states to default (expanded)
-        if (window.resetDescriptionStates) {
-            window.resetDescriptionStates();
-        }
-        
-        // Reset the "Show key names" checkbox since we cleared the miniscript
-        const toggleBtn = document.getElementById('key-names-toggle');
-        if (toggleBtn) {
-            toggleBtn.style.color = 'var(--text-secondary)';
-            toggleBtn.title = 'Show key names';
-            toggleBtn.dataset.active = 'false';
-        }
-        
-        // Hide description panel
+        // Hide policy description panel
         const policyPanel = document.querySelector('.policy-description-panel');
         if (policyPanel) policyPanel.style.display = 'none';
     }
@@ -5108,13 +5090,6 @@ window.loadPolicyExample = function(example, exampleId) {
     if (exampleId) {
         policyInput.dataset.originalTemplate = example;
         policyInput.dataset.exampleId = 'policy-' + exampleId;
-        
-        // Clear miniscript template data since we're loading a policy
-        const miniscriptInput = document.getElementById('expression-input');
-        if (miniscriptInput) {
-            delete miniscriptInput.dataset.originalTemplate;
-            delete miniscriptInput.dataset.exampleId;
-        }
     }
     
     if (isMobile) {
@@ -5141,26 +5116,7 @@ window.loadPolicyExample = function(example, exampleId) {
     // Clear the "last highlighted text" to force re-highlighting
     delete policyInput.dataset.lastHighlightedText;
     
-    // Check if auto-compile is enabled to show appropriate message
-    const autoCompile = document.getElementById('auto-compile-setting');
-    const expressionInput = document.getElementById('expression-input');
-    
-    if (autoCompile && autoCompile.checked) {
-        // Show compiling message instead of clearing to avoid placeholder flash
-        expressionInput.innerHTML = '<span style="color: var(--text-secondary); font-style: italic;">Compiling...</span>';
-    } else {
-        expressionInput.innerHTML = '';
-    }
-    
-    if (window.compiler && window.compiler.initializeEmptyResults) {
-        window.compiler.initializeEmptyResults();
-    }
     document.getElementById('policy-errors').innerHTML = '';
-    
-    // Clear the success message when loading a policy example
-    if (window.compiler && window.compiler.clearMiniscriptMessages) {
-        window.compiler.clearMiniscriptMessages();
-    }
     
     if (window.compiler && window.compiler.highlightPolicySyntax) {
         window.compiler.highlightPolicySyntax();
@@ -5170,7 +5126,6 @@ window.loadPolicyExample = function(example, exampleId) {
     if (window.compiler && window.compiler.saveState) {
         console.log('🚀 Saving policy state for undo');
         window.compiler.saveState('policy', true);
-        window.compiler.saveState('miniscript', true);
         console.log('🚀 State saved successfully');
     } else {
         console.log('🚀 Compiler or saveState not available');
