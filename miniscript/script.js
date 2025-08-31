@@ -516,6 +516,9 @@ class MiniscriptCompiler {
                 delete expressionInput.dataset.lastHighlightedText;
                 this.highlightMiniscriptSyntax();
                 
+                // Position cursor at end after compilation
+                this.positionCursorAtEnd(expressionInput);
+                
                 
                 // Debug: Log all available fields
                 console.log('=== ALL COMPILATION RESULT FIELDS ===');
@@ -667,6 +670,9 @@ class MiniscriptCompiler {
                 // Clear the highlighting cache and re-highlight
                 delete expressionInput.dataset.lastHighlightedText;
                 this.highlightMiniscriptSyntax();
+                
+                // Position cursor at end after policy compilation puts miniscript
+                this.positionCursorAtEnd(expressionInput);
                 
                 
                 // Always set toggle button to "Hide Key Names" state after compilation if we replaced keys
@@ -886,7 +892,7 @@ class MiniscriptCompiler {
             .replace(/,/g, '<span class="syntax-comma">$&</span>');
     }
 
-    highlightMiniscriptSyntax() {
+    highlightMiniscriptSyntax(skipCursorRestore = false) {
         const expressionInput = document.getElementById('expression-input');
         const text = expressionInput.textContent || '';
         
@@ -915,8 +921,10 @@ class MiniscriptCompiler {
             expressionInput.innerHTML = highlightedHTML;
             // Force reapply styling after innerHTML change
             this.enforceElementStyling(expressionInput);
-            // Restore cursor position
-            this.restoreCursor(expressionInput, caretOffset);
+            // Restore cursor position only if not skipping
+            if (!skipCursorRestore) {
+                this.restoreCursor(expressionInput, caretOffset);
+            }
         }
         
         // Store the last highlighted text
@@ -1247,6 +1255,34 @@ class MiniscriptCompiler {
         range.selectNodeContents(element);
         range.collapse(false);
         selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    positionCursorAtEnd(element) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        selection.removeAllRanges();
+        
+        // Find the last text node to ensure we're at the very end
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        let lastTextNode = null;
+        while (walker.nextNode()) {
+            lastTextNode = walker.currentNode;
+        }
+        
+        if (lastTextNode) {
+            range.setStart(lastTextNode, lastTextNode.textContent.length);
+            range.setEnd(lastTextNode, lastTextNode.textContent.length);
+        } else {
+            range.selectNodeContents(element);
+            range.collapse(false);
+        }
+        
         selection.addRange(range);
     }
 
@@ -4921,48 +4957,19 @@ window.loadExample = function(example, exampleId) {
     delete expressionInput.dataset.lastHighlightedText;
     
     if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
-        window.compiler.highlightMiniscriptSyntax();
+        window.compiler.highlightMiniscriptSyntax(true); // Skip cursor restore when loading examples
     }
     
-    // Position cursor at end AFTER highlighting (for both mobile and desktop)
-    const positionCursorAtEnd = () => {
-        const range = document.createRange();
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        
-        // Find the last text node to ensure we're at the very end
-        const walker = document.createTreeWalker(
-            expressionInput,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-        let lastTextNode = null;
-        while (walker.nextNode()) {
-            lastTextNode = walker.currentNode;
-        }
-        
-        if (lastTextNode) {
-            range.setStart(lastTextNode, lastTextNode.textContent.length);
-            range.setEnd(lastTextNode, lastTextNode.textContent.length);
-        } else {
-            range.selectNodeContents(expressionInput);
-            range.collapse(false);
-        }
-        
-        sel.addRange(range);
-        
-        // Blur on mobile to prevent keyboard popup
-        if (isMobile) {
-            setTimeout(() => expressionInput.blur(), 10);
-        }
-    };
-    
-    // Try multiple times to ensure cursor positioning sticks
-    // NOTE: The input event listener triggers highlighting after 500ms, so we need to position cursor after that
-    setTimeout(positionCursorAtEnd, 600);  // After the 500ms delayed highlighting
-    setTimeout(positionCursorAtEnd, 700);  // Extra attempt to ensure it sticks
-    setTimeout(positionCursorAtEnd, 800);
+    // Position cursor at end after highlighting
+    if (window.compiler && window.compiler.positionCursorAtEnd) {
+        setTimeout(() => {
+            window.compiler.positionCursorAtEnd(expressionInput);
+            // Blur on mobile to prevent keyboard popup
+            if (isMobile) {
+                setTimeout(() => expressionInput.blur(), 10);
+            }
+        }, 600); // After the 500ms delayed highlighting
+    }
     
     // Clear results first, then initialize empty
     const resultsDiv = document.getElementById('results');
