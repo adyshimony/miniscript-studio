@@ -1868,7 +1868,7 @@
                 <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-top: 25px; font-size: 18px;">💡 Design Patterns & Best Practices</h3>
 
                 <div style="margin: 20px 0; padding: 15px; background: var(--container-bg); border-radius: 6px; border: 1px solid var(--border-color);">
-                    <h4 style="color: var(--text-color); margin: 0 0 10px 0;">Common Patterns</h4>
+                    <h4 style="color: var(--text-color); margin: 0 0 10px 0; font-size: 16px;">Common Patterns</h4>
                     <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-color); font-size: 13px; line-height: 1.8;">
                         <li><strong>Hot Wallet + Cold Backup:</strong> <code>or(pk(Hot),and(pk(Cold),older(1008)))</code></li>
                         <li><strong>2FA with Timeout:</strong> <code>and(pk(User),or(pk(Service),older(52560)))</code></li>
@@ -1907,79 +1907,79 @@
             <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div style="display: grid; gap: 15px;">
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🏷️ Show key names:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🏷️ Show key names:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Use the 🏷️ button to toggle between showing full public keys and variable names (Alice, Bob, etc.) in your expressions. Makes complex policies much easier to read and understand.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🔑 Missing or corrupted key variables?</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🔑 Missing or corrupted key variables?</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             If one of the examples fails to complie with "pubkey string should be 66 or 130 digits" (or similar), or 🏷️ show keys doesn't work properly, go to "Key variables" section and use "Clear all" then "Restore defaults" to reset Alice, Bob, Charlie, etc. You can delete only the problematic key and "Restore defaults". 
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🔑 Extract keys to variables:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🔑 Extract keys to variables:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Use the 🔑 button to automatically detect keys in your expression and convert them to reusable variables. Detects public keys, xpubs, tpubs, and x-only keys. For each key, choose the appropriate type (compressed, x-only, xpub, tpub). Suggests meaningful names (Alice, Bob, Charlie) and prevents duplicates.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">📐 Format expressions:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">📐 Format expressions:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Use the 📐 button to format long policy, miniscript expressions and scripts with proper indentation. Makes complex nested expressions easier to read and understand. Note: formatting is automatically cleaned during compilation to reflect the actual expression being compiled.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🧹 Clean up text:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🧹 Clean up text:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             The 🧹 button removes extra whitespace and formatting from pasted expressions that prevent them from compiling successfully.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">💾 Save/Load expressions:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">💾 Save/Load expressions:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Save frequently used policies/expressions with the 💾 Save button. Saved items appear in their respective sections for quick reloading.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🎲 Generate test keys:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🎲 Generate test keys:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Use the 🎲 Generate button in Key variables to create random test keys appropriate for your selected script context (xpub, compressed for Legacy/Segwit, X-only for Taproot). 
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🔄 Context auto-detection:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🔄 Context auto-detection:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Script context automatically switches based on key types: compressed keys (66 chars) → Legacy/Segwit, X-only keys (64 chars) → Taproot.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">⬆️ Lift (Reverse Engineering):</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">⬆️ Lift (Reverse Engineering):</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Paste Bitcoin Script hex/ASM into the "Script HEX" or "Script ASM" fields to automatically lift them back to miniscript. Every lift also shows the policy equivalent. You can also lift miniscript expression to policy.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🌐 Network Support:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🌐 Network Support:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Use the 🌐 button to toggle between mainnet and testnet address generation. Testnet keys (tpub) automatically generate testnet addresses, mainnet keys (xpub) generate mainnet addresses.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">📋 Local storage:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">📋 Local storage:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             All data (keys, saved expressions) persists locally in your browser. No server - everything stays private. Use public keys only!
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🔗 Share your work:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🔗 Share your work:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             Use the 🔗 button above any expression to generate a shareable URL that includes your policy/miniscript and all key variables. Perfect for collaboration or saving your work. Choose between URL encoding and compact JSON format in Settings below.
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color);">🏃 Auto compile examples:</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">🏃 Auto compile examples:</strong>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                             When loading an example or a saved expression, it can be automatically compiled to show results immediately. This behavior can be toggled on/off in the Settings section below. When off, expressions load but wait for manual compilation.
                         </p>
@@ -1994,7 +1994,7 @@
                 <div style="display: grid; gap: 15px;">
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
                         <div>
-                            <strong style="color: var(--text-color);">🎨 Theme:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">🎨 Theme:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Choose between dark and light theme. Overrides system preference.
                             </p>
@@ -2005,7 +2005,7 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">🏃 Auto compile examples:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">🏃 Auto compile examples:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Automatically compile policies and miniscripts when loading from examples or saved expressions. When disabled, expressions load but require manual compilation.
                             </p>
@@ -2017,7 +2017,7 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">📖 Show descriptions:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">📖 Show descriptions:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Display helpful descriptions when clicking example buttons. Turn off if you're a miniscript master who doesn't like explanations. 🧙‍♂️
                             </p>
@@ -2029,7 +2029,7 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">💡 Hide editor tips:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">💡 Hide editor tips:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Hide the helpful tips and instructions that appear in empty editors. Turn on for a cleaner interface with just "Enter your policy/miniscript here..." instead of detailed guidance.
                             </p>
@@ -2041,7 +2041,7 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">🔗 Share format:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">🔗 Share format:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Choose how shared URLs are formatted. URL encoding preserves special characters in readable format and is better for simple expressions. JSON creates base64-encoded URLs that include all state.
                             </p>
@@ -2053,7 +2053,7 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">👁️ Hide corner buttons (web only):</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">👁️ Hide corner buttons (web only):</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Hide the GitHub and beer donation buttons in the top corners for a cleaner interface. Corner buttons are automatically hidden on mobile devices.
                             </p>
@@ -2065,7 +2065,7 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color);">🌳 Tree structure display:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">🌳 Tree structure display:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
                                 Choose how to display the tree structure in compilation results. Script Compilation shows opcodes and detailed structure, Visual Hierarchy shows a clean graphical tree, or hide it completely.
                             </p>
