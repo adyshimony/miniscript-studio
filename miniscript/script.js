@@ -561,6 +561,9 @@ class MiniscriptCompiler {
                         // Fallback - show satisfaction size
                         successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
                         successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
+                    } else {
+                        // No weight details available, add extra line break
+                        successMsg += `<br>`;
                     }
                     
                     // Add hex, asm, and address
@@ -729,6 +732,9 @@ class MiniscriptCompiler {
                     // Fallback - show satisfaction size
                     successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
                     successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
+                } else {
+                    // No weight details available, add extra line break
+                    successMsg += `<br>`;
                 }
                 
                 // Add hex, asm, and address

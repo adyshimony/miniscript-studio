@@ -813,9 +813,10 @@
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 50px;
-            height: 24px;
+            width: 50px !important;
+            height: 24px !important;
             cursor: pointer;
+            flex-shrink: 0;
         }
 
         .toggle-switch input {
@@ -2029,13 +2030,13 @@
                     </div>
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: var(--text-color); font-size: 16px;">💡 Hide editor tips:</strong>
+                            <strong style="color: var(--text-color); font-size: 16px;">💡 Show editor tips:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
-                                Hide the helpful tips and instructions that appear in empty editors. Turn on for a cleaner interface with just "Enter your policy/miniscript here..." instead of detailed guidance.
+                                Show helpful tips and instructions in empty editors. Turn off for a cleaner interface with just "Enter your policy/miniscript here..." instead of detailed guidance.
                             </p>
                         </div>
                         <label class="toggle-switch" style="margin-left: 20px;">
-                            <input type="checkbox" id="simple-placeholders-setting">
+                            <input type="checkbox" id="simple-placeholders-setting" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -2710,9 +2711,10 @@
                 });
             }
             
-            // Simple placeholders setting
+            // Show editor tips setting
             const simplePlaceholdersSetting = document.getElementById('simple-placeholders-setting');
-            const savedSimplePlaceholders = localStorage.getItem('simplePlaceholders') === 'true';
+            const savedShowTips = localStorage.getItem('showEditorTips');
+            const defaultShowTips = savedShowTips !== null ? savedShowTips === 'true' : true; // Default to true (show tips)
             
             // Store the full and simple placeholder texts
             const placeholders = {
@@ -2727,29 +2729,29 @@
             };
             
             // Function to update placeholders
-            function updatePlaceholders(useSimple) {
+            function updatePlaceholders(showTips) {
                 const policyInput = document.getElementById('policy-input');
                 const miniscriptInput = document.getElementById('expression-input');
                 
                 if (policyInput) {
-                    policyInput.setAttribute('data-placeholder', useSimple ? placeholders.policy.simple : placeholders.policy.full);
+                    policyInput.setAttribute('data-placeholder', showTips ? placeholders.policy.full : placeholders.policy.simple);
                 }
                 if (miniscriptInput) {
-                    miniscriptInput.setAttribute('data-placeholder', useSimple ? placeholders.miniscript.simple : placeholders.miniscript.full);
+                    miniscriptInput.setAttribute('data-placeholder', showTips ? placeholders.miniscript.full : placeholders.miniscript.simple);
                 }
             }
             
             if (simplePlaceholdersSetting) {
-                simplePlaceholdersSetting.checked = savedSimplePlaceholders;
+                simplePlaceholdersSetting.checked = defaultShowTips;
                 
                 simplePlaceholdersSetting.addEventListener('change', (e) => {
-                    localStorage.setItem('simplePlaceholders', String(e.target.checked));
+                    localStorage.setItem('showEditorTips', String(e.target.checked));
                     updatePlaceholders(e.target.checked);
                 });
             }
             
             // Set initial placeholders on page load (single source of truth)
-            updatePlaceholders(savedSimplePlaceholders);
+            updatePlaceholders(defaultShowTips);
             
             // Also hide descriptions on page load if setting is off
             if (!savedShowDescriptions) {
