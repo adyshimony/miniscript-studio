@@ -716,46 +716,60 @@ class MiniscriptCompiler {
                 // Show policy success message 
                 this.showPolicySuccess(displayMiniscript);
                 
-                // Show miniscript success message with spending cost analysis format
-                let successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                // Check if this is a descriptor validation from policy compilation
+                const isDescriptorValidation = result.miniscript_type === 'Descriptor';
                 
-                if (result.max_weight_to_satisfy) {
-                    // Use ONLY what the library returns - no custom calculations
-                    const scriptWeight = result.script_size;
-                    const totalWeight = result.max_weight_to_satisfy;
-                    const inputWeight = totalWeight - scriptWeight; // Library total minus script size
-                    
-                    successMsg += `Script: ${scriptWeight} WU<br>`;
-                    successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                    successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
-                } else if (result.max_satisfaction_size) {
-                    // Fallback - show satisfaction size
-                    successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
-                    successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
+                let successMsg = '';
+                if (isDescriptorValidation && result.script && result.script.startsWith('Valid descriptor:')) {
+                    // For descriptor validation from policy, show the validation message from script field
+                    successMsg = result.script;
                 } else {
-                    // No weight details available, add extra line break
-                    successMsg += `<br>`;
-                }
-                
-                // Add hex, asm, and address
-                if (result.script) {
-                    successMsg += `HEX:<br>${result.script}<br><br>`;
-                }
-                if (result.script_asm) {
-                    // Create simplified version with key names (same as script field)
-                    const simplifiedAsm = this.simplifyAsm(result.script_asm);
-                    let finalAsm = simplifiedAsm;
-                    if (this.keyVariables.size > 0) {
-                        finalAsm = this.replaceKeysWithNames(simplifiedAsm);
+                    // Show normal compilation success message with spending cost analysis format
+                    successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                    
+                    if (result.max_weight_to_satisfy) {
+                        // Use ONLY what the library returns - no custom calculations
+                        const scriptWeight = result.script_size;
+                        const totalWeight = result.max_weight_to_satisfy;
+                        const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                        
+                        successMsg += `Script: ${scriptWeight} WU<br>`;
+                        successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                        successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                    } else if (result.max_satisfaction_size) {
+                        // Fallback - show satisfaction size
+                        successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
+                        successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
+                    } else {
+                        // No weight details available, add extra line break
+                        successMsg += `<br>`;
                     }
-                    successMsg += `ASM:<br>${finalAsm}<br><br>`;
-                }
-                if (result.address) {
-                    successMsg += `Address:<br>${result.address}`;
+                    
+                    // Add hex, asm, and address
+                    if (result.script) {
+                        successMsg += `HEX:<br>${result.script}<br><br>`;
+                    }
+                    if (result.script_asm) {
+                        // Create simplified version with key names (same as script field)
+                        const simplifiedAsm = this.simplifyAsm(result.script_asm);
+                        let finalAsm = simplifiedAsm;
+                        if (this.keyVariables.size > 0) {
+                            finalAsm = this.replaceKeysWithNames(simplifiedAsm);
+                        }
+                        successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                    }
+                    if (result.address) {
+                        successMsg += `Address:<br>${result.address}`;
+                    }
                 }
                 
                 // Pass the compiled miniscript expression for tree visualization
-                this.showMiniscriptSuccess(successMsg, displayMiniscript);
+                // Skip tree for descriptor validation (same as direct miniscript compilation)
+                let treeExpression = null;
+                if (!isDescriptorValidation) {
+                    treeExpression = displayMiniscript;
+                }
+                this.showMiniscriptSuccess(successMsg, treeExpression);
                 
                 // Don't display the compiled_miniscript in results since it's now in the text box
                 result.compiled_miniscript = null;

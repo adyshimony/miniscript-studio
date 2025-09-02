@@ -629,42 +629,42 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
         Network::Bitcoin
     };
     
-    // Check if expression contains descriptor keys
-    let processed_expr = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[") {
+    // Check if expression contains descriptor keys, but skip parsing if it's already a descriptor wrapper
+    let processed_expr = if (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[")) && !trimmed.starts_with("wsh(") && !trimmed.starts_with("sh(") && !trimmed.starts_with("wpkh(") {
         console_log!("Detected descriptor keys in expression, processing...");
         match parse_descriptors(trimmed) {
-            Ok(descriptors) => {
-                if descriptors.is_empty() {
-                    console_log!("No descriptors found, using original expression");
-                    trimmed.to_string()
-                } else {
-                    // Check if any descriptors have ranges (wildcards)
-                    let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
-                    
-                    if has_range_descriptors {
-                        // Range descriptors need to be wrapped in wsh() for the miniscript library to parse them as descriptors
-                        console_log!("Found {} descriptors with ranges, wrapping in wsh() for descriptor parsing", descriptors.len());
-                        format!("wsh({})", trimmed)
+                Ok(descriptors) => {
+                    if descriptors.is_empty() {
+                        console_log!("No descriptors found, using original expression");
+                        trimmed.to_string()
                     } else {
-                        console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
-                        match replace_descriptors_with_keys(trimmed, &descriptors) {
-                            Ok(processed) => {
-                                console_log!("Successfully replaced descriptors with keys");
-                                processed
-                            },
-                            Err(e) => {
-                                console_log!("Failed to replace descriptors: {}", e);
-                                return Err(format!("Descriptor processing failed: {}", e));
+                        // Check if any descriptors have ranges (wildcards)
+                        let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
+                        
+                        if has_range_descriptors {
+                            // Range descriptors need to be wrapped in wsh() for the miniscript library to parse them as descriptors
+                            console_log!("Found {} descriptors with ranges, wrapping in wsh() for descriptor parsing", descriptors.len());
+                            format!("wsh({})", trimmed)
+                        } else {
+                            console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
+                            match replace_descriptors_with_keys(trimmed, &descriptors) {
+                                Ok(processed) => {
+                                    console_log!("Successfully replaced descriptors with keys");
+                                    processed
+                                },
+                                Err(e) => {
+                                    console_log!("Failed to replace descriptors: {}", e);
+                                    return Err(format!("Descriptor processing failed: {}", e));
+                                }
                             }
                         }
                     }
+                },
+                Err(e) => {
+                    console_log!("Failed to parse descriptors: {}", e);
+                    return Err(format!("Descriptor parsing failed: {}", e));
                 }
-            },
-            Err(e) => {
-                console_log!("Failed to parse descriptors: {}", e);
-                return Err(format!("Descriptor parsing failed: {}", e));
             }
-        }
     } else {
         trimmed.to_string()
     };
@@ -832,8 +832,105 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
     
     console_log!("Processing policy directly: {}", trimmed);
     
-    // First try parsing with DescriptorPublicKey to support xpub descriptors
-    match trimmed.parse::<Concrete<DescriptorPublicKey>>() {
+    // Check if policy contains descriptor keys
+    let processed_policy = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[") {
+        console_log!("Detected descriptor keys in policy, checking for ranges...");
+        
+        // For policies, check for range patterns directly instead of using parse_descriptors
+        let has_range_descriptors = trimmed.contains("/*") || trimmed.contains("/<") && trimmed.contains(">/*");
+        
+        if has_range_descriptors {
+            // For range descriptors in policy, we need to compile the policy to miniscript first
+            console_log!("Found range descriptors in policy, compiling to miniscript");
+            
+            // Parse the original policy with descriptor keys (not wrapped with wsh)
+            match trimmed.parse::<Concrete<DescriptorPublicKey>>() {
+                            Ok(descriptor_policy) => {
+                                // Try to compile the policy to miniscript based on context
+                                let miniscript_result = match context {
+                                    "legacy" => descriptor_policy.compile::<Legacy>().map(|ms| ms.to_string()),
+                                    "taproot" => descriptor_policy.compile::<Tap>().map(|ms| ms.to_string()),
+                                    _ => descriptor_policy.compile::<Segwitv0>().map(|ms| ms.to_string()),
+                                };
+                                
+                                match miniscript_result {
+                                    Ok(compiled_miniscript) => {
+                                        // Now validate the resulting descriptor
+                                        let test_descriptor = format!("wsh({})", compiled_miniscript);
+                                        match test_descriptor.parse::<Descriptor<DescriptorPublicKey>>() {
+                                            Ok(_) => {
+                                                console_log!("Valid range descriptor compiled to: {}, now processing as descriptor", compiled_miniscript);
+                                                // Instead of returning here, continue with descriptor processing
+                                                // by calling compile_expression with the wrapped descriptor
+                                                match compile_expression(&test_descriptor, context) {
+                                                    Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+                                                        return Ok((
+                                                            normalized_miniscript.unwrap_or(script), // Put "Valid descriptor: ..." in script field for success message
+                                                            script_asm,
+                                                            address,
+                                                            script_size,
+                                                            ms_type,
+                                                            compiled_miniscript, // Put clean miniscript in compiled_miniscript for editor
+                                                            max_satisfaction_size,
+                                                            max_weight_to_satisfy,
+                                                            sanity_check,
+                                                            is_non_malleable
+                                                        ));
+                                                    },
+                                                    Err(e) => return Err(e)
+                                                }
+                                            },
+                                            Err(e) => {
+                                                console_log!("Invalid compiled descriptor: {}", e);
+                                                return Err(format!("Invalid descriptor: {}", e));
+                                            }
+                                        }
+                                    },
+                                    Err(e) => {
+                                        console_log!("Failed to compile policy with range descriptors: {}", e);
+                                        return Err(format!("Failed to compile policy: {}", e));
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                console_log!("Failed to parse policy with descriptors: {}", e);
+                                return Err(format!("Invalid policy with descriptors: {}", e));
+                            }
+                        }
+                    } else {
+                        // For non-range descriptors, use the original parse_descriptors approach
+                        console_log!("Policy has descriptor keys but no ranges, parsing descriptors...");
+                        match parse_descriptors(trimmed) {
+                            Ok(descriptors) => {
+                                if descriptors.is_empty() {
+                                    console_log!("No descriptors found, using original policy");
+                                    trimmed.to_string()
+                                } else {
+                                    console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
+                                    match replace_descriptors_with_keys(trimmed, &descriptors) {
+                                        Ok(processed) => {
+                                            console_log!("Successfully replaced descriptors with keys in policy");
+                                            processed
+                                        },
+                                        Err(e) => {
+                                            console_log!("Failed to replace descriptors: {}", e);
+                                            return Err(format!("Descriptor processing failed: {}", e));
+                                        }
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                console_log!("Failed to parse descriptors in policy: {}", e);
+                                return Err(format!("Descriptor parsing failed: {}", e));
+                            }
+                        }
+                    }
+    } else {
+        trimmed.to_string()
+    };
+    
+    // First try parsing with DescriptorPublicKey to support xpub descriptors  
+    match processed_policy.parse::<Concrete<DescriptorPublicKey>>() {
         Ok(descriptor_policy) => {
             // Translate DescriptorPublicKey to PublicKey using our translator
             let mut translator = DescriptorKeyTranslator::new();
