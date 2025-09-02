@@ -674,32 +674,123 @@ fn compile_expression(expression: &str, context: &str) -> Result<(String, String
     // Check if this is a descriptor (starts with wsh, sh, wpkh)
     // Note: pkh() is not included here because it's commonly used as a miniscript function
     if processed_expr.starts_with("wsh(") || processed_expr.starts_with("sh(") || processed_expr.starts_with("wpkh(") {
-        console_log!("Detected descriptor format, parsing as descriptor");
+        console_log!("Detected descriptor format, extracting inner miniscript for proper validation");
         
-        // Parse as descriptor
-        match Descriptor::<DescriptorPublicKey>::from_str(&processed_expr) {
-            Ok(descriptor) => {
-                // For now, just validate that it parses correctly
-                // In a real implementation, you might want to extract more info
-                let desc_str = descriptor.to_string();
-                console_log!("Successfully parsed descriptor: {}", desc_str);
-                
-                // Return a success result indicating this is a valid descriptor
-                return Ok((
-                    "No single script - this descriptor defines multiple paths".to_string(), // Message for hex field
-                    "No single script - this descriptor defines multiple paths".to_string(), // Message for ASM field
-                    None, // No address for range descriptors
-                    0,
-                    "Descriptor".to_string(),
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(format!("Valid descriptor: {}", desc_str))
-                ));
+        // Extract the inner miniscript from wsh() wrapper for proper parsing
+        let inner_miniscript = if processed_expr.starts_with("wsh(") && processed_expr.ends_with(")") {
+            &processed_expr[4..processed_expr.len()-1] // Remove "wsh(" and ")"
+        } else {
+            // For other descriptor types, parse as full descriptor for now
+            match Descriptor::<DescriptorPublicKey>::from_str(&processed_expr) {
+                Ok(descriptor) => {
+                    let desc_str = descriptor.to_string();
+                    console_log!("Successfully parsed non-wsh descriptor: {}", desc_str);
+                    
+                    return Ok((
+                        "No single script - this descriptor defines multiple paths".to_string(),
+                        "No single script - this descriptor defines multiple paths".to_string(),
+                        None,
+                        0,
+                        "Descriptor".to_string(),
+                        None,
+                        None,
+                        None,
+                        None,
+                        Some(format!("Valid descriptor: {}", desc_str))
+                    ));
+                },
+                Err(e) => return Err(format!("Descriptor parsing failed: {}", e))
             }
-            Err(e) => {
-                return Err(format!("Descriptor parsing failed: {}", e));
+        };
+        
+        console_log!("Parsing inner miniscript with proper validation: {}", inner_miniscript);
+        
+        // Parse the inner miniscript using proper miniscript parser based on context
+        match context {
+            "legacy" => {
+                match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Legacy>>() {
+                    Ok(ms) => {
+                        // Successfully parsed, now create full descriptor for final validation
+                        let full_descriptor = format!("wsh({})", ms);
+                        match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
+                            Ok(descriptor) => {
+                                let desc_str = descriptor.to_string();
+                                console_log!("Successfully validated miniscript and created descriptor: {}", desc_str);
+                                
+                                return Ok((
+                                    "No single script - this descriptor defines multiple paths".to_string(),
+                                    "No single script - this descriptor defines multiple paths".to_string(),
+                                    None,
+                                    0,
+                                    "Descriptor".to_string(),
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    Some(format!("Valid descriptor: {}", desc_str))
+                                ));
+                            },
+                            Err(e) => return Err(format!("Descriptor validation failed: {}", e))
+                        }
+                    },
+                    Err(e) => return Err(format!("Miniscript parsing failed: {}", e))
+                }
+            },
+            "taproot" => {
+                match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Tap>>() {
+                    Ok(ms) => {
+                        let full_descriptor = format!("wsh({})", ms);
+                        match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
+                            Ok(descriptor) => {
+                                let desc_str = descriptor.to_string();
+                                console_log!("Successfully validated miniscript and created descriptor: {}", desc_str);
+                                
+                                return Ok((
+                                    "No single script - this descriptor defines multiple paths".to_string(),
+                                    "No single script - this descriptor defines multiple paths".to_string(),
+                                    None,
+                                    0,
+                                    "Descriptor".to_string(),
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    Some(format!("Valid descriptor: {}", desc_str))
+                                ));
+                            },
+                            Err(e) => return Err(format!("Descriptor validation failed: {}", e))
+                        }
+                    },
+                    Err(e) => return Err(format!("Miniscript parsing failed: {}", e))
+                }
+            },
+            _ => { // segwit default
+                match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Segwitv0>>() {
+                    Ok(ms) => {
+                        let full_descriptor = format!("wsh({})", ms);
+                        match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
+                            Ok(descriptor) => {
+                                let desc_str = descriptor.to_string();
+                                console_log!("Successfully validated miniscript and created descriptor: {}", desc_str);
+                                
+                                return Ok((
+                                    "No single script - this descriptor defines multiple paths".to_string(),
+                                    "No single script - this descriptor defines multiple paths".to_string(),
+                                    None,
+                                    0,
+                                    "Descriptor".to_string(),
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    Some(format!("Valid descriptor: {}", desc_str))
+                                ));
+                            },
+                            Err(e) => return Err(format!("Descriptor validation failed: {}", e))
+                        }
+                    },
+                    Err(e) => return Err(format!("Miniscript parsing failed: {}", e))
+                }
             }
         }
     }
