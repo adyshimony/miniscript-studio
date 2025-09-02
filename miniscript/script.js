@@ -829,7 +829,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -847,7 +847,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -1801,11 +1801,26 @@ class MiniscriptCompiler {
         this.keyVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
         this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<1;0>/*');
         
-        // Vault keys for complex multi-signature examples
-        this.keyVariables.set('VaultKey1', '[7FBA5C83/48h/1h/123h/2h]tpubDCc4tcSBvj2WMGmeV5YePFJNYBaPwb5VWq3cG4KnGamVmFncD9Pai7RyCdCvZLmwizodR5DkKf5CsjyxQ2yXd77FBubErc142mYVu3AasqJ/<6;7>/*');
-        this.keyVariables.set('VaultKey2', '[CB6FE460/48h/1h/123h/2h]tpubDDUa4VEMvBzGPR5V6PKLGtApaVPqFBTGbr2NH2YgPF8G24EP6kqYhA7GBdGL8pAAyW97qeidMHJbeuVAfL5Th8z8CCLgs427P9nJYWC4C2j/<12;13>/*');
-        this.keyVariables.set('VaultKey3', '[9F996716/48h/1h/0h/2h]tpubDC8ne3Amvh6dPrBtkLb9H1CutNTmvYi4jKnt3bDFMXAkPB8bdGZMWtJAiGUPSkpqi49XWR16q7ZvcKfepcgApuYH1vqq72oNpyxE2gNqBod/<16;17>/*');
-        this.keyVariables.set('VaultKey4', '[0A4E923E/48h/1h/123h/2h]tpubDCQwZ5SRgzsiqpzkZjVsjLij3XnE4woshJPnUQDoU6Wc9NVy2zFMApMGftBwCe3t5UnGmqbL69EUu9P9ydZrwi2gEzxbYEQv16qiCzaujdB/<16;17>/*');
+        // Vault keys for complex vault examples with range descriptors
+        this.keyVariables.set('VaultKey1', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<10;11>/*');
+        this.keyVariables.set('VaultKey2', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<8;9>/*');
+        this.keyVariables.set('VaultKey3', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<6;7>/*');
+        this.keyVariables.set('VaultKey4', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<6;7>/*');
+        this.keyVariables.set('VaultKey5', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<4;5>/*');
+        this.keyVariables.set('VaultKey6', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<12;13>/*');
+        this.keyVariables.set('VaultKey7', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<10;11>/*');
+        this.keyVariables.set('VaultKey8', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<8;9>/*');
+        this.keyVariables.set('VaultKey9', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<6;7>/*');
+        this.keyVariables.set('VaultKey10', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<16;17>/*');
+        this.keyVariables.set('VaultKey11', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<14;15>/*');
+        this.keyVariables.set('VaultKey12', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<12;13>/*');
+        this.keyVariables.set('VaultKey13', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<10;11>/*');
+        this.keyVariables.set('VaultKey14', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<8;9>/*');
+        this.keyVariables.set('VaultKey15', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<16;17>/*');
+        this.keyVariables.set('VaultKey16', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<14;15>/*');
+        this.keyVariables.set('VaultKey17', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<12;13>/*');
+        this.keyVariables.set('VaultKey18', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<10;11>/*');
+        this.keyVariables.set('VaultKey19', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<8;9>/*');
         
         // Joint custody keys for 3-key joint custody example
         this.keyVariables.set('jcKey1', '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556');
@@ -1833,7 +1848,7 @@ class MiniscriptCompiler {
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 41 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKeys), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
+        if (confirm('This will restore 56 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKey1-19), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -2142,7 +2157,7 @@ class MiniscriptCompiler {
         } else if (keyValue.length === 66 && (keyValue.startsWith('02') || keyValue.startsWith('03'))) {
             prefix = 'Key';
         } else if (keyValue.includes('[') && keyValue.includes(']')) {
-            prefix = 'DescriptorKey';
+            prefix = 'VaultKey';
         }
         
         // Find a unique name
@@ -3661,7 +3676,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -3679,7 +3694,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -3818,7 +3833,7 @@ class MiniscriptCompiler {
                 // Check if it's a simple key function that should be inline
                 if ((tree.child.name === 'pk_k' || tree.child.name === 'pk_h' || tree.child.name === 'pk' || tree.child.name === 'pkh') 
                     && tree.child.args && tree.child.args.length === 1 && tree.child.args[0].type === 'terminal') {
-                    // Format inline: a: pkh(VaultKey4)
+                    // Format inline: a: pkh(VaultKey19)
                     return `${wrappers} ${tree.child.name}(${tree.child.args[0].value})`;
                 }
                 
@@ -5630,11 +5645,11 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
         },
         'vault_complex': {
-            title: '🏦 Enterprise Multi-Tier Vault System',
-            structure: 'Nested or_i structure: 5 spending paths from most secure (immediate) to most accessible (14-day delay)',
-            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 (immediate) → 📅 Tier 1: VaultKey3 OR 2-of-3 keys (after 1 day) → 📅 Tier 2: VaultKey4 OR 2-of-3 keys (after 3 days) → 📅 Tier 3: VaultKey2 OR 2-of-5 keys (after 7 days) → 📅 Final: VaultKey1 OR TestnetKey (after 14 days)',
-            useCase: 'Corporate treasury with graduated security model. Immediate access requires 2 directors (VaultKey3+VaultKey4). As time passes, recovery becomes easier but requires waiting longer. Perfect for balancing security vs. accessibility in enterprise custody.',
-            technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering from most to least secure.'
+            title: '🏦 Enterprise Multi-Tier Vault System with Range Descriptors',
+            structure: 'Nested or_i structure: 5 spending paths from most secure (immediate) to most accessible (2-day delay)',
+            bitcoinScript: '🚨 Emergency: VaultKey14+VaultKey19 (immediate) → 📅 Tier 1: VaultKey12 OR 2-of-3 keys (after 2 hours) → 📅 Tier 2: VaultKey16 OR 2-of-3 keys (after 4 hours) → 📅 Tier 3: VaultKey6 OR 2-of-5 keys (after 1 day) → 📅 Final: VaultKey1 OR VaultKey4 (after 2 days)',
+            useCase: 'Advanced corporate treasury using range descriptors with graduated security model. Immediate access requires 2 executive keys (VaultKey14+VaultKey19). As time passes, recovery becomes easier but requires waiting longer. Each key uses range descriptors (/<10;11>/*) enabling multiple receive addresses while maintaining spending conditions. Perfect for balancing security vs. accessibility in enterprise custody with HD wallet support.',
+            technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering. Range descriptors allow each spending path to support multiple addresses from the same keys, enabling better privacy and address management without changing the security model.'
         },
         'joint_custody': {
             title: '🔐 3-Key Joint Custody: Negative Control System',
@@ -6065,11 +6080,11 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Uses CLTV (CheckLockTimeVerify) for absolute time constraints'
         },
         'vault_complex': {
-            title: '🏦 Enterprise Multi-Tier Vault System',
-            structure: 'Nested or_i structure: 5 spending paths from most secure (immediate) to most accessible (14-day delay)',
-            bitcoinScript: '🚨 Emergency: VaultKey3+VaultKey4 (immediate) → 📅 Tier 1: VaultKey3 OR 2-of-3 keys (after 1 day) → 📅 Tier 2: VaultKey4 OR 2-of-3 keys (after 3 days) → 📅 Tier 3: VaultKey2 OR 2-of-5 keys (after 7 days) → 📅 Final: VaultKey1 OR TestnetKey (after 14 days)',
-            useCase: 'Corporate treasury with graduated security model. Immediate access requires 2 directors (VaultKey3+VaultKey4). As time passes, recovery becomes easier but requires waiting longer. Perfect for balancing security vs. accessibility in enterprise custody.',
-            technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering from most to least secure.'
+            title: '🏦 Enterprise Multi-Tier Vault System with Range Descriptors',
+            structure: 'Nested or_i structure: 5 spending paths from most secure (immediate) to most accessible (2-day delay)',
+            bitcoinScript: '🚨 Emergency: VaultKey14+VaultKey19 (immediate) → 📅 Tier 1: VaultKey12 OR 2-of-3 keys (after 2 hours) → 📅 Tier 2: VaultKey16 OR 2-of-3 keys (after 4 hours) → 📅 Tier 3: VaultKey6 OR 2-of-5 keys (after 1 day) → 📅 Final: VaultKey1 OR VaultKey4 (after 2 days)',
+            useCase: 'Advanced corporate treasury using range descriptors with graduated security model. Immediate access requires 2 executive keys (VaultKey14+VaultKey19). As time passes, recovery becomes easier but requires waiting longer. Each key uses range descriptors (/<10;11>/*) enabling multiple receive addresses while maintaining spending conditions. Perfect for balancing security vs. accessibility in enterprise custody with HD wallet support.',
+            technical: '💡 Why or_i for vault design: Each or_i branch represents a different security/time tradeoff. Spender chooses which path to execute - immediate high security or delayed lower security. The nested structure creates 5 distinct spending conditions with clear priority ordering. Range descriptors allow each spending path to support multiple addresses from the same keys, enabling better privacy and address management without changing the security model.'
         },
         'joint_custody': {
             title: '🔐 3-Key Joint Custody: Negative Control System',
@@ -7004,7 +7019,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 },
                 'miniscript-vault_complex': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('vault_complex');
-                    if (window.loadExample) window.loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(TestnetKey)),after(1768435200)),and_v(or_c(pkh(VaultKey2),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2),a:pkh(TestnetKey),a:pkh(VaultKey1))),after(1767830400))),and_v(or_c(pkh(VaultKey4),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2),a:pkh(TestnetKey))),after(1767484800))),and_v(or_c(pkh(VaultKey3),v:thresh(2,pkh(VaultKey3),a:pkh(VaultKey4),a:pkh(VaultKey2))),after(1767312000))),and_v(v:pk(VaultKey3),pk(VaultKey4)))', 'vault_complex');
+                    if (window.loadExample) window.loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(VaultKey4)),after(1753305229)),and_v(or_c(pkh(VaultKey6),v:thresh(2,pkh(VaultKey10),a:pkh(VaultKey15),a:pkh(VaultKey7),a:pkh(VaultKey2),a:pkh(VaultKey5))),after(1753298029))),and_v(or_c(pkh(VaultKey16),v:thresh(2,pkh(VaultKey11),a:pkh(VaultKey17),a:pkh(VaultKey8),a:pkh(VaultKey3))),after(1753290829))),and_v(or_c(pkh(VaultKey12),v:thresh(2,pkh(VaultKey13),a:pkh(VaultKey18),a:pkh(VaultKey9))),after(1753283629))),and_v(v:pk(VaultKey14),pk(VaultKey19)))', 'vault_complex');
                 }
             };
             
