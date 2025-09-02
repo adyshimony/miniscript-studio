@@ -1111,7 +1111,7 @@
                         <button onclick="showMiniscriptDescription('pkh'); loadExample('pkh(Alice)', 'pkh')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Pay-to-pubkey-hash</button>
                         <button onclick="showMiniscriptDescription('wrap'); loadExample('c:pk_k(Alice)', 'wrap')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Wrapped key</button>
                         <button onclick="showMiniscriptDescription('or_i'); loadExample('or_i(pk(Alice),pk(Bob))', 'or_i')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR with if-else</button>
-                        <button onclick="showMiniscriptDescription('complex'); loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))', 'complex')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Complex: Alice AND (Bob OR Charlie)</button>
+                        <button onclick="showMiniscriptDescription('complex'); loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))', 'complex')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice AND (Bob OR Charlie)</button>
                         <button onclick="showMiniscriptDescription('timelock'); loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))', 'timelock')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
                         <button onclick="showMiniscriptDescription('after'); loadExample('and_v(v:pk(Alice),after(1767225600))', 'after')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Absolute timelock</button>
                     </div>
@@ -2294,7 +2294,7 @@
                     technical: '💡 s: wrapper swaps stack elements for proper evaluation'
                 },
                 'complex': {
-                    title: '⚙️ Complex AND/OR: Why and_v + or_b + Wrappers',
+                    title: '⚙️ AND/OR: Why and_v + or_b + Wrappers',
                     structure: 'and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie))) → Alice AND (Bob OR Charlie)',
                     bitcoinScript: '<Alice> CHECKSIGVERIFY <Bob> CHECKSIG SWAP <Charlie> CHECKSIG BOOLOR',
                     useCase: 'Alice must always sign, plus either Bob or Charlie. Demonstrates wrapper logic: v: for VERIFY, s: for stack SWAP.',

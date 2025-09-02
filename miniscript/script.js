@@ -5533,7 +5533,7 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 s: wrapper swaps stack elements for proper evaluation'
         },
         'complex': {
-            title: '⚙️ Complex AND/OR: Why and_v + or_b + Wrappers',
+            title: '⚙️ AND/OR: Why and_v + or_b + Wrappers',
             structure: 'and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie))) → Alice AND (Bob OR Charlie)',
             bitcoinScript: '<Alice> CHECKSIGVERIFY <Bob> CHECKSIG SWAP <Charlie> CHECKSIG BOOLOR',
             useCase: 'Alice must always sign, plus either Bob or Charlie. Demonstrates wrapper logic: v: for VERIFY, s: for stack SWAP.',
@@ -5968,7 +5968,7 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 s: wrapper swaps stack elements for proper evaluation'
         },
         'complex': {
-            title: '⚙️ Complex AND/OR: Why and_v + or_b + Wrappers',
+            title: '⚙️ AND/OR: Why and_v + or_b + Wrappers',
             structure: 'and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie))) → Alice AND (Bob OR Charlie)',
             bitcoinScript: '<Alice> CHECKSIGVERIFY <Bob> CHECKSIG SWAP <Charlie> CHECKSIG BOOLOR',
             useCase: 'Alice must always sign, plus either Bob or Charlie. Demonstrates wrapper logic: v: for VERIFY, s: for stack SWAP.',
