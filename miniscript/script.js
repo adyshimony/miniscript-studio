@@ -719,6 +719,8 @@ class MiniscriptCompiler {
                 if (isDescriptorValidation && result.script && result.script.startsWith('Valid descriptor:')) {
                     // For descriptor validation from policy, build the message using compiled miniscript from editor
                     successMsg = `Valid descriptor: wsh(${displayMiniscript})`;
+                    // Fix the script field for results display - should show "No single script..." not validation message
+                    result.script = "No single script - this descriptor defines multiple paths";
                 } else {
                     // Show normal compilation success message with spending cost analysis format
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
