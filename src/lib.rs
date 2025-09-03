@@ -270,9 +270,9 @@ struct DescriptorPatterns {
 /// Create regex patterns for descriptor parsing
 fn create_descriptor_regex_patterns() -> Result<DescriptorPatterns, String> {
     Ok(DescriptorPatterns {
-        full_descriptor: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+        full_descriptor: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/(?:\*|[0-9]+)")
             .map_err(|e| format!("Full descriptor regex error: {}", e))?,
-        bare_extended: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+        bare_extended: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/(?:\*|[0-9]+)")
             .map_err(|e| format!("Bare extended regex error: {}", e))?,
         single_deriv: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
             .map_err(|e| format!("Single derivation regex error: {}", e))?,
@@ -991,7 +991,8 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
         console_log!("Detected descriptor keys in policy, checking for ranges...");
         
         // For policies, check for range patterns directly instead of using parse_descriptors
-        let has_range_descriptors = trimmed.contains("/*") || trimmed.contains("/<") && trimmed.contains(">/*");
+        // Match both /*  and /<0;1>/* and /<0;1>/1 patterns
+        let has_range_descriptors = trimmed.contains("/*") || (trimmed.contains("/<") && trimmed.contains(">/"));
         
         if has_range_descriptors {
             // For range descriptors in policy, we need to compile the policy to miniscript first
