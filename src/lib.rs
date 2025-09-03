@@ -1,480 +1,503 @@
+//! Bitcoin Miniscript Compiler
+//! 
+//! This library provides WebAssembly bindings for compiling Bitcoin policies and miniscripts,
+//! lifting Bitcoin scripts back to miniscript/policy representations, and generating addresses.
+
+// Module declarations
+mod types;
+mod translators;
+mod opcodes;
+mod utils;
+
+// Re-exports from modules
+use types::{CompilationResult, LiftResult, AddressResult, DescriptorInfo, ParsedDescriptor};
+use translators::{DescriptorKeyTranslator, XOnlyKeyTranslator, PublicKeyToXOnlyTranslator};
+use opcodes::{OPCODE_MAP, parse_asm_to_script};
+
+// External crate imports
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey, ScriptContext};
 use miniscript::policy::Liftable;
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf};
 use bitcoin::blockdata::script::{Builder, PushBytesBuf};
-use bitcoin::blockdata::opcodes;
-// use bitcoin::opcodes::Opcode; // Commented out - not needed after fixing parse_asm_to_script
+use bitcoin::blockdata::opcodes::all;
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
 use std::str::FromStr;
 use std::collections::HashMap;
+use lazy_static::lazy_static;
 
-#[derive(Serialize, Deserialize)]
-pub struct CompilationResult {
-    pub success: bool,
-    pub error: Option<String>,
-    pub script: Option<String>,
-    pub script_asm: Option<String>,
-    pub address: Option<String>,
-    pub script_size: Option<usize>,
-    pub miniscript_type: Option<String>,
-    pub compiled_miniscript: Option<String>,
-    pub max_satisfaction_size: Option<usize>,
-    pub max_weight_to_satisfy: Option<u64>,
-    pub sanity_check: Option<bool>,
-    pub is_non_malleable: Option<bool>,
-}
 
-#[derive(Debug, Clone)]
-struct DescriptorInfo {
-    #[allow(dead_code)]
-    fingerprint: Fingerprint,
-    #[allow(dead_code)]
-    derivation_path: DerivationPath,
-    xpub: Xpub,
-    child_paths: Vec<u32>, // For <m;n> ranges
-    #[allow(dead_code)]
-    is_wildcard: bool,     // For /* endings
-}
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-#[derive(Debug, Clone)]
-struct ParsedDescriptor {
-    #[allow(dead_code)]
-    original: String,
-    info: DescriptorInfo,
-}
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-}
-
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
-
-// Translator for converting DescriptorPublicKey to PublicKey
-struct DescriptorKeyTranslator {
-    secp: Secp256k1<bitcoin::secp256k1::VerifyOnly>,
-}
-
-impl DescriptorKeyTranslator {
-    fn new() -> Self {
-        Self {
-            secp: Secp256k1::verification_only(),
-        }
+/// Detect the Bitcoin network based on key types in the expression
+fn detect_network(expression: &str) -> Network {
+    if expression.contains("tpub") {
+        Network::Testnet
+    } else {
+        Network::Bitcoin
     }
 }
 
-impl Translator<DescriptorPublicKey, PublicKey, ()> for DescriptorKeyTranslator {
-    fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<PublicKey, ()> {
-        // Derive the key at index 0 to get a concrete key
-        match pk.clone().at_derivation_index(0) {
-            Ok(definite_key) => Ok(definite_key.to_public_key()),
-            Err(_) => Err(())
+/// Check if expression needs descriptor processing
+fn needs_descriptor_processing(expression: &str) -> bool {
+    let trimmed = expression.trim();
+    (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[")) 
+        && !trimmed.starts_with("wsh(") 
+        && !trimmed.starts_with("sh(") 
+        && !trimmed.starts_with("wpkh(")
+}
+
+/// Check if expression is a descriptor wrapper
+fn is_descriptor_wrapper(expression: &str) -> bool {
+    expression.starts_with("wsh(") || expression.starts_with("sh(") || expression.starts_with("wpkh(")
+}
+
+/// Extract the first x-only key from a miniscript string
+fn extract_xonly_key_from_miniscript(miniscript: &str) -> Option<XOnlyPublicKey> {
+    // Use regex to find all 64-character hex strings (x-only keys)
+    let key_regex = regex::Regex::new(r"\b[a-fA-F0-9]{64}\b").ok()?;
+    
+    for cap in key_regex.captures_iter(miniscript) {
+        if let Some(key_match) = cap.get(0) {
+            let key_str = key_match.as_str();
+            if let Ok(key_bytes) = hex::decode(key_str) {
+                if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                    console_log!("Found x-only key for Taproot address: {}", key_str);
+                    return Some(xonly_key);
+                }
+            }
         }
     }
     
-    // Implement hash functions to pass through unchanged
-    fn sha256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Sha256) -> Result<<PublicKey as miniscript::MiniscriptKey>::Sha256, ()> {
-        Ok(*hash)
-    }
-
-    fn hash256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash256) -> Result<<PublicKey as miniscript::MiniscriptKey>::Hash256, ()> {
-        Ok(*hash)
-    }
-
-    fn ripemd160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Ripemd160) -> Result<<PublicKey as miniscript::MiniscriptKey>::Ripemd160, ()> {
-        Ok(*hash)
-    }
-
-    fn hash160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash160) -> Result<<PublicKey as miniscript::MiniscriptKey>::Hash160, ()> {
-        Ok(*hash)
-    }
+    console_log!("No valid x-only key found in miniscript");
+    None
 }
 
-// Translator for converting DescriptorPublicKey to XOnlyPublicKey (for Taproot)
-struct XOnlyKeyTranslator {
-    secp: Secp256k1<bitcoin::secp256k1::VerifyOnly>,
+/// Get the Taproot NUMS (Nothing Up My Sleeve) point for unspendable key-path
+fn get_taproot_nums_point() -> XOnlyPublicKey {
+    // Standard NUMS point used in Taproot when key-path spending should be disabled
+    const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+    
+    let nums_bytes = hex::decode(NUMS_POINT).expect("Valid NUMS hex");
+    XOnlyPublicKey::from_slice(&nums_bytes).expect("Valid NUMS point")
 }
 
-impl XOnlyKeyTranslator {
-    fn new() -> Self {
-        Self {
-            secp: Secp256k1::verification_only(),
-        }
-    }
-}
-
-impl Translator<DescriptorPublicKey, XOnlyPublicKey, ()> for XOnlyKeyTranslator {
-    fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<XOnlyPublicKey, ()> {
-        // Derive the key at index 0 to get a concrete key, then convert to X-only
-        match pk.clone().at_derivation_index(0) {
-            Ok(definite_key) => {
-                let full_pk = definite_key.to_public_key();
-                Ok(XOnlyPublicKey::from(full_pk))
-            },
-            Err(_) => Err(())
+/// Determine the internal key for Taproot address generation
+/// For pk(key) uses the key itself, for everything else uses NUMS
+fn get_taproot_internal_key(miniscript_str: &str) -> XOnlyPublicKey {
+    // Check if this is a simple pk(key) miniscript
+    if miniscript_str.starts_with("pk(") && miniscript_str.ends_with(")") {
+        // Extract the key from pk(key)
+        let key_part = &miniscript_str[3..miniscript_str.len()-1];
+        if let Ok(key_bytes) = hex::decode(key_part) {
+            if key_bytes.len() == 32 {
+                if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                    console_log!("Using pk() key as internal key: {}", key_part);
+                    return xonly_key;
+                }
+            }
         }
     }
     
-    // Implement hash functions to pass through unchanged
-    fn sha256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Sha256) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Sha256, ()> {
-        Ok(*hash)
-    }
+    // For all other miniscripts, use NUMS point
+    console_log!("Using NUMS point as internal key (script-path only)");
+    get_taproot_nums_point()
+}
 
-    fn hash256(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash256) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Hash256, ()> {
-        Ok(*hash)
+/// Extract x-only key from script hex (for Taproot address generation)
+fn extract_xonly_key_from_script_hex(script_hex: &str) -> Option<XOnlyPublicKey> {
+    // Look for 32-byte key pushes in the script hex
+    // Pattern: 20 (OP_PUSHBYTES_32) followed by 64 hex chars (32 bytes)
+    let key_regex = regex::Regex::new(r"20([a-fA-F0-9]{64})").ok()?;
+    
+    for cap in key_regex.captures_iter(script_hex) {
+        if let Some(key_match) = cap.get(1) {  // Group 1 is the key without the 20 prefix
+            let key_str = key_match.as_str();
+            if let Ok(key_bytes) = hex::decode(key_str) {
+                if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                    console_log!("Found x-only key in script hex: {}", key_str);
+                    return Some(xonly_key);
+                }
+            }
+        }
     }
+    
+    console_log!("No valid x-only key found in script hex");
+    None
+}
 
-    fn ripemd160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Ripemd160) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Ripemd160, ()> {
-        Ok(*hash)
+/// Generate a Taproot address with a specific internal key and script
+fn generate_taproot_address_with_key(script: &bitcoin::Script, internal_key: XOnlyPublicKey, network: Network) -> Option<String> {
+    use bitcoin::taproot::TaprootBuilder;
+    
+    // For simple pk(key), just use key-path only
+    let script_bytes = script.as_bytes();
+    if script_bytes.len() == 34 && script_bytes[0] == 0x20 && script_bytes[33] == 0xac {
+        // This is a simple pk() script (32-byte key push + OP_CHECKSIG)
+        return Some(Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network).to_string());
     }
-
-    fn hash160(&mut self, hash: &<DescriptorPublicKey as miniscript::MiniscriptKey>::Hash160) -> Result<<XOnlyPublicKey as miniscript::MiniscriptKey>::Hash160, ()> {
-        Ok(*hash)
+    
+    // For complex scripts, create a taproot tree with the script
+    match TaprootBuilder::new()
+        .add_leaf(0, script.to_owned())
+        .map(|builder| builder.finalize(&Secp256k1::verification_only(), internal_key))
+    {
+        Ok(Ok(spend_info)) => {
+            // Create the P2TR address with both key-path and script-path
+            let output_key = spend_info.output_key();
+            let address = Address::p2tr(&Secp256k1::verification_only(), output_key.to_x_only_public_key(), None, network);
+            Some(address.to_string())
+        },
+        _ => {
+            console_log!("Failed to create Taproot spend info");
+            None
+        }
     }
 }
 
-// Parse HD wallet descriptors from miniscript expressions
+/// Generate a Taproot address from a script (fallback for complex scripts)
+fn generate_taproot_address(_script: &bitcoin::Script, _network: Network) -> Option<String> {
+    // This is now only used as a fallback if no x-only key is found
+    console_log!("No x-only key found for Taproot address generation");
+    None
+}
+
+/// Generate a Taproot address using the descriptor approach (correct method)
+/// Uses tr(internal_key, taptree) descriptor to generate deterministic address
+fn generate_taproot_address_descriptor(
+    miniscript: &Miniscript<XOnlyPublicKey, Tap>,
+    internal_key: XOnlyPublicKey,
+    network: Network
+) -> Option<String> {
+    use miniscript::descriptor::TapTree;
+    use std::sync::Arc;
+    
+    console_log!("Generating Taproot address using descriptor approach");
+    console_log!("Internal key: {}", internal_key);
+    console_log!("Miniscript: {}", miniscript);
+    
+    // Create a TapTree with the miniscript as a leaf
+    let taptree = TapTree::Leaf(Arc::new(miniscript.clone()));
+    
+    // Build the tr() descriptor
+    match Descriptor::new_tr(internal_key, Some(taptree)) {
+        Ok(descriptor) => {
+            // Generate the address from the descriptor
+            match descriptor.address(network) {
+                Ok(address) => {
+                    console_log!("Successfully generated Taproot address: {}", address);
+                    Some(address.to_string())
+                },
+                Err(e) => {
+                    console_log!("Failed to generate address from descriptor: {}", e);
+                    None
+                }
+            }
+        },
+        Err(e) => {
+            console_log!("Failed to create tr() descriptor: {}", e);
+            None
+        }
+    }
+}
+
+/// OLD VERSION - Generate a Taproot address with a specific internal key and script
+/// Keeping this for rollback if needed
+fn generate_taproot_address_with_key_old(script: &bitcoin::Script, internal_key: XOnlyPublicKey, network: Network) -> Option<String> {
+    use bitcoin::taproot::TaprootBuilder;
+    
+    // For simple pk(key), just use key-path only
+    let script_bytes = script.as_bytes();
+    if script_bytes.len() == 34 && script_bytes[0] == 0x20 && script_bytes[33] == 0xac {
+        // This is a simple pk() script (32-byte key push + OP_CHECKSIG)
+        return Some(Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network).to_string());
+    }
+    
+    // For complex scripts, create a taproot tree with the script
+    match TaprootBuilder::new()
+        .add_leaf(0, script.to_owned())
+        .map(|builder| builder.finalize(&Secp256k1::verification_only(), internal_key))
+    {
+        Ok(Ok(spend_info)) => {
+            // Create the P2TR address with both key-path and script-path
+            let output_key = spend_info.output_key();
+            let address = Address::p2tr(&Secp256k1::verification_only(), output_key.to_x_only_public_key(), None, network);
+            Some(address.to_string())
+        },
+        _ => {
+            console_log!("Failed to create Taproot spend info");
+            None
+        }
+    }
+}
+
+// ============================================================================
+// Descriptor Parsing
+// ============================================================================
+
+/// Parse HD wallet descriptors from miniscript expressions
 fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescriptor>, String> {
     let mut descriptors = HashMap::new();
     
     console_log!("Parsing descriptors from expression of length: {}", expression.len());
     
-    // Regex patterns for different descriptor formats:
-    // 1. Full descriptor: [fingerprint/path]xpub/<range>/*
-    let full_descriptor_re = Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
-        .map_err(|e| format!("Full descriptor regex error: {}", e))?;
+    // Create regex patterns for different descriptor formats
+    let patterns = create_descriptor_regex_patterns()?;
     
-    // 2. Bare extended key with range: xpub/<range>/*
-    let bare_extended_re = Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
-        .map_err(|e| format!("Bare extended regex error: {}", e))?;
+    // Process each pattern type
+    process_full_descriptors(expression, &patterns.full_descriptor, &mut descriptors)?;
+    process_bare_extended_keys(expression, &patterns.bare_extended, &mut descriptors)?;
+    process_single_derivation_keys(expression, &patterns.single_deriv, &mut descriptors)?;
+    process_fixed_double_derivation(expression, &patterns.full_fixed_double, &patterns.fixed_double, &mut descriptors)?;
     
-    // 3. Extended key with single derivation: xpub/0/*
-    let single_deriv_re = Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
-        .map_err(|e| format!("Single derivation regex error: {}", e))?;
-    
-    // 4. Full descriptor with fixed double derivation: [fingerprint/path]xpub/0/0  
-    let full_fixed_double_deriv_re = Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
-        .map_err(|e| format!("Full fixed double derivation regex error: {}", e))?;
-    
-    // 5. Extended key with fixed double derivation: xpub/0/0
-    let fixed_double_deriv_re = Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
-        .map_err(|e| format!("Fixed double derivation regex error: {}", e))?;
-    
-    console_log!("All regex patterns created successfully");
-    console_log!("Expression to parse: '{}'", expression);
-    
-    // Process full descriptors first
-    for caps in full_descriptor_re.captures_iter(expression) {
-        let fingerprint_str = caps.get(1).unwrap().as_str();
-        let path_str = caps.get(2).unwrap().as_str();
-        let xpub_str = caps.get(3).unwrap().as_str();
-        let range_str = caps.get(4).map(|m| m.as_str()); // The <range> part
-        let wildcard = true; // Always true since our regex requires /*
-        
-        console_log!("Captured path_str: '{}' (len: {})", path_str, path_str.len());
-        console_log!("Captured range_str: {:?}", range_str);
-        console_log!("Path chars: {:?}", path_str.chars().collect::<Vec<_>>());
-        
-        // Parse fingerprint
-        let fingerprint_bytes = hex::decode(fingerprint_str)
-            .map_err(|e| format!("Invalid fingerprint hex: {}", e))?;
-        if fingerprint_bytes.len() != 4 {
-            return Err("Fingerprint must be 4 bytes".to_string());
-        }
-        let mut fp_array = [0u8; 4];
-        fp_array.copy_from_slice(&fingerprint_bytes);
-        let fingerprint = Fingerprint::from(fp_array);
-        
-        // Parse derivation path - convert 'h' suffix to "'" and add leading slash if missing
-        let mut normalized_path = if path_str.starts_with("/") {
-            path_str.to_string()
-        } else {
-            format!("m/{}", path_str)  // Try 'm/' prefix instead of just '/'
-        };
-        
-        // Convert 'h' hardened notation to "'" notation using regex
-        console_log!("Before regex replacement: '{}'", normalized_path);
-        let hardened_re = Regex::new(r"(\d+)h").unwrap();
-        let temp_result = hardened_re.replace_all(&normalized_path, "$1'");
-        normalized_path = temp_result.to_string();
-        console_log!("After regex replacement: '{}'", normalized_path);
-        
-        // Debug: print each character with its code
-        for (i, ch) in normalized_path.chars().enumerate() {
-            console_log!("Char {}: '{}' (code: {})", i, ch, ch as u32);
-        }
-        
-        console_log!("Original path: '{}', Normalized path: '{}'", path_str, normalized_path);
-        console_log!("Normalized path length: {}, ends with: '{}'", normalized_path.len(), normalized_path.chars().last().unwrap_or(' '));
-        
-        // Try parsing the derivation path with detailed error info
-        console_log!("Attempting to parse derivation path: '{}'", normalized_path);
-        let derivation_path = match DerivationPath::from_str(&normalized_path) {
-            Ok(path) => {
-                console_log!("Successfully parsed derivation path");
-                path
-            },
-            Err(e) => {
-                console_log!("Failed to parse derivation path '{}': {}", normalized_path, e);
-                return Err(format!("Invalid derivation path '{}': {}", normalized_path, e));
-            }
-        };
-        
-        // Parse extended public key
-        let xpub = Xpub::from_str(xpub_str)
-            .map_err(|e| format!("Invalid extended public key: {}", e))?;
-        
-        // Parse child paths from range like 10;11 (already without < >)
-        let child_paths = if let Some(range) = range_str {
-            console_log!("Parsing range: '{}'", range);
-            if range.contains(';') {
-                range.split(';')
-                    .map(|s| {
-                        console_log!("Parsing range component: '{}'", s.trim());
-                        s.trim().parse::<u32>()
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| format!("Invalid range numbers: {}", e))?
-            } else {
-                vec![range.trim().parse::<u32>()
-                    .map_err(|e| format!("Invalid range number: {}", e))?]
-            }
-        } else {
-            vec![]
-        };
-        
-        let descriptor_info = DescriptorInfo {
-            fingerprint,
-            derivation_path,
-            xpub,
-            child_paths,
-            is_wildcard: wildcard,
-        };
-        
-        // Get the full match including range and wildcard
-        let full_match = caps.get(0).unwrap().as_str();
-        let parsed_descriptor = ParsedDescriptor {
-            original: full_match.to_string(),
-            info: descriptor_info,
-        };
-        
-        console_log!("Full descriptor match: '{}'", full_match);
-        descriptors.insert(full_match.to_string(), parsed_descriptor);
-    }
-    
-    // Process bare extended keys with range: xpub/<range>/*
-    for caps in bare_extended_re.captures_iter(expression) {
-        let xpub_str = caps.get(1).unwrap().as_str();
-        let range_str = caps.get(2).map(|m| m.as_str()); // The range part
-        
-        console_log!("Processing bare extended key: '{}'", xpub_str);
-        console_log!("Range: '{:?}'", range_str);
-        
-        // Parse extended public key
-        let xpub = Xpub::from_str(xpub_str)
-            .map_err(|e| format!("Invalid extended public key: {}", e))?;
-        
-        // Parse child paths from range
-        let child_paths = if let Some(range) = range_str {
-            if range.contains(';') {
-                range.split(';')
-                    .map(|s| s.trim().parse::<u32>())
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| format!("Invalid range numbers: {}", e))?
-            } else {
-                vec![range.trim().parse::<u32>()
-                    .map_err(|e| format!("Invalid range number: {}", e))?]
-            }
-        } else {
-            vec![]
-        };
-        
-        // Create descriptor info with dummy fingerprint and path for bare keys
-        let dummy_fingerprint = Fingerprint::from([0u8; 4]);
-        let dummy_path = DerivationPath::from_str("m/0")
-            .map_err(|e| format!("Failed to create dummy path: {}", e))?;
-        
-        let descriptor_info = DescriptorInfo {
-            fingerprint: dummy_fingerprint,
-            derivation_path: dummy_path,
-            xpub,
-            child_paths,
-            is_wildcard: true,
-        };
-        
-        let full_match = caps.get(0).unwrap().as_str();
-        let parsed_descriptor = ParsedDescriptor {
-            original: full_match.to_string(),
-            info: descriptor_info,
-        };
-        
-        console_log!("Bare extended key match: '{}'", full_match);
-        descriptors.insert(full_match.to_string(), parsed_descriptor);
-    }
-    
-    // Process extended keys with single derivation: xpub/0/*
-    for caps in single_deriv_re.captures_iter(expression) {
-        let xpub_str = caps.get(1).unwrap().as_str();
-        let deriv_str = caps.get(2).unwrap().as_str();
-        
-        console_log!("Processing single derivation extended key: '{}'", xpub_str);
-        console_log!("Derivation: '{}'", deriv_str);
-        
-        // Parse extended public key
-        let xpub = Xpub::from_str(xpub_str)
-            .map_err(|e| format!("Invalid extended public key: {}", e))?;
-        
-        // Parse single derivation index
-        let deriv_index = deriv_str.parse::<u32>()
-            .map_err(|e| format!("Invalid derivation index: {}", e))?;
-        
-        // Create descriptor info with dummy fingerprint and path for bare keys
-        let dummy_fingerprint = Fingerprint::from([0u8; 4]);
-        let dummy_path = DerivationPath::from_str("m/0")
-            .map_err(|e| format!("Failed to create dummy path: {}", e))?;
-        
-        let descriptor_info = DescriptorInfo {
-            fingerprint: dummy_fingerprint,
-            derivation_path: dummy_path,
-            xpub,
-            child_paths: vec![deriv_index],
-            is_wildcard: true,
-        };
-        
-        let full_match = caps.get(0).unwrap().as_str();
-        let parsed_descriptor = ParsedDescriptor {
-            original: full_match.to_string(),
-            info: descriptor_info,
-        };
-        
-        console_log!("Single derivation match: '{}'", full_match);
-        descriptors.insert(full_match.to_string(), parsed_descriptor);
-    }
-    
-    // Process full descriptor with fixed double derivation: [fingerprint/path]xpub/0/0
-    for caps in full_fixed_double_deriv_re.captures_iter(expression) {
-        let fingerprint_str = caps.get(1).unwrap().as_str();
-        let path_str = caps.get(2).unwrap().as_str();
-        let xpub_str = caps.get(3).unwrap().as_str();
-        let first_deriv_str = caps.get(4).unwrap().as_str();
-        let second_deriv_str = caps.get(5).unwrap().as_str();
-        
-        console_log!("Processing full descriptor with fixed double derivation");
-        console_log!("Fingerprint: '{}', Path: '{}', xpub: '{}'", fingerprint_str, path_str, xpub_str);
-        console_log!("First derivation: '{}', Second derivation: '{}'", first_deriv_str, second_deriv_str);
-        
-        // Parse fingerprint
-        let fingerprint_bytes = hex::decode(fingerprint_str)
-            .map_err(|e| format!("Invalid fingerprint hex: {}", e))?;
-        if fingerprint_bytes.len() != 4 {
-            return Err("Fingerprint must be 4 bytes".to_string());
-        }
-        let fingerprint = Fingerprint::from([
-            fingerprint_bytes[0], fingerprint_bytes[1], 
-            fingerprint_bytes[2], fingerprint_bytes[3]
-        ]);
-        
-        // Parse derivation path
-        let full_path = format!("m/{}", path_str);
-        let derivation_path = DerivationPath::from_str(&full_path)
-            .map_err(|e| format!("Invalid derivation path '{}': {}", full_path, e))?;
-        
-        // Parse extended public key
-        let xpub = Xpub::from_str(xpub_str)
-            .map_err(|e| format!("Invalid extended public key: {}", e))?;
-        
-        // Parse both derivation indices
-        let first_deriv = first_deriv_str.parse::<u32>()
-            .map_err(|e| format!("Invalid first derivation index: {}", e))?;
-        let second_deriv = second_deriv_str.parse::<u32>()
-            .map_err(|e| format!("Invalid second derivation index: {}", e))?;
-        
-        let descriptor_info = DescriptorInfo {
-            fingerprint,
-            derivation_path,
-            xpub,
-            child_paths: vec![first_deriv, second_deriv], // Store both derivation indices
-            is_wildcard: false, // No wildcard for fixed derivation
-        };
-        
-        let full_match = caps.get(0).unwrap().as_str();
-        let parsed_descriptor = ParsedDescriptor {
-            original: full_match.to_string(),
-            info: descriptor_info,
-        };
-        
-        console_log!("Full descriptor fixed double derivation match: '{}'", full_match);
-        descriptors.insert(full_match.to_string(), parsed_descriptor);
-    }
-    
-    // Process extended keys with fixed double derivation: xpub/0/0
-    for caps in fixed_double_deriv_re.captures_iter(expression) {
-        let full_match = caps.get(0).unwrap().as_str();
-        
-        // Skip if this match is already part of a full descriptor
-        let is_part_of_full_descriptor = full_fixed_double_deriv_re.captures_iter(expression)
-            .any(|full_caps| {
-                let full_full_match = full_caps.get(0).unwrap().as_str();
-                full_full_match.contains(full_match)
-            });
-        
-        if is_part_of_full_descriptor {
-            console_log!("Skipping bare extended key '{}' as it's part of a full descriptor", full_match);
-            continue;
-        }
-        
-        let xpub_str = caps.get(1).unwrap().as_str();
-        let first_deriv_str = caps.get(2).unwrap().as_str();
-        let second_deriv_str = caps.get(3).unwrap().as_str();
-        
-        console_log!("Processing fixed double derivation extended key: '{}'", xpub_str);
-        console_log!("First derivation: '{}', Second derivation: '{}'", first_deriv_str, second_deriv_str);
-        
-        // Parse extended public key
-        let xpub = Xpub::from_str(xpub_str)
-            .map_err(|e| format!("Invalid extended public key: {}", e))?;
-        
-        // Parse both derivation indices
-        let first_deriv = first_deriv_str.parse::<u32>()
-            .map_err(|e| format!("Invalid first derivation index: {}", e))?;
-        let second_deriv = second_deriv_str.parse::<u32>()
-            .map_err(|e| format!("Invalid second derivation index: {}", e))?;
-        
-        // Create descriptor info with dummy fingerprint and path for bare keys
-        let dummy_fingerprint = Fingerprint::from([0u8; 4]);
-        let dummy_path = DerivationPath::from_str("m/0")
-            .map_err(|e| format!("Failed to create dummy path: {}", e))?;
-        
-        let descriptor_info = DescriptorInfo {
-            fingerprint: dummy_fingerprint,
-            derivation_path: dummy_path,
-            xpub,
-            child_paths: vec![first_deriv, second_deriv], // Store both derivation indices
-            is_wildcard: false, // No wildcard for fixed derivation
-        };
-        
-        let full_match = caps.get(0).unwrap().as_str();
-        let parsed_descriptor = ParsedDescriptor {
-            original: full_match.to_string(),
-            info: descriptor_info,
-        };
-        
-        console_log!("Fixed double derivation match: '{}'", full_match);
-        descriptors.insert(full_match.to_string(), parsed_descriptor);
-    }
-    
+    console_log!("Found {} descriptors total", descriptors.len());
     Ok(descriptors)
 }
 
-// Expand descriptor to actual public key
+/// Container for descriptor regex patterns
+struct DescriptorPatterns {
+    full_descriptor: Regex,
+    bare_extended: Regex,
+    single_deriv: Regex,
+    full_fixed_double: Regex,
+    fixed_double: Regex,
+}
+
+/// Create regex patterns for descriptor parsing
+fn create_descriptor_regex_patterns() -> Result<DescriptorPatterns, String> {
+    Ok(DescriptorPatterns {
+        full_descriptor: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+            .map_err(|e| format!("Full descriptor regex error: {}", e))?,
+        bare_extended: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+            .map_err(|e| format!("Bare extended regex error: {}", e))?,
+        single_deriv: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
+            .map_err(|e| format!("Single derivation regex error: {}", e))?,
+        full_fixed_double: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
+            .map_err(|e| format!("Full fixed double derivation regex error: {}", e))?,
+        fixed_double: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
+            .map_err(|e| format!("Fixed double derivation regex error: {}", e))?,
+    })
+}
+
+/// Process full descriptors with fingerprint and path
+fn process_full_descriptors(
+    expression: &str,
+    pattern: &Regex,
+    descriptors: &mut HashMap<String, ParsedDescriptor>
+) -> Result<(), String> {
+    for caps in pattern.captures_iter(expression) {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let child_paths = parse_child_paths(caps.get(4).map(|m| m.as_str()))?;
+        
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths,
+            is_wildcard: true,
+        };
+        
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+    
+    Ok(())
+}
+
+/// Process bare extended keys with ranges
+fn process_bare_extended_keys(
+    expression: &str,
+    pattern: &Regex,
+    descriptors: &mut HashMap<String, ParsedDescriptor>
+) -> Result<(), String> {
+    for caps in pattern.captures_iter(expression) {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let child_paths = parse_child_paths(caps.get(2).map(|m| m.as_str()))?;
+        
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths,
+            is_wildcard: true,
+        };
+        
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+    
+    Ok(())
+}
+
+/// Process single derivation keys
+fn process_single_derivation_keys(
+    expression: &str,
+    pattern: &Regex,
+    descriptors: &mut HashMap<String, ParsedDescriptor>
+) -> Result<(), String> {
+    for caps in pattern.captures_iter(expression) {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let index = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![index],
+            is_wildcard: true,
+        };
+        
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+    
+    Ok(())
+}
+
+/// Process fixed double derivation descriptors
+fn process_fixed_double_derivation(
+    expression: &str,
+    full_pattern: &Regex,
+    bare_pattern: &Regex,
+    descriptors: &mut HashMap<String, ParsedDescriptor>
+) -> Result<(), String> {
+    // Process full descriptors with fixed double derivation
+    for caps in full_pattern.captures_iter(expression) {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let first_deriv = caps.get(4).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid first derivation index")?;
+        let second_deriv = caps.get(5).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid second derivation index")?;
+        
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![first_deriv, second_deriv],
+            is_wildcard: false,
+        };
+        
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+    
+    // Process bare extended keys with fixed double derivation
+    for caps in bare_pattern.captures_iter(expression) {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let first_deriv = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid first derivation index")?;
+        let second_deriv = caps.get(3).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid second derivation index")?;
+        
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![first_deriv, second_deriv],
+            is_wildcard: false,
+        };
+        
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+    
+    Ok(())
+}
+
+/// Parse fingerprint from hex string
+fn parse_fingerprint(hex_str: &str) -> Result<Fingerprint, String> {
+    let bytes = hex::decode(hex_str)
+        .map_err(|e| format!("Invalid fingerprint hex: {}", e))?;
+    
+    if bytes.len() != 4 {
+        return Err("Fingerprint must be 4 bytes".to_string());
+    }
+    
+    let mut fp_array = [0u8; 4];
+    fp_array.copy_from_slice(&bytes);
+    Ok(Fingerprint::from(fp_array))
+}
+
+/// Parse derivation path from string
+fn parse_derivation_path(path_str: &str) -> Result<DerivationPath, String> {
+    let normalized_path = if path_str.starts_with("/") {
+        format!("m/{}", path_str)
+    } else {
+        format!("m/{}", path_str)
+    };
+    
+    let normalized_path = normalized_path.replace("h", "'");
+    
+    DerivationPath::from_str(&normalized_path)
+        .map_err(|e| format!("Invalid derivation path: {}", e))
+}
+
+/// Parse extended public key
+fn parse_xpub(xpub_str: &str) -> Result<Xpub, String> {
+    Xpub::from_str(xpub_str)
+        .map_err(|e| format!("Invalid xpub: {}", e))
+}
+
+/// Parse child paths from range notation
+fn parse_child_paths(range_str: Option<&str>) -> Result<Vec<u32>, String> {
+    match range_str {
+        Some(range) => {
+            range.split(';')
+                .map(|s| s.parse::<u32>()
+                    .map_err(|_| format!("Invalid child path: {}", s)))
+                .collect()
+        },
+        None => Ok(vec![]),
+    }
+}
+
+/// Expand a descriptor at a specific child index
 fn expand_descriptor(descriptor: &ParsedDescriptor, child_index: u32) -> Result<String, String> {
     let secp = Secp256k1::verification_only();
+    
+    console_log!("Expanding descriptor: {}", descriptor.original);
+    console_log!("Xpub: {}", descriptor.info.xpub);
+    console_log!("Child paths: {:?}", descriptor.info.child_paths);
+    console_log!("Is wildcard: {}", descriptor.info.is_wildcard);
     
     // Handle different derivation patterns
     let final_key = if descriptor.info.child_paths.len() >= 2 && !descriptor.info.is_wildcard {
@@ -488,68 +511,84 @@ fn expand_descriptor(descriptor: &ParsedDescriptor, child_index: u32) -> Result<
         descriptor.info.xpub
             .derive_pub(&secp, &[first_child, second_child])
             .map_err(|e| format!("Double key derivation failed: {}", e))?
-    } else {
-        // Single derivation case: use first child path or provided index
-        let child_num = if !descriptor.info.child_paths.is_empty() {
-            descriptor.info.child_paths[0]
-        } else {
-            child_index
-        };
-        
-        let child_number = ChildNumber::from_normal_idx(child_num)
+    } else if descriptor.info.child_paths.len() == 1 && !descriptor.info.is_wildcard {
+        // Single derivation case: xpub/0
+        let child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
             .map_err(|e| format!("Invalid child number: {}", e))?;
         
-        console_log!("Single derivation: {}", child_num);
+        console_log!("Single derivation: {}", descriptor.info.child_paths[0]);
         descriptor.info.xpub
-            .derive_pub(&secp, &[child_number])
+            .derive_pub(&secp, &[child])
             .map_err(|e| format!("Single key derivation failed: {}", e))?
+    } else if descriptor.info.is_wildcard {
+        // Wildcard case: use provided child_index
+        let child = ChildNumber::from_normal_idx(child_index)
+            .map_err(|e| format!("Invalid child index: {}", e))?;
+        
+        console_log!("Wildcard derivation: {}", child_index);
+        descriptor.info.xpub
+            .derive_pub(&secp, &[child])
+            .map_err(|e| format!("Wildcard key derivation failed: {}", e))?
+    } else {
+        // No additional derivation needed
+        console_log!("No additional derivation");
+        descriptor.info.xpub.clone()
     };
     
-    // Extract the compressed public key from the derived extended key
-    let public_key = final_key.public_key;
-    let compressed_key = public_key.serialize();
-    let hex_key = hex::encode(&compressed_key);
-    console_log!("Derived extended key: {}", final_key);
-    console_log!("Extracted public key: {}", public_key);
-    console_log!("Compressed key bytes: {} bytes", compressed_key.len());
-    console_log!("Compressed key hex: {} chars", hex_key.len());
-    console_log!("Compressed key: {}", hex_key);
+    // Get the public key and return as hex string
+    let pubkey = final_key.to_pub();
+    let hex_key = hex::encode(pubkey.0.serialize());
+    console_log!("Derived key for descriptor: {}", hex_key);
     Ok(hex_key)
 }
 
-// Replace descriptors in expression with actual keys
+/// Replace descriptors in expression with concrete keys
 fn replace_descriptors_with_keys(expression: &str, descriptors: &HashMap<String, ParsedDescriptor>) -> Result<String, String> {
     let mut result = expression.to_string();
     
-    for (original, descriptor) in descriptors {
-        // For simplicity, use child index 0 for all expansions
-        let public_key = expand_descriptor(descriptor, 0)?;
-        console_log!("Replacing '{}' with '{}' (len: {})", original, public_key, public_key.len());
-        result = result.replace(original, &public_key);
+    // Sort descriptors by length (longest first) to prevent substring conflicts
+    let mut sorted_descriptors: Vec<_> = descriptors.iter().collect();
+    sorted_descriptors.sort_by_key(|(descriptor_str, _)| std::cmp::Reverse(descriptor_str.len()));
+    
+    console_log!("Replacing {} descriptors in expression", sorted_descriptors.len());
+    for (descriptor_str, parsed) in sorted_descriptors {
+        let replacement = expand_descriptor(parsed, 0)?;
+        console_log!("Replacing '{}' with '{}' (len: {})", descriptor_str, replacement, replacement.len());
+        result = result.replace(descriptor_str, &replacement);
     }
     
     console_log!("Final processed expression: {}", result);
     Ok(result)
 }
 
+
+// ============================================================================
+// Compilation Functions
+// ============================================================================
+
+/// Compile a policy expression to miniscript
 #[wasm_bindgen]
 pub fn compile_policy(policy: &str, context: &str) -> JsValue {
-    console_log!("Compiling policy: {} with context: {}", policy, context);
+    console_log!("Compiling policy: {}", policy);
+    console_log!("Context: {}", context);
     
     let result = match compile_policy_to_miniscript(policy, context) {
-        Ok((script, script_asm, address, script_size, ms_type, miniscript, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => CompilationResult {
-            success: true,
-            error: None,
-            script: Some(script),
-            script_asm: Some(script_asm),
-            address,
-            script_size: Some(script_size),
-            miniscript_type: Some(ms_type),
-            compiled_miniscript: Some(miniscript),
-            max_satisfaction_size,
-            max_weight_to_satisfy,
-            sanity_check,
-            is_non_malleable,
+        Ok((script, script_asm, address, script_size, ms_type, compiled_miniscript, 
+            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => {
+            CompilationResult {
+                success: true,
+                error: None,
+                script: Some(script),
+                script_asm: Some(script_asm),
+                address,
+                script_size: Some(script_size),
+                miniscript_type: Some(ms_type),
+                compiled_miniscript: Some(compiled_miniscript),
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                sanity_check,
+                is_non_malleable,
+            }
         },
         Err(e) => CompilationResult {
             success: false,
@@ -570,25 +609,29 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
+/// Compile a miniscript expression to Bitcoin script
 #[wasm_bindgen]
 pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
-    console_log!("=== COMPILE_MINISCRIPT PUBLIC FUNCTION CALLED ===");
-    console_log!("Compiling miniscript: {} with context: {}", expression, context);
+    console_log!("Compiling miniscript: {}", expression);
+    console_log!("Context: {}", context);
     
     let result = match compile_expression(expression, context) {
-        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => CompilationResult {
-            success: true,
-            error: None,
-            script: Some(script),
-            script_asm: Some(script_asm),
-            address,
-            script_size: Some(script_size),
-            miniscript_type: Some(ms_type),
-            compiled_miniscript: normalized_miniscript,
-            max_satisfaction_size,
-            max_weight_to_satisfy,
-            sanity_check,
-            is_non_malleable,
+        Ok((script, script_asm, address, script_size, ms_type, 
+            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+            CompilationResult {
+                success: true,
+                error: None,
+                script: Some(script),
+                script_asm: Some(script_asm),
+                address,
+                script_size: Some(script_size),
+                miniscript_type: Some(ms_type),
+                compiled_miniscript: normalized_miniscript,
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                sanity_check,
+                is_non_malleable,
+            }
         },
         Err(e) => CompilationResult {
             success: false,
@@ -609,301 +652,321 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-fn compile_expression(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+/// Internal function to compile miniscript expressions
+fn compile_expression(
+    expression: &str,
+    context: &str
+) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("=== COMPILE_EXPRESSION CALLED ===");
-    console_log!("Expression length: {}", expression.len());
     console_log!("Expression: {}", expression);
     console_log!("Context: {}", context);
     
     if expression.trim().is_empty() {
         return Err("Empty expression - please enter a miniscript".to_string());
     }
-
+    
     let trimmed = expression.trim();
-    console_log!("Trimmed expression: {}", trimmed);
+    let network = detect_network(trimmed);
     
-    // Detect network based on key type
-    let network = if trimmed.contains("tpub") {
-        Network::Testnet
-    } else {
-        Network::Bitcoin
-    };
-    
-    // Check if expression contains descriptor keys, but skip parsing if it's already a descriptor wrapper
-    let processed_expr = if (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[")) && !trimmed.starts_with("wsh(") && !trimmed.starts_with("sh(") && !trimmed.starts_with("wpkh(") {
-        console_log!("Detected descriptor keys in expression, processing...");
-        match parse_descriptors(trimmed) {
-                Ok(descriptors) => {
-                    if descriptors.is_empty() {
-                        console_log!("No descriptors found, using original expression");
-                        trimmed.to_string()
-                    } else {
-                        // Check if any descriptors have ranges (wildcards)
-                        let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
-                        
-                        if has_range_descriptors {
-                            // Range descriptors need to be wrapped in wsh() for the miniscript library to parse them as descriptors
-                            console_log!("Found {} descriptors with ranges, wrapping in wsh() for descriptor parsing", descriptors.len());
-                            format!("wsh({})", trimmed)
-                        } else {
-                            console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
-                            match replace_descriptors_with_keys(trimmed, &descriptors) {
-                                Ok(processed) => {
-                                    console_log!("Successfully replaced descriptors with keys");
-                                    processed
-                                },
-                                Err(e) => {
-                                    console_log!("Failed to replace descriptors: {}", e);
-                                    return Err(format!("Descriptor processing failed: {}", e));
-                                }
-                            }
-                        }
-                    }
-                },
-                Err(e) => {
-                    console_log!("Failed to parse descriptors: {}", e);
-                    return Err(format!("Descriptor parsing failed: {}", e));
-                }
-            }
+    // Process descriptors if needed
+    let processed_expr = if needs_descriptor_processing(trimmed) {
+        process_expression_descriptors(trimmed)?
     } else {
         trimmed.to_string()
     };
     
-    console_log!("Processing: {} -> {}", trimmed, processed_expr);
+    // Check if this is a descriptor wrapper
+    if is_descriptor_wrapper(&processed_expr) {
+        return compile_descriptor(&processed_expr, context);
+    }
     
-    // Check if this is a descriptor (starts with wsh, sh, wpkh)
-    // Note: pkh() is not included here because it's commonly used as a miniscript function
-    if processed_expr.starts_with("wsh(") || processed_expr.starts_with("sh(") || processed_expr.starts_with("wpkh(") {
-        console_log!("Detected descriptor format, extracting inner miniscript for proper validation");
-        
-        // Extract the inner miniscript from wsh() wrapper for proper parsing
-        let inner_miniscript = if processed_expr.starts_with("wsh(") && processed_expr.ends_with(")") {
-            &processed_expr[4..processed_expr.len()-1] // Remove "wsh(" and ")"
-        } else {
-            // For other descriptor types, parse as full descriptor for now
-            match Descriptor::<DescriptorPublicKey>::from_str(&processed_expr) {
-                Ok(descriptor) => {
-                    let desc_str = descriptor.to_string();
-                    console_log!("Successfully parsed non-wsh descriptor: {}", desc_str);
-                    
-                    return Ok((
-                        "No single script - this descriptor defines multiple paths".to_string(),
-                        "No single script - this descriptor defines multiple paths".to_string(),
-                        None,
-                        0,
-                        "Descriptor".to_string(),
-                        None,
-                        None,
-                        None,
-                        None,
-                        Some(format!("Valid descriptor: {}", desc_str))
-                    ));
-                },
-                Err(e) => return Err(format!("Descriptor parsing failed: {}", e))
+    // Compile based on context
+    match context {
+        "legacy" => compile_legacy_miniscript(&processed_expr, network),
+        "segwit" => compile_segwit_miniscript(&processed_expr, network),
+        "taproot" => compile_taproot_miniscript(&processed_expr, network),
+        _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
+    }
+}
+
+/// Process descriptors in expression
+fn process_expression_descriptors(expression: &str) -> Result<String, String> {
+    console_log!("Detected descriptor keys in expression, processing...");
+    
+    match parse_descriptors(expression) {
+        Ok(descriptors) => {
+            if descriptors.is_empty() {
+                console_log!("No descriptors found, using original expression");
+                Ok(expression.to_string())
+            } else {
+                // Check if any descriptors have ranges
+                let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
+                
+                if has_range_descriptors {
+                    console_log!("Found {} descriptors with ranges, wrapping in wsh() for descriptor parsing", descriptors.len());
+                    Ok(format!("wsh({})", expression))
+                } else {
+                    console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
+                    match replace_descriptors_with_keys(expression, &descriptors) {
+                        Ok(processed) => {
+                            console_log!("Successfully replaced descriptors with keys");
+                            Ok(processed)
+                        },
+                        Err(e) => {
+                            console_log!("Failed to replace descriptors: {}", e);
+                            Err(format!("Descriptor processing failed: {}", e))
+                        }
+                    }
+                }
             }
-        };
-        
-        console_log!("Parsing inner miniscript with proper validation: {}", inner_miniscript);
-        
-        // Parse the inner miniscript using proper miniscript parser based on context
-        match context {
-            "legacy" => {
-                match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Legacy>>() {
-                    Ok(ms) => {
-                        // Successfully parsed, now create full descriptor for final validation
-                        let full_descriptor = format!("wsh({})", ms);
-                        match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
-                            Ok(descriptor) => {
-                                let desc_str = descriptor.to_string();
-                                console_log!("Successfully validated miniscript and created descriptor: {}", desc_str);
-                                
-                                return Ok((
-                                    "No single script - this descriptor defines multiple paths".to_string(),
-                                    "No single script - this descriptor defines multiple paths".to_string(),
-                                    None,
-                                    0,
-                                    "Descriptor".to_string(),
-                                    None,
-                                    None,
-                                    None,
-                                    None,
-                                    Some(format!("Valid descriptor: {}", desc_str))
-                                ));
-                            },
-                            Err(e) => return Err(format!("Descriptor validation failed: {}", e))
-                        }
-                    },
-                    Err(e) => return Err(format!("Miniscript parsing failed: {}", e))
-                }
-            },
-            "taproot" => {
-                match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Tap>>() {
-                    Ok(ms) => {
-                        let full_descriptor = format!("wsh({})", ms);
-                        match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
-                            Ok(descriptor) => {
-                                let desc_str = descriptor.to_string();
-                                console_log!("Successfully validated miniscript and created descriptor: {}", desc_str);
-                                
-                                return Ok((
-                                    "No single script - this descriptor defines multiple paths".to_string(),
-                                    "No single script - this descriptor defines multiple paths".to_string(),
-                                    None,
-                                    0,
-                                    "Descriptor".to_string(),
-                                    None,
-                                    None,
-                                    None,
-                                    None,
-                                    Some(format!("Valid descriptor: {}", desc_str))
-                                ));
-                            },
-                            Err(e) => return Err(format!("Descriptor validation failed: {}", e))
-                        }
-                    },
-                    Err(e) => return Err(format!("Miniscript parsing failed: {}", e))
-                }
-            },
-            _ => { // segwit default
-                match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Segwitv0>>() {
-                    Ok(ms) => {
-                        let full_descriptor = format!("wsh({})", ms);
-                        match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
-                            Ok(descriptor) => {
-                                let desc_str = descriptor.to_string();
-                                console_log!("Successfully validated miniscript and created descriptor: {}", desc_str);
-                                
-                                return Ok((
-                                    "No single script - this descriptor defines multiple paths".to_string(),
-                                    "No single script - this descriptor defines multiple paths".to_string(),
-                                    None,
-                                    0,
-                                    "Descriptor".to_string(),
-                                    None,
-                                    None,
-                                    None,
-                                    None,
-                                    Some(format!("Valid descriptor: {}", desc_str))
-                                ));
-                            },
-                            Err(e) => return Err(format!("Descriptor validation failed: {}", e))
-                        }
-                    },
-                    Err(e) => return Err(format!("Miniscript parsing failed: {}", e))
-                }
+        },
+        Err(e) => {
+            console_log!("Failed to parse descriptors: {}", e);
+            Err(format!("Descriptor parsing failed: {}", e))
+        }
+    }
+}
+
+/// Compile a descriptor wrapper
+fn compile_descriptor(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    console_log!("Detected descriptor format, extracting inner miniscript for proper validation");
+    
+    // Extract inner miniscript from wsh() wrapper
+    let inner_miniscript = if expression.starts_with("wsh(") && expression.ends_with(")") {
+        &expression[4..expression.len()-1]
+    } else {
+        // Parse other descriptor types
+        return parse_non_wsh_descriptor(expression);
+    };
+    
+    console_log!("Parsing inner miniscript with proper validation: {}", inner_miniscript);
+    
+    // Parse and validate the inner miniscript based on context
+    validate_inner_miniscript(inner_miniscript, context)
+}
+
+/// Parse non-WSH descriptors
+fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    match Descriptor::<DescriptorPublicKey>::from_str(expression) {
+        Ok(descriptor) => {
+            let desc_str = descriptor.to_string();
+            console_log!("Successfully parsed non-wsh descriptor: {}", desc_str);
+            
+            Ok((
+                "No single script - this descriptor defines multiple paths".to_string(),
+                "No single script - this descriptor defines multiple paths".to_string(),
+                None,
+                0,
+                "Descriptor".to_string(),
+                None,
+                None,
+                None,
+                None,
+                Some(format!("Valid descriptor: {}", desc_str))
+            ))
+        },
+        Err(e) => Err(format!("Descriptor parsing failed: {}", e))
+    }
+}
+
+/// Validate inner miniscript from descriptor
+fn validate_inner_miniscript(inner_miniscript: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    let validation_result = match context {
+        "legacy" => validate_miniscript::<Legacy>(inner_miniscript),
+        "taproot" => validate_miniscript::<Tap>(inner_miniscript),
+        _ => validate_miniscript::<Segwitv0>(inner_miniscript),
+    };
+    
+    match validation_result {
+        Ok(desc_str) => Ok((
+            "No single script - this descriptor defines multiple paths".to_string(),
+            "No single script - this descriptor defines multiple paths".to_string(),
+            None,
+            0,
+            "Descriptor".to_string(),
+            None,
+            None,
+            None,
+            None,
+            Some(format!("Valid descriptor: {}", desc_str))
+        )),
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
+}
+
+/// Validate miniscript for a specific context
+fn validate_miniscript<Ctx>(inner_miniscript: &str) -> Result<String, String>
+where
+    Ctx: ScriptContext,
+    Miniscript<DescriptorPublicKey, Ctx>: FromStr,
+    <Miniscript<DescriptorPublicKey, Ctx> as FromStr>::Err: std::fmt::Display,
+{
+    match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Ctx>>() {
+        Ok(ms) => {
+            let full_descriptor = format!("wsh({})", ms);
+            match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
+                Ok(descriptor) => Ok(descriptor.to_string()),
+                Err(e) => Err(format!("Descriptor validation failed: {}", e))
+            }
+        },
+        Err(e) => Err(e.to_string())
+    }
+}
+
+/// Compile Legacy context miniscript
+fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    match expression.parse::<Miniscript<PublicKey, Legacy>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            // Calculate weight using descriptor
+            console_log!("Creating Legacy descriptor for weight calculation");
+            let desc = Descriptor::new_sh(ms.clone())
+                .map_err(|e| format!("Descriptor creation failed: {}", e))?;
+            let max_weight = desc.max_weight_to_satisfy()
+                .map_err(|e| format!("Weight calculation failed: {}", e))?;
+            
+            console_log!("Legacy max_weight_to_satisfy: {} WU", max_weight.to_wu());
+            
+            let max_satisfaction_size = Some((max_weight.to_wu() as f64 / 4.0) as usize);
+            let max_weight_to_satisfy = Some(max_weight.to_wu());
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            let address = Address::p2sh(&script, network).ok().map(|a| a.to_string());
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Legacy".to_string(),
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable),
+                Some(normalized_miniscript)
+            ))
+        }
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                Err(format!("Legacy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
+            } else {
+                Err(format!("Legacy parsing failed: {}", e))
             }
         }
     }
-    
-    match context {
-        "legacy" => {
-            match processed_expr.parse::<Miniscript<PublicKey, Legacy>>() {
-                Ok(ms) => {
-                    let normalized_miniscript = ms.to_string();
-                    let script = ms.encode();
-                    let script_hex = hex::encode(script.as_bytes());
-                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                    let script_size = script.len();
-                    
-                    // Calculate weight using descriptor for Legacy
-                    console_log!("Creating Legacy descriptor for weight calculation");
-                    let desc = Descriptor::new_sh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
-                    let max_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
-                    console_log!("Legacy max_weight_to_satisfy: {} WU", max_weight.to_wu());
-                    let max_satisfaction_size = Some((max_weight.to_wu() as f64 / 4.0) as usize); // Convert WU to bytes estimate
-                    let max_weight_to_satisfy = Some(max_weight.to_wu());
-                    let sanity_check = ms.sanity_check().is_ok();
-                    let is_non_malleable = ms.is_non_malleable();
-                    
-                    let address = match Address::p2sh(&script, network) {
-                        Ok(addr) => Some(addr.to_string()),
-                        Err(_) => None,
-                    };
-                    
-                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable), Some(normalized_miniscript)))
-                }
-                Err(e) => {
-                    let error_msg = format!("{}", e);
-                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                        Err(format!("Legacy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
-                    } else {
-                        Err(format!("Legacy parsing failed: {}", e))
-                    }
-                }
+}
+
+/// Compile Segwit v0 context miniscript
+fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    match expression.parse::<Miniscript<PublicKey, Segwitv0>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            // Calculate weight using descriptor
+            console_log!("Creating Segwit descriptor for direct miniscript weight calculation");
+            let desc = Descriptor::new_wsh(ms.clone())
+                .map_err(|e| format!("Descriptor creation failed: {}", e))?;
+            let total_weight = desc.max_weight_to_satisfy()
+                .map_err(|e| format!("Weight calculation failed: {}", e))?;
+            
+            console_log!("Direct Segwit total max_weight_to_satisfy: {} WU", total_weight.to_wu());
+            
+            let max_satisfaction_size = Some(total_weight.to_wu() as usize);
+            let max_weight_to_satisfy = Some(total_weight.to_wu());
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            let address = Some(Address::p2wsh(&script, network).to_string());
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Segwit v0".to_string(),
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable),
+                Some(normalized_miniscript)
+            ))
+        }
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                Err(format!("Segwit v0 parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
+            } else {
+                Err(format!("Segwit v0 parsing failed: {}", e))
             }
-        },
-        "segwit" => {
-            match processed_expr.parse::<Miniscript<PublicKey, Segwitv0>>() {
-                Ok(ms) => {
-                    let normalized_miniscript = ms.to_string();
-                    let script = ms.encode();
-                    let script_hex = hex::encode(script.as_bytes());
-                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                    let script_size = script.len();
-                    
-                    // Calculate weight using descriptor for direct Segwit miniscript
-                    console_log!("Creating Segwit descriptor for direct miniscript weight calculation");
-                    let desc = Descriptor::new_wsh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
-                    let total_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
-                    console_log!("Direct Segwit total max_weight_to_satisfy: {} WU", total_weight.to_wu());
-                    let max_satisfaction_size = Some(total_weight.to_wu() as usize);
-                    let max_weight_to_satisfy = Some(total_weight.to_wu());
-                    let sanity_check = ms.sanity_check().is_ok();
-                    let is_non_malleable = ms.is_non_malleable();
-                    
-                    let address = Some(Address::p2wsh(&script, network).to_string());
-                    
-                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable), Some(normalized_miniscript)))
-                }
-                Err(e) => {
-                    let error_msg = format!("{}", e);
-                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                        Err(format!("Segwit v0 parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
-                    } else {
-                        Err(format!("Segwit v0 parsing failed: {}", e))
-                    }
-                }
+        }
+    }
+}
+
+/// Compile Taproot context miniscript
+fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    match expression.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            // Estimate satisfaction size for Taproot
+            console_log!("Estimating Taproot satisfaction size for direct miniscript");
+            let miniscript_str = ms.to_string();
+            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
+                console_log!("Direct Taproot pk() detected, estimating 64 bytes");
+                (Some(64), Some(64u64))
+            } else {
+                console_log!("Direct Taproot complex script, cannot estimate");
+                (None, None)
+            };
+            
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            // For Taproot, determine internal key based on miniscript type
+            // Use the new descriptor approach
+            let internal_key = get_taproot_internal_key(&miniscript_str);
+            let address = Some(generate_taproot_address_descriptor(&ms, internal_key, network)
+                .unwrap_or_else(|| {
+                    console_log!("Failed to generate Taproot address");
+                    "Address generation failed".to_string()
+                }));
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Taproot".to_string(),
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable),
+                Some(normalized_miniscript)
+            ))
+        }
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("malformed public key") {
+                Err(format!("Taproot parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
+            } else {
+                Err(format!("Taproot parsing failed: {}", e))
             }
-        },
-        "taproot" => {
-            match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-                Ok(ms) => {
-                    let normalized_miniscript = ms.to_string();
-                    let script = ms.encode();
-                    let script_hex = hex::encode(script.as_bytes());
-                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                    let script_size = script.len();
-                    
-                    // For Taproot, estimate satisfaction size based on miniscript pattern
-                    console_log!("Estimating Taproot satisfaction size for direct miniscript");
-                    let miniscript_str = ms.to_string();
-                    let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
-                        // For pk(), it's just a signature (64 bytes for Schnorr)
-                        console_log!("Direct Taproot pk() detected, estimating 64 bytes");
-                        (Some(64), Some(64u64))
-                    } else {
-                        console_log!("Direct Taproot complex script, cannot estimate");
-                        (None, None)
-                    };
-                    let sanity_check = ms.sanity_check().is_ok();
-                    let is_non_malleable = ms.is_non_malleable();
-                    
-                    // Generate Taproot address
-                    let address = generate_taproot_address(&script, network);
-                    
-                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable), Some(normalized_miniscript)))
-                }
-                Err(e) => {
-                    let error_msg = format!("{}", e);
-                    if error_msg.contains("malformed public key") {
-                        Err(format!("Taproot parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
-                    } else {
-                        Err(format!("Taproot parsing failed: {}", e))
-                    }
-                }
-            }
-        },
-        _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
+        }
     }
 }
 
@@ -936,89 +999,102 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             
             // Parse the original policy with descriptor keys (not wrapped with wsh)
             match trimmed.parse::<Concrete<DescriptorPublicKey>>() {
-                            Ok(descriptor_policy) => {
-                                // Try to compile the policy to miniscript based on context
-                                let miniscript_result = match context {
-                                    "legacy" => descriptor_policy.compile::<Legacy>().map(|ms| ms.to_string()),
-                                    "taproot" => descriptor_policy.compile::<Tap>().map(|ms| ms.to_string()),
-                                    _ => descriptor_policy.compile::<Segwitv0>().map(|ms| ms.to_string()),
-                                };
-                                
-                                match miniscript_result {
-                                    Ok(compiled_miniscript) => {
-                                        // Now validate the resulting descriptor
-                                        let test_descriptor = format!("wsh({})", compiled_miniscript);
-                                        match test_descriptor.parse::<Descriptor<DescriptorPublicKey>>() {
-                                            Ok(_) => {
-                                                console_log!("Valid range descriptor compiled to: {}, now processing as descriptor", compiled_miniscript);
-                                                // Instead of returning here, continue with descriptor processing
-                                                // by calling compile_expression with the wrapped descriptor
-                                                match compile_expression(&test_descriptor, context) {
-                                                    Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
-                                                        return Ok((
-                                                            normalized_miniscript.unwrap_or(script), // Put "Valid descriptor: ..." in script field for success message
-                                                            script_asm,
-                                                            address,
-                                                            script_size,
-                                                            ms_type,
-                                                            compiled_miniscript, // Put clean miniscript in compiled_miniscript for editor
-                                                            max_satisfaction_size,
-                                                            max_weight_to_satisfy,
-                                                            sanity_check,
-                                                            is_non_malleable
-                                                        ));
-                                                    },
-                                                    Err(e) => return Err(e)
-                                                }
-                                            },
-                                            Err(e) => {
-                                                console_log!("Invalid compiled descriptor: {}", e);
-                                                return Err(format!("Invalid descriptor: {}", e));
-                                            }
-                                        }
-                                    },
-                                    Err(e) => {
-                                        console_log!("Failed to compile policy with range descriptors: {}", e);
-                                        return Err(format!("Failed to compile policy: {}", e));
-                                    }
-                                }
-                            },
-                            Err(e) => {
-                                console_log!("Failed to parse policy with descriptors: {}", e);
-                                return Err(format!("Invalid policy with descriptors: {}", e));
-                            }
-                        }
-                    } else {
-                        // For non-range descriptors, use the original parse_descriptors approach
-                        console_log!("Policy has descriptor keys but no ranges, parsing descriptors...");
-                        match parse_descriptors(trimmed) {
-                            Ok(descriptors) => {
-                                if descriptors.is_empty() {
-                                    console_log!("No descriptors found, using original policy");
-                                    trimmed.to_string()
-                                } else {
-                                    console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
-                                    match replace_descriptors_with_keys(trimmed, &descriptors) {
-                                        Ok(processed) => {
-                                            console_log!("Successfully replaced descriptors with keys in policy");
-                                            processed
+                Ok(descriptor_policy) => {
+                    // Try to compile the policy to miniscript based on context
+                    let miniscript_result = match context {
+                        "legacy" => descriptor_policy.compile::<Legacy>().map(|ms| ms.to_string()),
+                        "taproot" => descriptor_policy.compile::<Tap>().map(|ms| ms.to_string()),
+                        _ => descriptor_policy.compile::<Segwitv0>().map(|ms| ms.to_string()),
+                    };
+                    
+                    match miniscript_result {
+                        Ok(compiled_miniscript) => {
+                            // Now validate the resulting descriptor
+                            let test_descriptor = format!("wsh({})", compiled_miniscript);
+                            match test_descriptor.parse::<Descriptor<DescriptorPublicKey>>() {
+                                Ok(_) => {
+                                    console_log!("Valid range descriptor compiled to: {}, now processing as descriptor", compiled_miniscript);
+                                    // Instead of returning here, continue with descriptor processing
+                                    // by calling compile_expression with the wrapped descriptor
+                                    match compile_expression(&test_descriptor, context) {
+                                        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+                                            return Ok((
+                                                normalized_miniscript.unwrap_or(script), // Put "Valid descriptor: ..." in script field for success message
+                                                script_asm,
+                                                address,
+                                                script_size,
+                                                ms_type,
+                                                compiled_miniscript, // Put clean miniscript in compiled_miniscript for editor
+                                                max_satisfaction_size,
+                                                max_weight_to_satisfy,
+                                                sanity_check,
+                                                is_non_malleable
+                                            ));
                                         },
-                                        Err(e) => {
-                                            console_log!("Failed to replace descriptors: {}", e);
-                                            return Err(format!("Descriptor processing failed: {}", e));
-                                        }
+                                        Err(e) => return Err(e)
                                     }
+                                },
+                                Err(e) => {
+                                    console_log!("Invalid compiled descriptor: {}", e);
+                                    return Err(format!("Invalid descriptor: {}", e));
                                 }
+                            }
+                        },
+                        Err(e) => {
+                            console_log!("Failed to compile policy with range descriptors: {}", e);
+                            return Err(format!("Failed to compile policy: {}", e));
+                        }
+                    }
+                },
+                Err(e) => {
+                    console_log!("Failed to parse policy with descriptors: {}", e);
+                    return Err(format!("Invalid policy with descriptors: {}", e));
+                }
+            }
+        } else {
+            // For non-range descriptors, use the original parse_descriptors approach
+            console_log!("Policy has descriptor keys but no ranges, parsing descriptors...");
+            match parse_descriptors(trimmed) {
+                Ok(descriptors) => {
+                    if descriptors.is_empty() {
+                        console_log!("No descriptors found, using original policy");
+                        trimmed.to_string()
+                    } else {
+                        console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
+                        match replace_descriptors_with_keys(trimmed, &descriptors) {
+                            Ok(processed) => {
+                                console_log!("Successfully replaced descriptors with keys in policy");
+                                processed
                             },
                             Err(e) => {
-                                console_log!("Failed to parse descriptors in policy: {}", e);
-                                return Err(format!("Descriptor parsing failed: {}", e));
+                                console_log!("Failed to replace descriptors: {}", e);
+                                return Err(format!("Descriptor processing failed: {}", e));
                             }
                         }
                     }
+                },
+                Err(e) => {
+                    console_log!("Failed to parse descriptors in policy: {}", e);
+                    return Err(format!("Descriptor parsing failed: {}", e));
+                }
+            }
+        }
     } else {
         trimmed.to_string()
     };
+    
+    // Now I need to handle the Taproot context properly for XOnlyPublicKey
+    if context == "taproot" {
+        // First try parsing as XOnlyPublicKey for 64-char keys
+        match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
+            Ok(xonly_policy) => {
+                return compile_taproot_policy_xonly(xonly_policy, network);
+            },
+            Err(_) => {
+                // Fall through to try PublicKey parsing
+            }
+        }
+    }
     
     // First try parsing with DescriptorPublicKey to support xpub descriptors  
     match processed_policy.parse::<Concrete<DescriptorPublicKey>>() {
@@ -1031,273 +1107,220 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             };
             
             match context {
-                "legacy" => {
-                    match concrete_policy.compile::<Legacy>() {
-                        Ok(ms) => {
-                            let script = ms.encode();
-                            let script_hex = hex::encode(script.as_bytes());
-                            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                            let script_size = script.len();
-                            let miniscript_str = ms.to_string();
-                            
-                            // For Legacy context compiled as P2SH, just use the Legacy descriptor
-                            console_log!("Creating Legacy P2SH descriptor for weight calculation");
-                            let desc = Descriptor::new_sh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
-                            let max_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
-                            console_log!("Legacy P2SH max_weight_to_satisfy: {} WU", max_weight.to_wu());
-                            let max_satisfaction_size = Some((max_weight.to_wu() as f64 / 4.0) as usize); // Convert WU to bytes estimate
-                            let max_weight_to_satisfy = Some(max_weight.to_wu());
-                            let sanity_check = ms.sanity_check().is_ok();
-                            let is_non_malleable = ms.is_non_malleable();
-                            
-                            let address = match Address::p2sh(&script, network) {
-                                Ok(addr) => Some(addr.to_string()),
-                                Err(_) => None,
-                            };
-                            
-                            Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
-                        }
-                        Err(e) => Err(format!("Legacy compilation failed: {}", e))
-                    }
-                },
-                "segwit" => {
-                    match concrete_policy.compile::<Segwitv0>() {
-                        Ok(ms) => {
-                            let script = ms.encode();
-                            let script_hex = hex::encode(script.as_bytes());
-                            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                            let script_size = script.len();
-                            let miniscript_str = ms.to_string();
-                            
-                            // Calculate weight using descriptor max_weight_to_satisfy method
-                            console_log!("Creating Segwit descriptor for weight calculation");
-                            let desc = Descriptor::new_wsh(ms.clone()).map_err(|e| format!("Descriptor creation failed: {}", e))?;
-                            let total_weight = desc.max_weight_to_satisfy().map_err(|e| format!("Weight calculation failed: {}", e))?;
-                            console_log!("Segwit total max_weight_to_satisfy: {} WU", total_weight.to_wu());
-                            console_log!("Script size: {} bytes", script_size);
-                            
-                            // Use ONLY what the library returns - no hardcoding or custom logic
-                            console_log!("Using library total weight: {} WU", total_weight.to_wu());
-                            
-                            // Return the raw library values
-                            let max_satisfaction_size = Some(total_weight.to_wu() as usize);
-                            let max_weight_to_satisfy = Some(total_weight.to_wu());
-                            let sanity_check = ms.sanity_check().is_ok();
-                            let is_non_malleable = ms.is_non_malleable();
-                            
-                            let address = Some(Address::p2wsh(&script, network).to_string());
-                            
-                            Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
-                        }
-                        Err(e) => Err(format!("Segwit v0 compilation failed: {}", e))
-                    }
-                },
-                "taproot" => {
-                    // For Taproot, we need XOnlyPublicKey, so create a separate translator
-                    let mut xonly_translator = XOnlyKeyTranslator::new();
-                    let xonly_policy = match descriptor_policy.translate_pk(&mut xonly_translator) {
-                        Ok(policy) => policy,
-                        Err(_) => return Err("Failed to translate descriptor keys to X-only keys".to_string())
-                    };
-                    
-                    match xonly_policy.compile::<Tap>() {
-                        Ok(ms) => {
-                            let script = ms.encode();
-                            let script_hex = hex::encode(script.as_bytes());
-                            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                            let script_size = script.len();
-                            let miniscript_str = ms.to_string();
-                            
-                            // For Taproot, estimate satisfaction size based on miniscript pattern
-                            console_log!("Estimating Taproot satisfaction size");
-                            let miniscript_str_check = ms.to_string();
-                            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str_check.starts_with("pk(") {
-                                // For pk(), it's just a signature (64 bytes for Schnorr)
-                                console_log!("Taproot pk() detected, estimating 64 bytes");
-                                (Some(64), Some(64u64))
-                            } else {
-                                console_log!("Taproot complex script, cannot estimate");
-                                (None, None)
-                            };
-                            let sanity_check = ms.sanity_check().is_ok();
-                            let is_non_malleable = ms.is_non_malleable();
-                            
-                            let address = generate_taproot_address(&script, network);
-                            
-                            Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
-                        }
-                        Err(e) => Err(format!("Taproot compilation failed: {}", e))
-                    }
-                },
-                _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
+                "legacy" => compile_legacy_policy(concrete_policy, network),
+                "taproot" => compile_taproot_policy(concrete_policy, network),
+                _ => compile_segwit_policy(concrete_policy, network),
             }
-        }
+        },
         Err(_) => {
-            // Fallback to original PublicKey parsing for simple keys
-            match context {
-                "legacy" => {
-                    match trimmed.parse::<Concrete<PublicKey>>() {
-                        Ok(policy) => {
-                            match policy.compile::<Legacy>() {
-                                Ok(ms) => {
-                                    let script = ms.encode();
-                                    let script_hex = hex::encode(script.as_bytes());
-                                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                                    let script_size = script.len();
-                                    let miniscript_str = ms.to_string();
-                                    
-                                    // Calculate additional metrics
-                                    let max_satisfaction_size = ms.max_satisfaction_size().ok();
-                                    let max_weight_to_satisfy = ms.max_satisfaction_size().ok().map(|size| size as u64);
-                                    let sanity_check = ms.sanity_check().is_ok();
-                                    let is_non_malleable = ms.is_non_malleable();
-                                    
-                                    let address = match Address::p2sh(&script, network) {
-                                        Ok(addr) => Some(addr.to_string()),
-                                        Err(_) => None,
-                                    };
-                                    
-                                    Ok((script_hex, script_asm, address, script_size, "Legacy".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
-                                }
-                                Err(e) => Err(format!("Legacy compilation failed: {}", e))
-                            }
-                        }
-                        Err(e) => {
-                            let error_msg = format!("{}", e);
-                            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                                Err(format!("Legacy policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
-                            } else {
-                                Err(format!("Policy parsing failed: {}", e))
-                            }
-                        }
+            // If descriptor parsing fails, try parsing as regular Concrete<PublicKey>
+            match processed_policy.parse::<Concrete<PublicKey>>() {
+                Ok(concrete_policy) => {
+                    match context {
+                        "legacy" => compile_legacy_policy(concrete_policy, network),
+                        "taproot" => compile_taproot_policy(concrete_policy, network),
+                        _ => compile_segwit_policy(concrete_policy, network),
                     }
                 },
-                "segwit" => {
-                    match trimmed.parse::<Concrete<PublicKey>>() {
-                        Ok(policy) => {
-                            match policy.compile::<Segwitv0>() {
-                                Ok(ms) => {
-                                    let script = ms.encode();
-                                    let script_hex = hex::encode(script.as_bytes());
-                                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                                    let script_size = script.len();
-                                    let miniscript_str = ms.to_string();
-                                    
-                                    // Calculate additional metrics
-                                    let max_satisfaction_size = ms.max_satisfaction_size().ok();
-                                    let max_weight_to_satisfy = ms.max_satisfaction_size().ok().map(|size| size as u64);
-                                    let sanity_check = ms.sanity_check().is_ok();
-                                    let is_non_malleable = ms.is_non_malleable();
-                                    
-                                    let address = Some(Address::p2wsh(&script, network).to_string());
-                                    
-                                    Ok((script_hex, script_asm, address, script_size, "Segwit v0".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
-                                }
-                                Err(e) => {
-                                    let error_msg = format!("{}", e);
-                                    if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                                        Err(format!("Segwit v0 compilation failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
-                                    } else {
-                                        Err(format!("Segwit v0 compilation failed: {}", e))
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            let error_msg = format!("{}", e);
-                            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                                Err(format!("Segwit v0 policy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
-                            } else {
-                                Err(format!("Policy parsing failed: {}", e))
-                            }
-                        }
-                    }
-                },
-                "taproot" => {
-                    match trimmed.parse::<Concrete<XOnlyPublicKey>>() {
-                        Ok(policy) => {
-                            match policy.compile::<Tap>() {
-                                Ok(ms) => {
-                                    let script = ms.encode();
-                                    let script_hex = hex::encode(script.as_bytes());
-                                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-                                    let script_size = script.len();
-                                    let miniscript_str = ms.to_string();
-                                    
-                                    // For Taproot, estimate satisfaction size based on miniscript pattern
-                                    console_log!("Estimating Taproot satisfaction size (policy compilation)");
-                                    let miniscript_str_check = ms.to_string();
-                                    let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str_check.starts_with("pk(") {
-                                        // For pk(), it's just a signature (64 bytes for Schnorr)
-                                        console_log!("Taproot pk() detected, estimating 64 bytes");
-                                        (Some(64), Some(64u64))
-                                    } else {
-                                        console_log!("Taproot complex script, cannot estimate");
-                                        (None, None)
-                                    };
-                                    let sanity_check = ms.sanity_check().is_ok();
-                                    let is_non_malleable = ms.is_non_malleable();
-                                    
-                                    // Generate Taproot address
-                                    let address = generate_taproot_address(&script, network);
-                                    
-                                    Ok((script_hex, script_asm, address, script_size, "Taproot".to_string(), miniscript_str, max_satisfaction_size, max_weight_to_satisfy, Some(sanity_check), Some(is_non_malleable)))
-                                }
-                                Err(e) => {
-                                    let error_msg = format!("{}", e);
-                                    if error_msg.contains("malformed public key") {
-                                        Err(format!("Taproot compilation failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
-                                    } else {
-                                        Err(format!("Taproot compilation failed: {}", e))
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            let error_msg = format!("{}", e);
-                            if error_msg.contains("malformed public key") {
-                                Err(format!("Taproot policy parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
-                            } else {
-                                Err(format!("Policy parsing failed: {}", e))
-                            }
-                        }
-                    }
-                },
-                _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
+                Err(e) => Err(format!("Policy parsing failed: {}", e))
             }
         }
     }
 }
 
-fn generate_taproot_address(_script: &bitcoin::Script, network: Network) -> Option<String> {
-    // Create a simple Taproot address using key-path spending
-    // This uses a dummy internal key for demonstration purposes
-    
-    // Use a standard "nothing up my sleeve" internal key (hash of "TapRoot" repeated)
-    let internal_key_bytes = [
-        0x50, 0x92, 0x9b, 0x74, 0xc1, 0xa0, 0x49, 0x54, 0xb7, 0x8b, 0x4b, 0x60, 0x35, 0xe9, 0x7a, 0x5e,
-        0x07, 0x8a, 0x5a, 0x0f, 0x28, 0xec, 0x96, 0xd5, 0x47, 0xbf, 0xee, 0x9a, 0xce, 0x80, 0x3a, 0xc0
-    ];
-    
-    match XOnlyPublicKey::from_slice(&internal_key_bytes) {
-        Ok(internal_key) => {
-            // Create a simple key-path-only Taproot address
-            // Note: This is simplified - in practice you'd want script-path spending
-            let address = Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network);
-            Some(address.to_string())
+
+/// Compile policy for Legacy context
+fn compile_legacy_policy(
+    policy: Concrete<PublicKey>,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    match policy.compile::<Legacy>() {
+        Ok(ms) => {
+            let compiled_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            let desc = Descriptor::new_sh(ms.clone())
+                .map_err(|e| format!("Descriptor creation failed: {}", e))?;
+            let max_weight = desc.max_weight_to_satisfy()
+                .map_err(|e| format!("Weight calculation failed: {}", e))?;
+            
+            let max_satisfaction_size = Some((max_weight.to_wu() as f64 / 4.0) as usize);
+            let max_weight_to_satisfy = Some(max_weight.to_wu());
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            let address = Address::p2sh(&script, network).ok().map(|a| a.to_string());
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Legacy".to_string(),
+                compiled_miniscript,
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable)
+            ))
         }
-        Err(_) => None
+        Err(e) => Err(format!("Policy compilation failed for Legacy: {}", e))
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct LiftResult {
-    pub success: bool,
-    pub error: Option<String>,
-    pub miniscript: Option<String>,
-    pub policy: Option<String>,
+/// Compile policy for Segwit context
+fn compile_segwit_policy(
+    policy: Concrete<PublicKey>,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    match policy.compile::<Segwitv0>() {
+        Ok(ms) => {
+            let compiled_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            let desc = Descriptor::new_wsh(ms.clone())
+                .map_err(|e| format!("Descriptor creation failed: {}", e))?;
+            let total_weight = desc.max_weight_to_satisfy()
+                .map_err(|e| format!("Weight calculation failed: {}", e))?;
+            
+            let max_satisfaction_size = Some(total_weight.to_wu() as usize);
+            let max_weight_to_satisfy = Some(total_weight.to_wu());
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            let address = Some(Address::p2wsh(&script, network).to_string());
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Segwit v0".to_string(),
+                compiled_miniscript,
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable)
+            ))
+        }
+        Err(e) => Err(format!("Policy compilation failed for Segwit v0: {}", e))
+    }
 }
 
+/// Compile policy for Taproot context with XOnlyPublicKey
+fn compile_taproot_policy_xonly(
+    policy: Concrete<XOnlyPublicKey>,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    match policy.compile::<Tap>() {
+        Ok(ms) => {
+            let compiled_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            let miniscript_str = ms.to_string();
+            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
+                (Some(64), Some(64u64))
+            } else {
+                (None, None)
+            };
+            
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            // Determine internal key based on compiled miniscript type
+            // Use the new descriptor approach
+            let internal_key = get_taproot_internal_key(&compiled_miniscript);
+            let address = Some(generate_taproot_address_descriptor(&ms, internal_key, network)
+                .unwrap_or_else(|| {
+                    console_log!("Failed to generate Taproot address");
+                    "Address generation failed".to_string()
+                }));
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Taproot".to_string(),
+                compiled_miniscript,
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable)
+            ))
+        }
+        Err(e) => Err(format!("Policy compilation failed for Taproot: {}", e))
+    }
+}
+
+/// Compile policy for Taproot context (with PublicKey conversion)
+fn compile_taproot_policy(
+    policy: Concrete<PublicKey>,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    // Convert PublicKey policy to XOnlyPublicKey policy
+    let mut translator = PublicKeyToXOnlyTranslator::new();
+    let xonly_policy = policy.translate_pk(&mut translator)
+        .map_err(|_| "Failed to translate policy keys to X-only format")?;
+    
+    match xonly_policy.compile::<Tap>() {
+        Ok(ms) => {
+            let compiled_miniscript = ms.to_string();
+            let script = ms.encode();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            let script_size = script.len();
+            
+            let miniscript_str = ms.to_string();
+            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
+                (Some(64), Some(64u64))
+            } else {
+                (None, None)
+            };
+            
+            let sanity_check = ms.sanity_check().is_ok();
+            let is_non_malleable = ms.is_non_malleable();
+            
+            // Determine internal key based on compiled miniscript type
+            // Use the new descriptor approach  
+            let internal_key = get_taproot_internal_key(&compiled_miniscript);
+            let address = Some(generate_taproot_address_descriptor(&ms, internal_key, network)
+                .unwrap_or_else(|| {
+                    console_log!("Failed to generate Taproot address");
+                    "Address generation failed".to_string()
+                }));
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Taproot".to_string(),
+                compiled_miniscript,
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                Some(sanity_check),
+                Some(is_non_malleable)
+            ))
+        }
+        Err(e) => Err(format!("Policy compilation failed for Taproot: {}", e))
+    }
+}
+
+// ============================================================================
+// Lifting Functions
+// ============================================================================
+
+/// Lift a Bitcoin script to miniscript
 #[wasm_bindgen]
 pub fn lift_to_miniscript(bitcoin_script: &str) -> JsValue {
     console_log!("Lifting Bitcoin script to miniscript: {}", bitcoin_script);
@@ -1320,6 +1343,7 @@ pub fn lift_to_miniscript(bitcoin_script: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
+/// Lift a miniscript to policy
 #[wasm_bindgen]
 pub fn lift_to_policy(miniscript: &str) -> JsValue {
     console_log!("Lifting miniscript to policy: {}", miniscript);
@@ -1342,218 +1366,7 @@ pub fn lift_to_policy(miniscript: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
-    let mut builder = Builder::new();
-    let parts: Vec<&str> = asm.split_whitespace().collect();
-    let mut i = 0;
-    
-    while i < parts.len() {
-        let part = parts[i];
-        match part.to_uppercase().as_str() {
-            // Basic opcodes
-            "OP_0" | "OP_FALSE" | "OP_PUSHNUM_0" => builder = builder.push_opcode(opcodes::all::OP_PUSHBYTES_0),
-            "OP_1" | "OP_TRUE" | "OP_PUSHNUM_1" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_1),
-            "OP_2" | "OP_PUSHNUM_2" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_2),
-            "OP_3" | "OP_PUSHNUM_3" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_3),
-            "OP_4" | "OP_PUSHNUM_4" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_4),
-            "OP_5" | "OP_PUSHNUM_5" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_5),
-            "OP_6" | "OP_PUSHNUM_6" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_6),
-            "OP_7" | "OP_PUSHNUM_7" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_7),
-            "OP_8" | "OP_PUSHNUM_8" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_8),
-            "OP_9" | "OP_PUSHNUM_9" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_9),
-            "OP_10" | "OP_PUSHNUM_10" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_10),
-            "OP_11" | "OP_PUSHNUM_11" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_11),
-            "OP_12" | "OP_PUSHNUM_12" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_12),
-            "OP_13" | "OP_PUSHNUM_13" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_13),
-            "OP_14" | "OP_PUSHNUM_14" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_14),
-            "OP_15" | "OP_PUSHNUM_15" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_15),
-            "OP_16" | "OP_PUSHNUM_16" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_16),
-            "OP_PUSHNUM_NEG1" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_NEG1),
-            
-            // Common opcodes
-            "OP_DUP" => builder = builder.push_opcode(opcodes::all::OP_DUP),
-            "OP_HASH160" => builder = builder.push_opcode(opcodes::all::OP_HASH160),
-            "OP_HASH256" => builder = builder.push_opcode(opcodes::all::OP_HASH256),
-            "OP_SHA256" => builder = builder.push_opcode(opcodes::all::OP_SHA256),
-            "OP_RIPEMD160" => builder = builder.push_opcode(opcodes::all::OP_RIPEMD160),
-            "OP_EQUAL" => builder = builder.push_opcode(opcodes::all::OP_EQUAL),
-            "OP_EQUALVERIFY" => builder = builder.push_opcode(opcodes::all::OP_EQUALVERIFY),
-            "OP_CHECKSIG" => builder = builder.push_opcode(opcodes::all::OP_CHECKSIG),
-            "OP_CHECKSIGVERIFY" => builder = builder.push_opcode(opcodes::all::OP_CHECKSIGVERIFY),
-            "OP_CHECKMULTISIG" => builder = builder.push_opcode(opcodes::all::OP_CHECKMULTISIG),
-            "OP_CHECKMULTISIGVERIFY" => builder = builder.push_opcode(opcodes::all::OP_CHECKMULTISIGVERIFY),
-            "OP_CHECKLOCKTIMEVERIFY" | "OP_CLTV" => builder = builder.push_opcode(opcodes::all::OP_CLTV),
-            "OP_CHECKSEQUENCEVERIFY" | "OP_CSV" => builder = builder.push_opcode(opcodes::all::OP_CSV),
-            "OP_CHECKSIGADD" => builder = builder.push_opcode(opcodes::all::OP_CHECKSIGADD),
-            
-            // Control flow
-            "OP_IF" => builder = builder.push_opcode(opcodes::all::OP_IF),
-            "OP_NOTIF" => builder = builder.push_opcode(opcodes::all::OP_NOTIF),
-            "OP_ELSE" => builder = builder.push_opcode(opcodes::all::OP_ELSE),
-            "OP_ENDIF" => builder = builder.push_opcode(opcodes::all::OP_ENDIF),
-            "OP_VERIFY" => builder = builder.push_opcode(opcodes::all::OP_VERIFY),
-            "OP_RETURN" => builder = builder.push_opcode(opcodes::all::OP_RETURN),
-            
-            // Stack operations
-            "OP_SIZE" => builder = builder.push_opcode(opcodes::all::OP_SIZE),
-            "OP_SWAP" => builder = builder.push_opcode(opcodes::all::OP_SWAP),
-            "OP_DROP" => builder = builder.push_opcode(opcodes::all::OP_DROP),
-            "OP_OVER" => builder = builder.push_opcode(opcodes::all::OP_OVER),
-            "OP_PICK" => builder = builder.push_opcode(opcodes::all::OP_PICK),
-            "OP_ROLL" => builder = builder.push_opcode(opcodes::all::OP_ROLL),
-            "OP_ROT" => builder = builder.push_opcode(opcodes::all::OP_ROT),
-            "OP_2DUP" => builder = builder.push_opcode(opcodes::all::OP_2DUP),
-            "OP_2DROP" => builder = builder.push_opcode(opcodes::all::OP_2DROP),
-            "OP_NIP" => builder = builder.push_opcode(opcodes::all::OP_NIP),
-            "OP_TUCK" => builder = builder.push_opcode(opcodes::all::OP_TUCK),
-            "OP_FROMALTSTACK" => builder = builder.push_opcode(opcodes::all::OP_FROMALTSTACK),
-            "OP_TOALTSTACK" => builder = builder.push_opcode(opcodes::all::OP_TOALTSTACK),
-            "OP_IFDUP" => builder = builder.push_opcode(opcodes::all::OP_IFDUP),
-            "OP_DEPTH" => builder = builder.push_opcode(opcodes::all::OP_DEPTH),
-            "OP_2OVER" => builder = builder.push_opcode(opcodes::all::OP_2OVER),
-            "OP_2ROT" => builder = builder.push_opcode(opcodes::all::OP_2ROT),
-            "OP_2SWAP" => builder = builder.push_opcode(opcodes::all::OP_2SWAP),
-            "OP_3DUP" => builder = builder.push_opcode(opcodes::all::OP_3DUP),
-            
-            // Arithmetic
-            "OP_ADD" => builder = builder.push_opcode(opcodes::all::OP_ADD),
-            "OP_SUB" => builder = builder.push_opcode(opcodes::all::OP_SUB),
-            "OP_MUL" => builder = builder.push_opcode(opcodes::all::OP_MUL),
-            "OP_DIV" => builder = builder.push_opcode(opcodes::all::OP_DIV),
-            "OP_MOD" => builder = builder.push_opcode(opcodes::all::OP_MOD),
-            "OP_LSHIFT" => builder = builder.push_opcode(opcodes::all::OP_LSHIFT),
-            "OP_RSHIFT" => builder = builder.push_opcode(opcodes::all::OP_RSHIFT),
-            "OP_BOOLAND" => builder = builder.push_opcode(opcodes::all::OP_BOOLAND),
-            "OP_BOOLOR" => builder = builder.push_opcode(opcodes::all::OP_BOOLOR),
-            "OP_NUMEQUAL" => builder = builder.push_opcode(opcodes::all::OP_NUMEQUAL),
-            "OP_NUMEQUALVERIFY" => builder = builder.push_opcode(opcodes::all::OP_NUMEQUALVERIFY),
-            "OP_NUMNOTEQUAL" => builder = builder.push_opcode(opcodes::all::OP_NUMNOTEQUAL),
-            "OP_LESSTHAN" => builder = builder.push_opcode(opcodes::all::OP_LESSTHAN),
-            "OP_GREATERTHAN" => builder = builder.push_opcode(opcodes::all::OP_GREATERTHAN),
-            "OP_LESSTHANOREQUAL" => builder = builder.push_opcode(opcodes::all::OP_LESSTHANOREQUAL),
-            "OP_GREATERTHANOREQUAL" => builder = builder.push_opcode(opcodes::all::OP_GREATERTHANOREQUAL),
-            "OP_MIN" => builder = builder.push_opcode(opcodes::all::OP_MIN),
-            "OP_MAX" => builder = builder.push_opcode(opcodes::all::OP_MAX),
-            "OP_WITHIN" => builder = builder.push_opcode(opcodes::all::OP_WITHIN),
-            "OP_1NEGATE" => builder = builder.push_opcode(opcodes::all::OP_PUSHNUM_NEG1), // Alias
-            "OP_NEGATE" => builder = builder.push_opcode(opcodes::all::OP_NEGATE),
-            "OP_ABS" => builder = builder.push_opcode(opcodes::all::OP_ABS),
-            "OP_NOT" => builder = builder.push_opcode(opcodes::all::OP_NOT),
-            "OP_0NOTEQUAL" => builder = builder.push_opcode(opcodes::all::OP_0NOTEQUAL),
-            
-            // String/byte operations
-            "OP_CAT" => builder = builder.push_opcode(opcodes::all::OP_CAT),
-            "OP_SUBSTR" => builder = builder.push_opcode(opcodes::all::OP_SUBSTR),
-            "OP_LEFT" => builder = builder.push_opcode(opcodes::all::OP_LEFT),
-            "OP_RIGHT" => builder = builder.push_opcode(opcodes::all::OP_RIGHT),
-            "OP_INVERT" => builder = builder.push_opcode(opcodes::all::OP_INVERT),
-            "OP_AND" => builder = builder.push_opcode(opcodes::all::OP_AND),
-            "OP_OR" => builder = builder.push_opcode(opcodes::all::OP_OR),
-            "OP_XOR" => builder = builder.push_opcode(opcodes::all::OP_XOR),
-            
-            // Reserved words (these will fail script execution but are valid opcodes)
-            "OP_RESERVED" => builder = builder.push_opcode(opcodes::all::OP_RESERVED),
-            "OP_VER" => builder = builder.push_opcode(opcodes::all::OP_VER),
-            "OP_VERIF" => builder = builder.push_opcode(opcodes::all::OP_VERIF),
-            "OP_VERNOTIF" => builder = builder.push_opcode(opcodes::all::OP_VERNOTIF),
-            "OP_RESERVED1" => builder = builder.push_opcode(opcodes::all::OP_RESERVED1),
-            "OP_RESERVED2" => builder = builder.push_opcode(opcodes::all::OP_RESERVED2),
-            
-            // Alternative hash functions (disabled by default)
-            "OP_SHA1" => builder = builder.push_opcode(opcodes::all::OP_SHA1),
-            "OP_MD5" => builder = builder.push_opcode(opcodes::all::OP_HASH160), // MD5 not in bitcoin lib, using HASH160 as fallback
-            
-            // NOP operations
-            "OP_NOP" => builder = builder.push_opcode(opcodes::all::OP_NOP),
-            "OP_NOP1" => builder = builder.push_opcode(opcodes::all::OP_NOP1),
-            "OP_NOP4" => builder = builder.push_opcode(opcodes::all::OP_NOP4),
-            "OP_NOP5" => builder = builder.push_opcode(opcodes::all::OP_NOP5),
-            "OP_NOP6" => builder = builder.push_opcode(opcodes::all::OP_NOP6),
-            "OP_NOP7" => builder = builder.push_opcode(opcodes::all::OP_NOP7),
-            "OP_NOP8" => builder = builder.push_opcode(opcodes::all::OP_NOP8),
-            "OP_NOP9" => builder = builder.push_opcode(opcodes::all::OP_NOP9),
-            "OP_NOP10" => builder = builder.push_opcode(opcodes::all::OP_NOP10),
-            
-            // Additional push operations
-            "OP_PUSHDATA1" => builder = builder.push_opcode(opcodes::all::OP_PUSHDATA1),
-            "OP_PUSHDATA2" => builder = builder.push_opcode(opcodes::all::OP_PUSHDATA2),
-            "OP_PUSHDATA4" => builder = builder.push_opcode(opcodes::all::OP_PUSHDATA4),
-            
-            // Handle OP_PUSHBYTES_* opcodes - these should be followed by hex data
-            pushbytes if pushbytes.starts_with("OP_PUSHBYTES_") => {
-                // OP_PUSHBYTES_33 means "push next 33 bytes"
-                if let Ok(expected_size) = pushbytes.strip_prefix("OP_PUSHBYTES_").unwrap().parse::<usize>() {
-                    if expected_size <= 75 {
-                        // Get the next token which should be the hex data
-                        if i + 1 < parts.len() {
-                            let hex_data = parts[i + 1];
-                            if hex_data.len() % 2 == 0 && hex_data.chars().all(|c| c.is_ascii_hexdigit()) {
-                                let bytes = hex::decode(hex_data).map_err(|_| "Invalid hex data after OP_PUSHBYTES")?;
-                                if bytes.len() == expected_size {
-                                    let push_bytes = PushBytesBuf::try_from(bytes).map_err(|_| "Invalid push bytes")?;
-                                    builder = builder.push_slice(push_bytes);
-                                    i += 1; // Skip the next token since we consumed it
-                                } else {
-                                    return Err(format!("OP_PUSHBYTES_{} expects {} bytes, got {} bytes", expected_size, expected_size, bytes.len()));
-                                }
-                            } else {
-                                return Err(format!("Expected hex data after {}, got: {}", pushbytes, hex_data));
-                            }
-                        } else {
-                            return Err(format!("Missing hex data after {}", pushbytes));
-                        }
-                    } else {
-                        return Err(format!("Invalid pushbytes size: {}", expected_size));
-                    }
-                } else {
-                    return Err(format!("Invalid OP_PUSHBYTES format: {}", pushbytes));
-                }
-            },
-            
-            // If it looks like hex data, treat it as a data push
-            hex_data if hex_data.len() > 2 && hex_data.len() % 2 == 0 && hex_data.chars().all(|c| c.is_ascii_hexdigit()) => {
-                let bytes = hex::decode(hex_data).map_err(|_| "Invalid hex in ASM")?;
-                let push_bytes = PushBytesBuf::try_from(bytes).map_err(|_| "Invalid push bytes")?;
-                builder = builder.push_slice(push_bytes);
-            },
-            
-            // Try to parse as number
-            num_str => {
-                if let Ok(num) = num_str.parse::<i64>() {
-                    builder = builder.push_int(num);
-                } else {
-                    return Err(format!("Unsupported opcode or invalid data: {}", part));
-                }
-            }
-        }
-        i += 1; // Move to next token
-    }
-    
-    Ok(builder.into_script())
-}
-
-// Previous complex parser - commented out
-/*
-fn parse_asm_to_script_old(asm: &str) -> Result<ScriptBuf, String> {
-    // ... old implementation
-}
-*/
-
-
-// Helper function to extract parse_insane and parse errors from combined error message
-fn extract_parse_errors(error_msg: &str) -> Option<(String, String)> {
-    // The error format is: "Script lift failed - parse_insane: <error1>, parse: <error2>"
-    if let Some(pos) = error_msg.find("parse_insane: ") {
-        let after_insane = &error_msg[pos + 14..]; // Skip "parse_insane: "
-        if let Some(comma_pos) = after_insane.find(", parse: ") {
-            let insane_err = after_insane[..comma_pos].to_string();
-            let parse_err = after_insane[comma_pos + 9..].to_string(); // Skip ", parse: "
-            return Some((insane_err, parse_err));
-        }
-    }
-    None
-}
-
+/// Internal function to perform lift to miniscript
 fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     if bitcoin_script.trim().is_empty() {
         return Err("Empty Bitcoin script".to_string());
@@ -1562,108 +1375,53 @@ fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     let trimmed = bitcoin_script.trim();
     console_log!("Processing Bitcoin script ASM: {}", trimmed);
     
-    // For ASM input, we need to convert it to a script
-    // For simplicity, let's try to parse the hex directly if it looks like hex
-    // Or handle some common ASM patterns
-    
+    // Parse script from hex or ASM
     let script = if trimmed.len() % 2 == 0 && trimmed.chars().all(|c| c.is_ascii_hexdigit()) {
-        // Looks like hex, try to decode as script bytes
         match hex::decode(trimmed) {
             Ok(bytes) => ScriptBuf::from_bytes(bytes),
             Err(_) => return Err("Invalid hex script".to_string()),
         }
     } else {
-        // Try to parse as ASM
-        match parse_asm_to_script(trimmed) {
-            Ok(script) => script,
-            Err(e) => return Err(format!("Failed to parse ASM: {}", e)),
-        }
+        parse_asm_to_script(trimmed)?
     };
     
     console_log!("Successfully parsed Bitcoin script, length: {} bytes", script.len());
     
-    // Structure to hold detailed error info for each context
-    struct ContextError {
-        parse_insane_err: String,
-        parse_err: String,
-    }
-    
+    // Try to lift for different contexts
     let mut context_errors = Vec::new();
     
-    // Try to lift the script to miniscript for different contexts
-    // Start with Legacy context
+    // Try Legacy
     match try_lift_script_to_miniscript::<miniscript::Legacy>(script.as_script()) {
         Ok(ms) => return Ok(ms),
         Err(e) => {
-            // Extract the detailed errors from the combined error message
-            if let Some((insane_err, parse_err)) = extract_parse_errors(&e) {
-                context_errors.push(("Legacy", ContextError {
-                    parse_insane_err: insane_err,
-                    parse_err: parse_err,
-                }));
-            } else {
-                context_errors.push(("Legacy", ContextError {
-                    parse_insane_err: e.clone(),
-                    parse_err: e.clone(),
-                }));
-            }
-            console_log!("Legacy lift failed: {}", e);
+            context_errors.push(("Legacy", e));
+            console_log!("Legacy lift failed");
         }
     }
     
-    // Try Segwit context
+    // Try Segwit
     match try_lift_script_to_miniscript::<miniscript::Segwitv0>(script.as_script()) {
         Ok(ms) => return Ok(ms),
         Err(e) => {
-            if let Some((insane_err, parse_err)) = extract_parse_errors(&e) {
-                context_errors.push(("Segwit", ContextError {
-                    parse_insane_err: insane_err,
-                    parse_err: parse_err,
-                }));
-            } else {
-                context_errors.push(("Segwit", ContextError {
-                    parse_insane_err: e.clone(),
-                    parse_err: e.clone(),
-                }));
-            }
-            console_log!("Segwit lift failed: {}", e);
+            context_errors.push(("Segwit", e));
+            console_log!("Segwit lift failed");
         }
     }
     
-    // Try Taproot context  
+    // Try Taproot
     match try_lift_script_to_miniscript::<miniscript::Tap>(script.as_script()) {
         Ok(ms) => return Ok(ms),
         Err(e) => {
-            if let Some((insane_err, parse_err)) = extract_parse_errors(&e) {
-                context_errors.push(("Taproot", ContextError {
-                    parse_insane_err: insane_err,
-                    parse_err: parse_err,
-                }));
-            } else {
-                context_errors.push(("Taproot", ContextError {
-                    parse_insane_err: e.clone(),
-                    parse_err: e.clone(),
-                }));
-            }
-            console_log!("Taproot lift failed: {}", e);
+            context_errors.push(("Taproot", e));
+            console_log!("Taproot lift failed");
         }
     }
     
-    // Format the error message with better structure
-    let mut error_msg = String::from("❌ Script is not liftable to Miniscript\n\n");
-    error_msg.push_str("This Bitcoin script cannot be lifted to miniscript. Attempted lifting with both standard and non-standard parsers across all contexts:\n\n");
-    
-    for (context_name, errors) in context_errors {
-        error_msg.push_str(&format!("📍 {} Context:\n", context_name));
-        error_msg.push_str(&format!("   • parse_insane: ❌ {}\n", errors.parse_insane_err));
-        error_msg.push_str(&format!("   • parse: ❌ {}\n\n", errors.parse_err));
-    }
-    
-    error_msg.push_str("Note: Scripts containing raw public key hashes (P2PKH) or certain non-miniscript constructs cannot be lifted.");
-    
-    Err(error_msg)
+    // Format error message
+    format_lift_error(context_errors)
 }
 
+/// Try to lift script to miniscript for a specific context
 fn try_lift_script_to_miniscript<Ctx>(script: &bitcoin::Script) -> Result<String, String> 
 where 
     Ctx: miniscript::ScriptContext,
@@ -1672,7 +1430,7 @@ where
 {
     console_log!("Attempting to lift script to miniscript...");
     
-    // First try parse_insane which accepts non-standard but valid miniscripts
+    // Try parse_insane first (accepts non-standard but valid miniscripts)
     match Miniscript::<Ctx::Key, Ctx>::parse_insane(script) {
         Ok(ms) => {
             let ms_string = ms.to_string();
@@ -1681,160 +1439,176 @@ where
         }
         Err(insane_err) => {
             console_log!("parse_insane failed: {}", insane_err);
-            // Fallback to regular parse - might catch some edge cases
+            // Fallback to regular parse
             match Miniscript::<Ctx::Key, Ctx>::parse(script) {
                 Ok(ms) => {
                     let ms_string = ms.to_string();
-                    console_log!("Successfully lifted to miniscript using parse (note: analysis failed with parse_insane): {}", ms_string);
-                    console_log!("parse_insane error was: {}", insane_err);
+                    console_log!("Successfully lifted to miniscript using parse: {}", ms_string);
                     Ok(ms_string)
                 }
                 Err(parse_err) => {
                     console_log!("Both parse_insane and parse failed");
-                    Err(format!("Script lift failed - parse_insane: {}, parse: {}", insane_err, parse_err))
+                    Err(format!("parse_insane: {}, parse: {}", insane_err, parse_err))
                 }
             }
         }
     }
 }
 
+/// Format lift error message
+fn format_lift_error(context_errors: Vec<(&str, String)>) -> Result<String, String> {
+    let mut error_msg = String::from("❌ Script is not liftable to Miniscript\n\n");
+    error_msg.push_str("This Bitcoin script cannot be lifted to miniscript. Attempted lifting with both standard and non-standard parsers across all contexts:\n\n");
+    
+    for (context_name, error) in context_errors {
+        error_msg.push_str(&format!("📍 {} Context:\n", context_name));
+        
+        // Extract detailed errors if available
+        if let Some(pos) = error.find("parse_insane: ") {
+            let after = &error[pos + 14..];
+            if let Some(comma_pos) = after.find(", parse: ") {
+                let insane_err = &after[..comma_pos];
+                let parse_err = &after[comma_pos + 9..];
+                error_msg.push_str(&format!("   • parse_insane: ❌ {}\n", insane_err));
+                error_msg.push_str(&format!("   • parse: ❌ {}\n\n", parse_err));
+            } else {
+                error_msg.push_str(&format!("   • Error: ❌ {}\n\n", error));
+            }
+        } else {
+            error_msg.push_str(&format!("   • Error: ❌ {}\n\n", error));
+        }
+    }
+    
+    error_msg.push_str("Note: Scripts containing raw public key hashes (P2PKH) or certain non-miniscript constructs cannot be lifted.");
+    
+    Err(error_msg)
+}
+
+/// Internal function to perform lift to policy
 fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
     if miniscript.trim().is_empty() {
         return Err("Empty miniscript".to_string());
     }
     
     let trimmed = miniscript.trim();
-    console_log!("Processing miniscript for policy lift: {}", trimmed);
+    console_log!("Attempting to lift miniscript to policy: {}", trimmed);
     
-    // Try to parse the miniscript and lift it to policy using concrete implementations
+    // Try different contexts
+    let mut errors = Vec::new();
     
-    // Try Legacy context first
-    match trimmed.parse::<Miniscript<PublicKey, Legacy>>() {
-        Ok(ms) => {
-            console_log!("Attempting to lift miniscript to policy (Legacy)");
-            match ms.lift() {
-                Ok(policy) => {
-                    let policy_string = policy.to_string();
-                    console_log!("Successfully lifted miniscript to policy (Legacy): {}", policy_string);
-                    return Ok(policy_string);
-                }
-                Err(e) => console_log!("Legacy miniscript->policy lift failed: {}", e),
-            }
-        }
-        Err(e) => console_log!("Legacy miniscript parsing failed: {}", e),
+    // Try Legacy
+    match lift_miniscript_to_policy::<miniscript::Legacy>(trimmed) {
+        Ok(policy) => return Ok(policy),
+        Err(e) => errors.push(("Legacy", e))
     }
     
-    // Try Segwit context
-    match trimmed.parse::<Miniscript<PublicKey, Segwitv0>>() {
-        Ok(ms) => {
-            console_log!("Attempting to lift miniscript to policy (Segwit)");
-            match ms.lift() {
-                Ok(policy) => {
-                    let policy_string = policy.to_string();
-                    console_log!("Successfully lifted miniscript to policy (Segwit): {}", policy_string);
-                    return Ok(policy_string);
-                }
-                Err(e) => console_log!("Segwit miniscript->policy lift failed: {}", e),
-            }
-        }
-        Err(e) => console_log!("Segwit miniscript parsing failed: {}", e),
+    // Try Segwit
+    match lift_miniscript_to_policy::<miniscript::Segwitv0>(trimmed) {
+        Ok(policy) => return Ok(policy),
+        Err(e) => errors.push(("Segwit", e))
     }
     
-    // Try Taproot context with XOnlyPublicKey
-    match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-        Ok(ms) => {
-            console_log!("Attempting to lift miniscript to policy (Taproot)");
-            match ms.lift() {
-                Ok(policy) => {
-                    let policy_string = policy.to_string();
-                    console_log!("Successfully lifted miniscript to policy (Taproot): {}", policy_string);
-                    return Ok(policy_string);
-                }
-                Err(e) => console_log!("Taproot miniscript->policy lift failed: {}", e),
-            }
-        }
-        Err(e) => console_log!("Taproot miniscript parsing failed: {}", e),
+    // Try Taproot
+    match lift_miniscript_to_policy::<miniscript::Tap>(trimmed) {
+        Ok(policy) => return Ok(policy),
+        Err(e) => errors.push(("Taproot", e))
     }
     
-    Err("Cannot lift this miniscript to policy in any context (Legacy, Segwit, Taproot). The miniscript may not be liftable or may have parsing issues.".to_string())
+    // Format error message
+    let mut error_msg = String::from("Failed to lift miniscript to policy:\n");
+    for (context, err) in errors {
+        error_msg.push_str(&format!("  {} context: {}\n", context, err));
+    }
+    
+    Err(error_msg)
 }
 
-
-#[derive(Serialize, Deserialize)]
-pub struct AddressResult {
-    pub success: bool,
-    pub address: Option<String>,
-    pub error: Option<String>,
+/// Lift miniscript to policy for a specific context
+fn lift_miniscript_to_policy<Ctx>(miniscript: &str) -> Result<String, String>
+where
+    Ctx: miniscript::ScriptContext,
+    for<'a> Ctx::Key: std::fmt::Display + std::str::FromStr,
+    <Ctx::Key as std::str::FromStr>::Err: std::fmt::Display + std::fmt::Debug,
+{
+    match miniscript.parse::<Miniscript<Ctx::Key, Ctx>>() {
+        Ok(ms) => {
+            match ms.lift() {
+                Ok(semantic_policy) => {
+                    let policy_str = semantic_policy.to_string();
+                    console_log!("Successfully lifted to policy: {}", policy_str);
+                    Ok(policy_str)
+                }
+                Err(e) => Err(format!("Policy lifting failed: {}", e))
+            }
+        }
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
 }
 
+// ============================================================================
+// Address Generation
+// ============================================================================
+
+/// Generate address for a specific network
 #[wasm_bindgen]
 pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
-    console_log!("Generating address for script: {} type: {} network: {}", script_hex, script_type, network);
+    console_log!("Generating address for network: {}", network);
+    console_log!("Script type: {}", script_type);
     
-    // Parse network
-    let network_enum = match network.to_lowercase().as_str() {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        _ => {
-            let result = AddressResult {
-                success: false,
-                address: None,
-                error: Some("Invalid network. Use 'mainnet' or 'testnet'".to_string()),
-            };
-            return serde_wasm_bindgen::to_value(&result).unwrap();
+    let result = match perform_address_generation(script_hex, script_type, network) {
+        Ok(address) => AddressResult {
+            success: true,
+            error: None,
+            address: Some(address),
+        },
+        Err(e) => AddressResult {
+            success: false,
+            error: Some(e),
+            address: None,
         }
-    };
-    
-    // Decode hex script
-    let script_bytes = match hex::decode(script_hex) {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            let result = AddressResult {
-                success: false,
-                address: None,
-                error: Some("Invalid hex script".to_string()),
-            };
-            return serde_wasm_bindgen::to_value(&result).unwrap();
-        }
-    };
-    
-    let script = ScriptBuf::from_bytes(script_bytes);
-    
-    // Generate address based on script type
-    let address = match script_type {
-        "Legacy" => {
-            match Address::p2sh(&script, network_enum) {
-                Ok(addr) => Some(addr.to_string()),
-                Err(_) => None,
-            }
-        },
-        "Segwit v0" => {
-            Some(Address::p2wsh(&script, network_enum).to_string())
-        },
-        "Taproot" => {
-            generate_taproot_address(&script, network_enum)
-        },
-        _ => None,
-    };
-    
-    let success = address.is_some();
-    let error = if !success {
-        Some(format!("Failed to generate {} address for {}", script_type, network))
-    } else {
-        None
-    };
-    
-    let result = AddressResult {
-        success,
-        address,
-        error,
     };
     
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-#[wasm_bindgen(start)]
+/// Internal function to generate address
+fn perform_address_generation(script_hex: &str, script_type: &str, network_str: &str) -> Result<String, String> {
+    // Parse network
+    let network = match network_str {
+        "mainnet" | "bitcoin" => Network::Bitcoin,
+        "testnet" => Network::Testnet,
+        "regtest" => Network::Regtest,
+        "signet" => Network::Signet,
+        _ => return Err(format!("Invalid network: {}", network_str))
+    };
+    
+    // Decode script hex
+    let script_bytes = hex::decode(script_hex)
+        .map_err(|e| format!("Invalid script hex: {}", e))?;
+    let script = ScriptBuf::from_bytes(script_bytes.clone());
+    
+    // Generate address based on script type
+    let address = match script_type {
+        "Legacy" => {
+            Address::p2sh(&script, network)
+                .map_err(|e| format!("Failed to generate P2SH address: {}", e))?
+        },
+        "Segwit v0" => {
+            Address::p2wsh(&script, network)
+        },
+        "Taproot" => {
+            return Err("Taproot address generation requires the original miniscript, not just the script hex".to_string());
+        },
+        _ => return Err(format!("Unknown script type: {}", script_type))
+    };
+    
+    Ok(address.to_string())
+}
+
+// ============================================================================
+// Main Function (for testing)
+// ============================================================================
+
 pub fn main() {
-    console_log!("=== REAL MINISCRIPT WASM MODULE LOADED ===");
-    console_log!("Module initialization complete");
+    console_log!("Miniscript compiler library loaded");
 }
