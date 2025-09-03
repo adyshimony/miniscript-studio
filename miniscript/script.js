@@ -543,8 +543,8 @@ class MiniscriptCompiler {
                 
                 let successMsg = '';
                 if (isDescriptorValidation && result.compiled_miniscript) {
-                    // For descriptor validation, show the validation message
-                    successMsg = result.compiled_miniscript;
+                    // For descriptor validation, build the message using original expression from editor
+                    successMsg = `Valid descriptor: wsh(${expression})`;
                 } else {
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                     
@@ -588,12 +588,8 @@ class MiniscriptCompiler {
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
                 // Pass the normalized miniscript for tree visualization (if available)
-                // Skip tree for descriptor validation
-                let treeExpression = null;
-                if (!isDescriptorValidation) {
-                    // Use original expression for tree to preserve key names and descriptors
-                    treeExpression = expression;
-                }
+                // Use original expression for tree to preserve key names and descriptors
+                let treeExpression = expression;
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
                 // Display results (without the info box since we show it in the success message)
@@ -721,8 +717,8 @@ class MiniscriptCompiler {
                 
                 let successMsg = '';
                 if (isDescriptorValidation && result.script && result.script.startsWith('Valid descriptor:')) {
-                    // For descriptor validation from policy, show the validation message from script field
-                    successMsg = result.script;
+                    // For descriptor validation from policy, build the message using compiled miniscript from editor
+                    successMsg = `Valid descriptor: wsh(${displayMiniscript})`;
                 } else {
                     // Show normal compilation success message with spending cost analysis format
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
@@ -764,11 +760,7 @@ class MiniscriptCompiler {
                 }
                 
                 // Pass the compiled miniscript expression for tree visualization
-                // Skip tree for descriptor validation (same as direct miniscript compilation)
-                let treeExpression = null;
-                if (!isDescriptorValidation) {
-                    treeExpression = displayMiniscript;
-                }
+                let treeExpression = displayMiniscript;
                 this.showMiniscriptSuccess(successMsg, treeExpression);
                 
                 // Don't display the compiled_miniscript in results since it's now in the text box
@@ -5118,6 +5110,7 @@ window.loadExample = function(example, exampleId) {
             delete policyInput.dataset.originalTemplate;
             delete policyInput.dataset.exampleId;
         }
+        
     }
     
     // Clear the "last highlighted text" to force re-highlighting
