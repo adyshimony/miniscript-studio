@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -502,6 +502,8 @@ class MiniscriptCompiler {
             compileBtn.disabled = false;
 
             if (result.success) {
+                // Add the processed expression to result for network switching
+                result.processedMiniscript = processedExpression;
                 // Update the input display to show cleaned expression and reset format button
                 const expressionInput = document.getElementById('expression-input');
                 const formatButton = document.getElementById('format-miniscript-btn');
@@ -3600,6 +3602,8 @@ class MiniscriptCompiler {
             const addressDisplay = addressDiv.querySelector('#address-display');
             addressDisplay.dataset.scriptHex = result.script;
             addressDisplay.dataset.scriptType = result.miniscript_type || 'Unknown';
+            // Store the processed miniscript (with actual keys) for taproot network switching
+            addressDisplay.dataset.miniscript = result.processedMiniscript || '';
             
             // Add event listener for network toggle
             const networkToggleBtn = addressDiv.querySelector('#network-toggle-btn');
@@ -4633,6 +4637,7 @@ class MiniscriptCompiler {
         const currentNetwork = button.dataset.network;
         const scriptHex = addressDisplay.dataset.scriptHex;
         const scriptType = addressDisplay.dataset.scriptType;
+        const miniscript = addressDisplay.dataset.miniscript;
         
         if (!scriptHex || !scriptType) {
             console.error('Missing script information for network toggle');
@@ -4655,8 +4660,15 @@ class MiniscriptCompiler {
         try {
             console.log(`Switching from ${currentNetwork} to ${newNetwork} for ${scriptType} script`);
             
-            // Call WASM function to generate address for new network
-            const result = generate_address_for_network(scriptHex, scriptType, newNetwork);
+            // For Taproot, use the special function with miniscript
+            let result;
+            if (scriptType === 'Taproot' && miniscript) {
+                console.log(`Using taproot-specific network switch with miniscript: ${miniscript}`);
+                result = generate_taproot_address_for_network(miniscript, newNetwork);
+            } else {
+                // Call original WASM function for other script types
+                result = generate_address_for_network(scriptHex, scriptType, newNetwork);
+            }
             
             if (result.success && result.address) {
                 // Update address display
