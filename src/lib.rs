@@ -1252,42 +1252,61 @@ fn compile_taproot_policy_xonly(
     match policy.compile::<Tap>() {
         Ok(ms) => {
             let compiled_miniscript = ms.to_string();
-            let script = ms.encode();
-            let script_hex = hex::encode(script.as_bytes());
-            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-            let script_size = script.len();
+            console_log!("Policy compiled to miniscript: {}", compiled_miniscript);
             
-            let miniscript_str = ms.to_string();
-            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
-                (Some(64), Some(64u64))
-            } else {
-                (None, None)
-            };
+            // Now pass the compiled miniscript through the same tr() descriptor approach as miniscript compilation
+            let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let tr_descriptor = format!("tr({},{})", nums_point, compiled_miniscript);
+            console_log!("Built tr() descriptor from policy miniscript: {}", tr_descriptor);
             
-            let sanity_check = ms.sanity_check().is_ok();
-            let is_non_malleable = ms.is_non_malleable();
-            
-            // Determine internal key based on compiled miniscript type
-            // Use the new descriptor approach
-            let internal_key = get_taproot_internal_key(&compiled_miniscript);
-            let address = Some(generate_taproot_address_descriptor(&ms, internal_key, network)
-                .unwrap_or_else(|| {
-                    console_log!("Failed to generate Taproot address");
-                    "Address generation failed".to_string()
-                }));
-            
-            Ok((
-                script_hex,
-                script_asm,
-                address,
-                script_size,
-                "Taproot".to_string(),
-                compiled_miniscript,
-                max_satisfaction_size,
-                max_weight_to_satisfy,
-                Some(sanity_check),
-                Some(is_non_malleable)
-            ))
+            // Parse as descriptor to get proper taproot script and address
+            match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
+                Ok(descriptor) => {
+                    console_log!("Successfully parsed tr() descriptor from policy");
+                    
+                    // Get the output script (scriptPubKey)
+                    let script = descriptor.script_pubkey();
+                    let script_hex = hex::encode(script.as_bytes());
+                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+                    let script_size = script.len();
+                    
+                    // Generate address from descriptor
+                    let address = descriptor.address(network)
+                        .map(|addr| addr.to_string())
+                        .ok();
+                    
+                    // Get satisfaction properties from original miniscript
+                    let miniscript_str = ms.to_string();
+                    let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
+                        (Some(64), Some(64u64))
+                    } else {
+                        (None, None)
+                    };
+                    
+                    let sanity_check = ms.sanity_check().is_ok();
+                    let is_non_malleable = ms.is_non_malleable();
+                    
+                    console_log!("Generated Taproot script from policy: {} bytes", script_size);
+                    console_log!("Generated Taproot address from policy: {:?}", address);
+                    
+                    Ok((
+                        script_hex,
+                        script_asm,
+                        address,
+                        script_size,
+                        "Taproot".to_string(),
+                        compiled_miniscript,
+                        max_satisfaction_size,
+                        max_weight_to_satisfy,
+                        Some(sanity_check),
+                        Some(is_non_malleable)
+                    ))
+                }
+                Err(e) => {
+                    console_log!("Failed to parse tr() descriptor from policy: {}", e);
+                    Err(format!("Failed to create tr() descriptor from policy: {}", e))
+                }
+            }
         }
         Err(e) => Err(format!("Policy compilation failed for Taproot: {}", e))
     }
@@ -1306,42 +1325,61 @@ fn compile_taproot_policy(
     match xonly_policy.compile::<Tap>() {
         Ok(ms) => {
             let compiled_miniscript = ms.to_string();
-            let script = ms.encode();
-            let script_hex = hex::encode(script.as_bytes());
-            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
-            let script_size = script.len();
+            console_log!("Policy (converted) compiled to miniscript: {}", compiled_miniscript);
             
-            let miniscript_str = ms.to_string();
-            let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
-                (Some(64), Some(64u64))
-            } else {
-                (None, None)
-            };
+            // Now pass the compiled miniscript through the same tr() descriptor approach as miniscript compilation
+            let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let tr_descriptor = format!("tr({},{})", nums_point, compiled_miniscript);
+            console_log!("Built tr() descriptor from converted policy miniscript: {}", tr_descriptor);
             
-            let sanity_check = ms.sanity_check().is_ok();
-            let is_non_malleable = ms.is_non_malleable();
-            
-            // Determine internal key based on compiled miniscript type
-            // Use the new descriptor approach  
-            let internal_key = get_taproot_internal_key(&compiled_miniscript);
-            let address = Some(generate_taproot_address_descriptor(&ms, internal_key, network)
-                .unwrap_or_else(|| {
-                    console_log!("Failed to generate Taproot address");
-                    "Address generation failed".to_string()
-                }));
-            
-            Ok((
-                script_hex,
-                script_asm,
-                address,
-                script_size,
-                "Taproot".to_string(),
-                compiled_miniscript,
-                max_satisfaction_size,
-                max_weight_to_satisfy,
-                Some(sanity_check),
-                Some(is_non_malleable)
-            ))
+            // Parse as descriptor to get proper taproot script and address
+            match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
+                Ok(descriptor) => {
+                    console_log!("Successfully parsed tr() descriptor from converted policy");
+                    
+                    // Get the output script (scriptPubKey)
+                    let script = descriptor.script_pubkey();
+                    let script_hex = hex::encode(script.as_bytes());
+                    let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+                    let script_size = script.len();
+                    
+                    // Generate address from descriptor
+                    let address = descriptor.address(network)
+                        .map(|addr| addr.to_string())
+                        .ok();
+                    
+                    // Get satisfaction properties from original miniscript
+                    let miniscript_str = ms.to_string();
+                    let (max_satisfaction_size, max_weight_to_satisfy) = if miniscript_str.starts_with("pk(") {
+                        (Some(64), Some(64u64))
+                    } else {
+                        (None, None)
+                    };
+                    
+                    let sanity_check = ms.sanity_check().is_ok();
+                    let is_non_malleable = ms.is_non_malleable();
+                    
+                    console_log!("Generated Taproot script from converted policy: {} bytes", script_size);
+                    console_log!("Generated Taproot address from converted policy: {:?}", address);
+                    
+                    Ok((
+                        script_hex,
+                        script_asm,
+                        address,
+                        script_size,
+                        "Taproot".to_string(),
+                        compiled_miniscript,
+                        max_satisfaction_size,
+                        max_weight_to_satisfy,
+                        Some(sanity_check),
+                        Some(is_non_malleable)
+                    ))
+                }
+                Err(e) => {
+                    console_log!("Failed to parse tr() descriptor from converted policy: {}", e);
+                    Err(format!("Failed to create tr() descriptor from policy: {}", e))
+                }
+            }
         }
         Err(e) => Err(format!("Policy compilation failed for Taproot: {}", e))
     }
