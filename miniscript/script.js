@@ -502,7 +502,7 @@ class MiniscriptCompiler {
             compileBtn.disabled = false;
 
             if (result.success) {
-                // Add the processed expression to result for network switching
+                // Add the processed expression (with actual keys) for taproot network switching
                 result.processedMiniscript = processedExpression;
                 // Update the input display to show cleaned expression and reset format button
                 const expressionInput = document.getElementById('expression-input');
@@ -767,6 +767,8 @@ class MiniscriptCompiler {
                 let treeExpression = displayMiniscript;
                 this.showMiniscriptSuccess(successMsg, treeExpression);
                 
+                // Store the compiled miniscript (with actual keys) for network switching
+                result.processedMiniscript = result.compiled_miniscript;
                 // Don't display the compiled_miniscript in results since it's now in the text box
                 result.compiled_miniscript = null;
                 // Display results (script, asm, address)

@@ -1137,6 +1137,18 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                 Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
             };
             
+            // Check if translation silently modified the keys (e.g., added 02 prefixes to x-only keys)
+            let translated_policy_str = concrete_policy.to_string();
+            console_log!("Original policy (descriptor path): {}", processed_policy);
+            console_log!("Translated policy (descriptor path): {}", translated_policy_str);
+            console_log!("Context (descriptor path): {}", context);
+            console_log!("Strings equal (descriptor path): {}", translated_policy_str == processed_policy);
+            
+            if translated_policy_str != processed_policy && context != "taproot" {
+                console_log!("Detected automatic key conversion in descriptor path - returning error");
+                return Err(format!("Key format incompatible with {} context. Detected automatic key conversion - use appropriate key format for context.", context));
+            }
+            
             match context {
                 "legacy" => compile_legacy_policy(concrete_policy, network),
                 "taproot" => compile_taproot_policy(concrete_policy, network),
@@ -1147,6 +1159,18 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             // If descriptor parsing fails, try parsing as regular Concrete<PublicKey>
             match processed_policy.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
+                    // Check if parsing silently modified the keys (e.g., added 02 prefixes to x-only keys)
+                    let parsed_policy_str = concrete_policy.to_string();
+                    console_log!("Original policy: {}", processed_policy);
+                    console_log!("Parsed policy: {}", parsed_policy_str);
+                    console_log!("Context: {}", context);
+                    console_log!("Strings equal: {}", parsed_policy_str == processed_policy);
+                    
+                    if parsed_policy_str != processed_policy && context != "taproot" {
+                        console_log!("Detected automatic key conversion - returning error");
+                        return Err(format!("Key format incompatible with {} context. Detected automatic key conversion - use appropriate key format for context.", context));
+                    }
+                    
                     match context {
                         "legacy" => compile_legacy_policy(concrete_policy, network),
                         "taproot" => compile_taproot_policy(concrete_policy, network),
