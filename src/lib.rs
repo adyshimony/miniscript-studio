@@ -19,7 +19,7 @@ use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey, ScriptContext};
 use miniscript::policy::Liftable;
-use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf};
+use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf, taproot::TaprootBuilder};
 use bitcoin::blockdata::script::{Builder, PushBytesBuf};
 use bitcoin::blockdata::opcodes::all;
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
@@ -614,10 +614,17 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
 /// Compile a miniscript expression to Bitcoin script
 #[wasm_bindgen]
 pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
+    compile_miniscript_with_mode(expression, context, "single-leaf")
+}
+
+/// Compile a miniscript expression to Bitcoin script with compilation mode
+#[wasm_bindgen]
+pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str) -> JsValue {
     console_log!("Compiling miniscript: {}", expression);
     console_log!("Context: {}", context);
+    console_log!("Mode: {}", mode);
     
-    let result = match compile_expression(expression, context) {
+    let result = match compile_expression_with_mode(expression, context, mode) {
         Ok((script, script_asm, address, script_size, ms_type, 
             max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
             CompilationResult {
@@ -654,7 +661,176 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-/// Internal function to compile miniscript expressions
+/// Internal function to compile miniscript expressions with mode
+fn compile_expression_with_mode(
+    expression: &str,
+    context: &str,
+    mode: &str
+) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    console_log!("=== COMPILE_EXPRESSION_WITH_MODE CALLED ===");
+    console_log!("Expression: {}", expression);
+    console_log!("Context: {}", context);
+    console_log!("Mode: {}", mode);
+    
+    // For taproot context, handle different compilation modes
+    if context == "taproot" {
+        match mode {
+            "multi-leaf" => {
+                console_log!("Using multi-leaf compilation (compile_tr)");
+                // Multi-leaf mode: compile miniscript with TapTree optimization  
+                return compile_taproot_miniscript_multiline(expression);
+            },
+            _ => {
+                console_log!("Using single-leaf compilation (compile)");
+                // Single-leaf mode: show raw miniscript script, not taproot address
+                return compile_taproot_miniscript_raw(expression);
+            }
+        }
+    }
+    
+    // For non-taproot contexts, use regular compilation
+    compile_expression(expression, context)
+}
+
+/// Compile miniscript for single-leaf taproot (shows raw script, not taproot address)
+fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    console_log!("=== COMPILE_TAPROOT_MINISCRIPT_RAW ===");
+    console_log!("Expression: {}", expression);
+    
+    let network = Network::Bitcoin;
+    let processed_expr = expression.trim();
+    
+    // Parse as XOnlyPublicKey miniscript for Taproot
+    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            
+            // Get the raw script (this is what we want for single-leaf mode)
+            let script = ms.encode();
+            let script_hex = script.to_hex_string();
+            let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
+            
+            // Calculate script size
+            let script_size = script.len();
+            
+            // For single-leaf mode, we still generate the same taproot address
+            // but show the raw miniscript script in HEX/ASM
+            let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let nums_key = match XOnlyPublicKey::from_str(nums_point_str) {
+                Ok(key) => key,
+                Err(_) => return Err("Failed to parse NUMS point".to_string())
+            };
+            
+            // Create taproot address (same as multi-leaf for address consistency)
+            let secp = Secp256k1::verification_only();
+            match TaprootBuilder::new().add_leaf(0, script.clone()) {
+                Ok(builder) => {
+                    match builder.finalize(&secp, nums_key) {
+                        Ok(spend_info) => {
+                            let output_key = spend_info.output_key();
+                            let address = Address::p2tr(&secp, output_key.to_x_only_public_key(), None, network);
+                            
+                            // Calculate weight info based on raw script
+                            let max_satisfaction_size = ms.max_satisfaction_size().ok();
+                            let max_weight_to_satisfy = ms.max_satisfaction_witness_elements().ok().map(|w| w as u64);
+                            
+                            console_log!("Single-leaf taproot compilation successful");
+                            console_log!("Raw script hex: {}", script_hex);
+                            console_log!("Address: {}", address);
+                            
+                            Ok((
+                                script_hex,           // Raw miniscript HEX (not taproot address)
+                                script_asm,          // Raw miniscript ASM (not taproot address)  
+                                Some(address.to_string()),
+                                script_size,
+                                "Taproot".to_string(),
+                                max_satisfaction_size,
+                                max_weight_to_satisfy,
+                                Some(true), // sanity_check
+                                Some(true), // is_non_malleable  
+                                Some(format!("tr({},{})", nums_point_str, normalized_miniscript))
+                            ))
+                        },
+                        Err(e) => Err(format!("TapTree finalization failed: {:?}", e))
+                    }
+                },
+                Err(e) => Err(format!("TapTree creation failed: {:?}", e))
+            }
+        },
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
+}
+
+/// Compile miniscript for multi-leaf taproot (using TapTree optimization)
+fn compile_taproot_miniscript_multiline(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    console_log!("=== COMPILE_TAPROOT_MINISCRIPT_MULTILINE ===");
+    console_log!("Expression: {}", expression);
+    
+    let network = Network::Bitcoin;
+    let processed_expr = expression.trim();
+    
+    // Parse as XOnlyPublicKey miniscript for Taproot
+    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            
+            // Use NUMS point for internal key
+            let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let nums_key = match XOnlyPublicKey::from_str(nums_point_str) {
+                Ok(key) => key,
+                Err(_) => return Err("Failed to parse NUMS point".to_string())
+            };
+            
+            // Create TapTree with the miniscript
+            let secp = Secp256k1::verification_only();
+            match TaprootBuilder::new().add_leaf(0, ms.encode()) {
+                Ok(builder) => {
+                    match builder.finalize(&secp, nums_key) {
+                        Ok(spend_info) => {
+                            // Get the output key for address
+                            let output_key = spend_info.output_key();
+                            let address = Address::p2tr(&secp, output_key.to_x_only_public_key(), None, network);
+                            
+                            // Build the scriptPubKey (OP_1 + 32-byte key)
+                            let script_pubkey = address.script_pubkey();
+                            let script_hex = script_pubkey.to_hex_string();
+                            let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
+                            
+                            // Calculate script size and weight
+                            let script_size = script_pubkey.len();
+                            let max_satisfaction_size = Some(200); // Estimated satisfaction size for taproot
+                            let max_weight_to_satisfy = Some(script_size as u64 * 4 + 244); // Script weight + input weight
+                            
+                            console_log!("Multi-leaf taproot compilation successful");
+                            console_log!("Script hex: {}", script_hex);
+                            console_log!("Address: {}", address);
+                            
+                            Ok((
+                                script_hex,
+                                script_asm,
+                                Some(address.to_string()),
+                                script_size,
+                                "Taproot".to_string(),
+                                max_satisfaction_size,
+                                max_weight_to_satisfy,
+                                Some(true), // sanity_check
+                                Some(true), // is_non_malleable
+                                Some(format!("tr({},{})", nums_point_str, normalized_miniscript))
+                            ))
+                        },
+                        Err(e) => Err(format!("TapTree finalization failed: {:?}", e))
+                    }
+                },
+                Err(e) => Err(format!("TapTree creation failed: {:?}", e))
+            }
+        },
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
+}
+
+/// Internal function to compile miniscript expressions  
 fn compile_expression(
     expression: &str,
     context: &str

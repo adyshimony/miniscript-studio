@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, get_taproot_leaves } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, get_taproot_leaves } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -494,8 +494,19 @@ class MiniscriptCompiler {
             const cleanedExpression = this.cleanExpression(expression);
             const processedExpression = this.replaceKeyVariables(cleanedExpression, context);
             
-            // Call the WASM function with context
-            const result = compile_miniscript(processedExpression, context);
+            // Call the WASM function with context and mode
+            let result;
+            if (context === 'taproot') {
+                const currentMode = window.currentTaprootMode || 'single-leaf';
+                console.log(`Compiling miniscript in taproot context, mode: ${currentMode}`);
+                result = compile_miniscript_with_mode(processedExpression, context, currentMode);
+                if (result.success) {
+                    result.taprootMode = currentMode;
+                }
+            } else {
+                // Non-taproot contexts: use regular compilation
+                result = compile_miniscript(processedExpression, context);
+            }
             
             // Reset button
             compileBtn.textContent = originalText;
@@ -550,11 +561,10 @@ class MiniscriptCompiler {
                 } else {
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                     
-                    if (result.max_weight_to_satisfy) {
-                        // Use ONLY what the library returns - no custom calculations
+                    if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         const scriptWeight = result.script_size;
-                        const totalWeight = result.max_weight_to_satisfy;
-                        const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                        const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
+                        const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
                         
                         successMsg += `Script: ${scriptWeight} WU<br>`;
                         successMsg += `Input: ${inputWeight}.000000 WU<br>`;
@@ -589,8 +599,7 @@ class MiniscriptCompiler {
                 // Skip problematic metrics for now - they show false warnings
                 // TODO: Fix sanity_check and is_non_malleable implementation
                 
-                // Pass the normalized miniscript for tree visualization (if available)
-                // Use original expression for tree to preserve key names and descriptors
+                // Pass the original expression for tree visualization
                 let treeExpression = expression;
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
@@ -680,7 +689,17 @@ class MiniscriptCompiler {
                     displayMiniscript = this.replaceKeysWithNames(result.compiled_miniscript);
                 }
                 
-                expressionInput.textContent = displayMiniscript;
+                // For tr() descriptors, extract only the miniscript part for the editor
+                let editorMiniscript = displayMiniscript;
+                if (displayMiniscript && displayMiniscript.startsWith('tr(')) {
+                    const parsed = this.parseTrDescriptor(displayMiniscript);
+                    if (parsed && parsed.treeScript) {
+                        editorMiniscript = parsed.treeScript;
+                        console.log('Extracted miniscript from tr() descriptor for editor:', editorMiniscript);
+                    }
+                }
+                
+                expressionInput.textContent = editorMiniscript;
                 
                 // Reset format button state since compiled miniscript is always clean/unformatted
                 formatButton.style.color = 'var(--text-secondary)';
@@ -727,11 +746,10 @@ class MiniscriptCompiler {
                     // Show normal compilation success message with spending cost analysis format
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                     
-                    if (result.max_weight_to_satisfy) {
-                        // Use ONLY what the library returns - no custom calculations
+                    if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         const scriptWeight = result.script_size;
-                        const totalWeight = result.max_weight_to_satisfy;
-                        const inputWeight = totalWeight - scriptWeight; // Library total minus script size
+                        const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
+                        const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
                         
                         successMsg += `Script: ${scriptWeight} WU<br>`;
                         successMsg += `Input: ${inputWeight}.000000 WU<br>`;
@@ -948,7 +966,7 @@ class MiniscriptCompiler {
             
             // Show different content based on compilation mode
             if (currentMode === 'single-leaf') {
-                // Single-leaf mode: show the actual miniscript, not pk(internalKey)
+                // Single-leaf mode: show the same format as direct miniscript compilation
                 const displayMiniscript = treeScript || `pk(${internalKey})`;
                 content += `
                     <div style="margin-bottom: 15px;">
@@ -957,8 +975,7 @@ class MiniscriptCompiler {
                     </div>
                     
                     <div style="color: var(--text-secondary); font-size: 13px;">
-                        💡 Miniscript compilation treats this as a simple key-path spending taproot output.<br>
-                        💡 Check the miniscript below for script hex, ASM, and address details.
+                        💡 The detailed compilation info (HEX, ASM, Address, Weight) is shown in the miniscript success message below.
                     </div>
                 </div>`;
                 return content;
@@ -4776,9 +4793,39 @@ class MiniscriptCompiler {
             }
         }
         
+        // Check if this is Taproot context and add mode selection if needed
+        const context = document.querySelector('input[name="context"]:checked')?.value;
+        let modeSelectionHtml = '';
+        
+        if (context === 'taproot' && expression && !expression.startsWith('tr(')) {
+            // Get current mode (default to single-leaf for direct miniscript)
+            const currentMode = window.currentTaprootMode || 'single-leaf';
+            
+            modeSelectionHtml = `
+                <div style="margin-top: 15px; margin-bottom: 15px; padding: 10px; background: var(--success-bg); border-radius: 6px; border: 1px solid var(--success-border);">
+                    <div style="margin-bottom: 10px;"><strong>Compilation Mode:</strong></div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="taproot-miniscript-mode" value="single-leaf" ${currentMode === 'single-leaf' ? 'checked' : ''} 
+                                   onchange="window.switchTaprootModeFromMiniscript('single-leaf')" 
+                                   style="margin-right: 8px; accent-color: var(--accent-color); transform: scale(1.1);">
+                            <span style="font-size: 13px;"><strong>Miniscript compilation</strong> (single script)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="taproot-miniscript-mode" value="multi-leaf" ${currentMode === 'multi-leaf' ? 'checked' : ''} 
+                                   onchange="window.switchTaprootModeFromMiniscript('multi-leaf')" 
+                                   style="margin-right: 8px; accent-color: var(--accent-color); transform: scale(1.1);">
+                            <span style="font-size: 13px;"><strong>Taproot compilation</strong> (multi-leaf TapTree)</span>
+                        </label>
+                    </div>
+                </div>
+            `;
+        }
+        
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>✅ Success</h4>
+                ${modeSelectionHtml}
                 <div style="margin-top: 10px; word-wrap: break-word; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap;">${message}</div>
                 ${treeHtml}
                 ${taprootInfoHtml}
@@ -4790,6 +4837,9 @@ class MiniscriptCompiler {
         try {
             // Parse the expression to understand taproot structure
             const isTaprootDescriptor = expression && expression.trim().startsWith('tr(');
+            
+            // Get current taproot mode for display
+            const currentMode = window.currentTaprootMode || 'single-leaf';
             
             // Try to get taproot leaves from WASM
             let leavesHtml = '';
@@ -4852,21 +4902,26 @@ class MiniscriptCompiler {
             }
             
             if (!isTaprootDescriptor) {
-                // For non-tr() expressions in taproot context, show basic info
-                return `
-                    <div class="taproot-info" style="margin-top: 15px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                        <strong>🌿 Taproot Details</strong>
-                        <div style="margin-top: 8px; font-size: 12px; line-height: 1.6;">
-                            <div><strong>Script Type:</strong> Tapscript leaf</div>
-                            <div><strong>Internal Key:</strong> NUMS point (unspendable)</div>
-                            <div><strong>Spend Path:</strong> Script path only</div>
-                            <div style="margin-top: 8px; color: var(--text-secondary);">
-                                ℹ️ This miniscript will be placed in a taproot tree leaf. The NUMS (Nothing Up My Sleeve) point is used as the internal key, making key path spending impossible.
+                // For non-tr() expressions in taproot context, show info based on mode
+                if (currentMode === 'single-leaf') {
+                    // Single-leaf mode: no taproot details needed
+                    return '';
+                } else {
+                    // Multi-leaf mode: show tree structure with leaves
+                    return `
+                        <div class="taproot-info" style="margin-top: 15px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
+                            <strong>🌿 Taproot Details</strong>
+                            <div style="margin-top: 8px; font-size: 12px; line-height: 1.6;">
+                                <div><strong>Script Type:</strong> Multi-leaf TapTree</div>
+                                <div><strong>Internal Key:</strong> NUMS point (unspendable)</div>
+                                <div><strong>Spend Path:</strong> Script path only</div>
+                                <div style="margin-top: 8px; color: var(--text-secondary);">
+                                    ℹ️ This miniscript is optimized into multiple tapscript leaves for efficient spending paths.
+                                </div>
                             </div>
-                            ${leavesHtml}
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             }
             
             // Parse tr() descriptor to extract internal key and tree structure
@@ -7915,7 +7970,28 @@ window.toggleMiniscriptDescription = function() {
     }
 };
 
-// Taproot Mode Switching
+// Taproot Mode Switching from Miniscript
+window.switchTaprootModeFromMiniscript = function(mode) {
+    console.log(`Switching to taproot mode from miniscript: ${mode}`);
+    
+    // Update radio button states
+    const radioButtons = document.querySelectorAll('input[name="taproot-miniscript-mode"]');
+    radioButtons.forEach(radio => {
+        if (radio.value === mode) {
+            radio.checked = true;
+        }
+    });
+    
+    // Store the selected mode globally
+    window.currentTaprootMode = mode;
+    
+    // Re-compile the current miniscript with the new mode
+    if (window.compiler) {
+        window.compiler.compileExpression();
+    }
+};
+
+// Taproot Mode Switching from Policy
 window.switchTaprootMode = function(mode) {
     console.log(`Switching to taproot mode: ${mode}`);
     
