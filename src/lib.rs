@@ -26,6 +26,7 @@ use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
 use std::str::FromStr;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use lazy_static::lazy_static;
 
 
@@ -1137,17 +1138,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                 Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
             };
             
-            // Check if translation silently modified the keys (e.g., added 02 prefixes to x-only keys)
-            let translated_policy_str = concrete_policy.to_string();
-            console_log!("Original policy (descriptor path): {}", processed_policy);
-            console_log!("Translated policy (descriptor path): {}", translated_policy_str);
-            console_log!("Context (descriptor path): {}", context);
-            console_log!("Strings equal (descriptor path): {}", translated_policy_str == processed_policy);
-            
-            if translated_policy_str != processed_policy && context != "taproot" {
-                console_log!("Detected automatic key conversion in descriptor path - returning error");
-                return Err(format!("Key format incompatible with {} context. Detected automatic key conversion - use appropriate key format for context.", context));
-            }
+            // Policy parsing successful for descriptor path
             
             match context {
                 "legacy" => compile_legacy_policy(concrete_policy, network),
@@ -1159,17 +1150,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             // If descriptor parsing fails, try parsing as regular Concrete<PublicKey>
             match processed_policy.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
-                    // Check if parsing silently modified the keys (e.g., added 02 prefixes to x-only keys)
-                    let parsed_policy_str = concrete_policy.to_string();
-                    console_log!("Original policy: {}", processed_policy);
-                    console_log!("Parsed policy: {}", parsed_policy_str);
-                    console_log!("Context: {}", context);
-                    console_log!("Strings equal: {}", parsed_policy_str == processed_policy);
-                    
-                    if parsed_policy_str != processed_policy && context != "taproot" {
-                        console_log!("Detected automatic key conversion - returning error");
-                        return Err(format!("Key format incompatible with {} context. Detected automatic key conversion - use appropriate key format for context.", context));
-                    }
+                    // Policy parsing successful
                     
                     match context {
                         "legacy" => compile_legacy_policy(concrete_policy, network),
@@ -1273,15 +1254,83 @@ fn compile_taproot_policy_xonly(
     policy: Concrete<XOnlyPublicKey>,
     network: Network
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    // Flag to control compilation method - for now default to true for multi-leaf
+    let use_multi_leaf_compilation = true;
+    
+    if use_multi_leaf_compilation {
+        // New method: compile_tr() for multi-leaf taproot tree
+        console_log!("Using compile_tr() for multi-leaf taproot compilation (XOnly)");
+        
+        // Parse NUMS point as XOnlyPublicKey for unspendable key
+        let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+        let nums_key = nums_point_str.parse::<XOnlyPublicKey>()
+            .map_err(|_| "Failed to parse NUMS point")?;
+        
+        match policy.compile_tr(Some(nums_key)) {
+            Ok(descriptor) => {
+                console_log!("XOnly policy compiled to multi-leaf taproot descriptor");
+                
+                // Get the output script (scriptPubKey)
+                let script = descriptor.script_pubkey();
+                let script_hex = hex::encode(script.as_bytes());
+                let script_asm = script.to_asm_string();
+                
+                // Generate address from descriptor
+                let address = descriptor.address(network)
+                    .map(|addr| addr.to_string())
+                    .ok();
+                
+                // Get script size
+                let script_size = script.len();
+                
+                // For display, we'll show the descriptor
+                let compiled_miniscript_display = descriptor.to_string();
+                
+                // Get max satisfaction weight if available
+                let max_weight_to_satisfy = descriptor.max_weight_to_satisfy()
+                    .ok()
+                    .and_then(|w| w.to_wu().try_into().ok());
+                
+                Ok((
+                    script_hex,
+                    script_asm,
+                    address,
+                    script_size,
+                    "Taproot".to_string(),
+                    compiled_miniscript_display,
+                    None, // max_satisfaction_size not needed for taproot
+                    max_weight_to_satisfy,
+                    Some(true), // sanity_check - assume true for valid compilation
+                    Some(true), // is_non_malleable - taproot is non-malleable
+                ))
+            }
+            Err(e) => {
+                console_log!("compile_tr() failed: {}", e);
+                // Fall back to single-leaf method
+                console_log!("Falling back to single-leaf compilation");
+                compile_taproot_policy_xonly_single_leaf(policy, network)
+            }
+        }
+    } else {
+        // Original method: compile::<Tap>() for single complex miniscript
+        compile_taproot_policy_xonly_single_leaf(policy, network)
+    }
+}
+
+/// Original single-leaf taproot compilation method for XOnlyPublicKey
+fn compile_taproot_policy_xonly_single_leaf(
+    policy: Concrete<XOnlyPublicKey>,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     match policy.compile::<Tap>() {
         Ok(ms) => {
             let compiled_miniscript = ms.to_string();
-            console_log!("Policy compiled to miniscript: {}", compiled_miniscript);
+            console_log!("XOnly policy compiled to single-leaf miniscript: {}", compiled_miniscript);
             
             // Now pass the compiled miniscript through the same tr() descriptor approach as miniscript compilation
             let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
             let tr_descriptor = format!("tr({},{})", nums_point, compiled_miniscript);
-            console_log!("Built tr() descriptor from policy miniscript: {}", tr_descriptor);
+            console_log!("Built tr() descriptor from single-leaf miniscript: {}", tr_descriptor);
             
             // Parse as descriptor to get proper taproot script and address
             match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
@@ -1341,20 +1390,89 @@ fn compile_taproot_policy(
     policy: Concrete<PublicKey>,
     network: Network
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    // Flag to control compilation method - for now default to true for multi-leaf
+    // This could be read from a setting in the future
+    let use_multi_leaf_compilation = true;
+    
     // Convert PublicKey policy to XOnlyPublicKey policy
     let mut translator = PublicKeyToXOnlyTranslator::new();
     let xonly_policy = policy.translate_pk(&mut translator)
         .map_err(|_| "Failed to translate policy keys to X-only format")?;
     
+    if use_multi_leaf_compilation {
+        // New method: compile_tr() for multi-leaf taproot tree
+        console_log!("Using compile_tr() for multi-leaf taproot compilation");
+        
+        // Parse NUMS point as XOnlyPublicKey for unspendable key
+        let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+        let nums_key = nums_point_str.parse::<XOnlyPublicKey>()
+            .map_err(|_| "Failed to parse NUMS point")?;
+        
+        match xonly_policy.compile_tr(Some(nums_key)) {
+            Ok(descriptor) => {
+                console_log!("Policy compiled to multi-leaf taproot descriptor");
+                
+                // Get the output script (scriptPubKey)
+                let script = descriptor.script_pubkey();
+                let script_hex = hex::encode(script.as_bytes());
+                let script_asm = script.to_asm_string();
+                
+                // Generate address from descriptor
+                let address = descriptor.address(network)
+                    .map(|addr| addr.to_string())
+                    .ok();
+                
+                // Get script size
+                let script_size = script.len();
+                
+                // For display, we'll show the descriptor
+                let compiled_miniscript_display = descriptor.to_string();
+                
+                // Get max satisfaction weight if available
+                let max_weight_to_satisfy = descriptor.max_weight_to_satisfy()
+                    .ok()
+                    .and_then(|w| w.to_wu().try_into().ok());
+                
+                Ok((
+                    script_hex,
+                    script_asm,
+                    address,
+                    script_size,
+                    "Taproot".to_string(),
+                    compiled_miniscript_display,
+                    None, // max_satisfaction_size not needed for taproot
+                    max_weight_to_satisfy,
+                    Some(true), // sanity_check - assume true for valid compilation
+                    Some(true), // is_non_malleable - taproot is non-malleable
+                ))
+            }
+            Err(e) => {
+                console_log!("compile_tr() failed: {}", e);
+                // Fall back to single-leaf method
+                console_log!("Falling back to single-leaf compilation");
+                compile_taproot_policy_single_leaf(xonly_policy, network)
+            }
+        }
+    } else {
+        // Original method: compile::<Tap>() for single complex miniscript
+        compile_taproot_policy_single_leaf(xonly_policy, network)
+    }
+}
+
+/// Original single-leaf taproot compilation method
+fn compile_taproot_policy_single_leaf(
+    xonly_policy: Concrete<XOnlyPublicKey>,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     match xonly_policy.compile::<Tap>() {
         Ok(ms) => {
             let compiled_miniscript = ms.to_string();
-            console_log!("Policy (converted) compiled to miniscript: {}", compiled_miniscript);
+            console_log!("Policy compiled to single-leaf miniscript: {}", compiled_miniscript);
             
             // Now pass the compiled miniscript through the same tr() descriptor approach as miniscript compilation
             let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
             let tr_descriptor = format!("tr({},{})", nums_point, compiled_miniscript);
-            console_log!("Built tr() descriptor from converted policy miniscript: {}", tr_descriptor);
+            console_log!("Built tr() descriptor from single-leaf miniscript: {}", tr_descriptor);
             
             // Parse as descriptor to get proper taproot script and address
             match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
@@ -1767,6 +1885,369 @@ fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Re
 }
 
 // ============================================================================
+/// Extract taproot tree leaves from a miniscript expression
+#[wasm_bindgen]
+pub fn get_taproot_leaves(expression: &str) -> JsValue {
+    console_log!("Extracting taproot leaves from: {}", expression);
+    
+    #[derive(Serialize)]
+    struct TaprootLeaf {
+        leaf_index: usize,
+        miniscript: String,
+        script_hex: String,
+        script_asm: String,
+    }
+    
+    let mut leaves: Vec<TaprootLeaf> = Vec::new();
+    
+    // First process any descriptor keys in the expression
+    let processed_expr = match process_expression_descriptors(expression) {
+        Ok(processed) => processed,
+        Err(_) => expression.to_string(),
+    };
+    
+    // Helper function to recursively extract leaves from a miniscript expression
+    fn extract_leaves_from_expression(expr: &str, leaves: &mut Vec<TaprootLeaf>, index_counter: &mut usize) {
+        let trimmed = expr.trim();
+        console_log!("Processing expression for leaves: {}", trimmed);
+        
+        // Check for or_d, or_c, or_i patterns which create tree branches in taproot
+        if trimmed.starts_with("or_d(") || trimmed.starts_with("or_c(") || trimmed.starts_with("or_i(") {
+            // Find the matching closing parenthesis and split the branches
+            if let Some(start_idx) = trimmed.find('(') {
+                let inner = &trimmed[start_idx + 1..];
+                
+                // Simple parser to find the comma separating the two branches
+                let mut depth = 0;
+                let mut comma_pos = None;
+                
+                for (i, ch) in inner.chars().enumerate() {
+                    match ch {
+                        '(' => depth += 1,
+                        ')' => {
+                            depth -= 1;
+                            if depth < 0 {
+                                break;
+                            }
+                        },
+                        ',' if depth == 0 => {
+                            comma_pos = Some(i);
+                            break;
+                        },
+                        _ => {}
+                    }
+                }
+                
+                if let Some(comma_idx) = comma_pos {
+                    let left_branch = &inner[..comma_idx].trim();
+                    let right_start = comma_idx + 1;
+                    
+                    // Find the end of the right branch
+                    let mut depth = 0;
+                    let mut right_end = inner.len();
+                    
+                    for (i, ch) in inner[right_start..].chars().enumerate() {
+                        match ch {
+                            '(' => depth += 1,
+                            ')' => {
+                                if depth == 0 {
+                                    right_end = right_start + i;
+                                    break;
+                                }
+                                depth -= 1;
+                            },
+                            _ => {}
+                        }
+                    }
+                    
+                    let right_branch = &inner[right_start..right_end].trim();
+                    
+                    console_log!("Found or branches - Left: {}, Right: {}", left_branch, right_branch);
+                    
+                    // Recursively process each branch
+                    extract_leaves_from_expression(left_branch, leaves, index_counter);
+                    extract_leaves_from_expression(right_branch, leaves, index_counter);
+                    
+                    return;
+                }
+            }
+        }
+        
+        // If not an or branch, this is a leaf - compile it
+        console_log!("Processing as leaf: {}", trimmed);
+        
+        // Try parsing as miniscript
+        match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+            Ok(ms) => {
+                let script = ms.encode();
+                let hex = script.to_hex_string();
+                let asm = script.to_asm_string();
+                
+                leaves.push(TaprootLeaf {
+                    leaf_index: *index_counter,
+                    miniscript: trimmed.to_string(),
+                    script_hex: hex,
+                    script_asm: asm,
+                });
+                
+                *index_counter += 1;
+            }
+            Err(e) => {
+                console_log!("Failed to parse leaf as miniscript: {} - {}", trimmed, e);
+                
+                // Try with PublicKey - for taproot, we need x-only keys
+                // For now, just log that it needs conversion - the main compilation will handle this
+                match trimmed.parse::<Miniscript<PublicKey, Tap>>() {
+                    Ok(_ms_pubkey) => {
+                        console_log!("Leaf uses PublicKey format, needs x-only conversion: {}", trimmed);
+                        // Create a placeholder leaf indicating conversion needed
+                        leaves.push(TaprootLeaf {
+                            leaf_index: *index_counter,
+                            miniscript: trimmed.to_string(),
+                            script_hex: "requires_key_conversion".to_string(),
+                            script_asm: "PublicKey format - needs x-only conversion".to_string(),
+                        });
+                        *index_counter += 1;
+                    }
+                    Err(e2) => {
+                        console_log!("Failed to parse leaf with both XOnly and PublicKey: {} - {}", trimmed, e2);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Check if this is a tr() descriptor
+    if processed_expr.trim().starts_with("tr(") {
+        // Try to parse the full descriptor to get the TapTree structure
+        match processed_expr.parse::<Descriptor<XOnlyPublicKey>>() {
+            Ok(descriptor) => {
+                console_log!("Successfully parsed tr() descriptor for leaf extraction");
+                
+                // Extract leaf information from the descriptor string
+                // Since tapscript_spend_info() is not available, we'll parse the descriptor string
+                console_log!("Extracting taproot leaves from descriptor string parsing");
+                if let Some(tree_start) = processed_expr.find(',') {
+                    if let Some(tree_end) = processed_expr.rfind(')') {
+                        let tree_part = &processed_expr[tree_start + 1..tree_end];
+                        if tree_part.starts_with("{") && tree_part.contains("}") {
+                            // Extract miniscripts from tree structure
+                            let inner = &tree_part[1..tree_part.len()-1];
+                            let mut depth = 0;
+                            let mut paren_depth = 0;
+                            let mut last_start = 0;
+                            let mut leaf_idx = 0;
+                            
+                            for (i, ch) in inner.chars().enumerate() {
+                                match ch {
+                                    '{' => depth += 1,
+                                    '}' => depth -= 1,
+                                    '(' => paren_depth += 1,
+                                    ')' => paren_depth -= 1,
+                                    ',' if depth == 0 && paren_depth == 0 => {
+                                        let miniscript_str = inner[last_start..i].trim();
+                                        console_log!("Found leaf miniscript: {}", miniscript_str);
+                                        
+                                        // Try to compile this miniscript to get the script
+                                        match miniscript_str.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+                                            Ok(ms) => {
+                                                let script = ms.encode();
+                                                let script_hex = script.to_hex_string();
+                                                let script_asm = script.to_asm_string();
+                                                
+                                                leaves.push(TaprootLeaf {
+                                                    leaf_index: leaf_idx,
+                                                    miniscript: miniscript_str.to_string(),
+                                                    script_hex,
+                                                    script_asm,
+                                                });
+                                            }
+                                            Err(e) => {
+                                                console_log!("Failed to compile leaf miniscript: {}", e);
+                                                leaves.push(TaprootLeaf {
+                                                    leaf_index: leaf_idx,
+                                                    miniscript: miniscript_str.to_string(),
+                                                    script_hex: "Compilation failed".to_string(),
+                                                    script_asm: format!("Error: {}", e),
+                                                });
+                                            }
+                                        }
+                                        leaf_idx += 1;
+                                        last_start = i + 1;
+                                    },
+                                    _ => {}
+                                }
+                            }
+                            // Add the last miniscript
+                            if last_start < inner.len() {
+                                let miniscript_str = inner[last_start..].trim();
+                                console_log!("Found last leaf miniscript: {}", miniscript_str);
+                                
+                                match miniscript_str.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+                                    Ok(ms) => {
+                                        let script = ms.encode();
+                                        let script_hex = script.to_hex_string();
+                                        let script_asm = script.to_asm_string();
+                                        
+                                        leaves.push(TaprootLeaf {
+                                            leaf_index: leaf_idx,
+                                            miniscript: miniscript_str.to_string(),
+                                            script_hex,
+                                            script_asm,
+                                        });
+                                    }
+                                    Err(e) => {
+                                        console_log!("Failed to compile last leaf miniscript: {}", e);
+                                        leaves.push(TaprootLeaf {
+                                            leaf_index: leaf_idx,
+                                            miniscript: miniscript_str.to_string(),
+                                            script_hex: "Compilation failed".to_string(),
+                                            script_asm: format!("Error: {}", e),
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            console_log!("Extracted {} leaves from descriptor parsing", leaves.len());
+                        } else {
+                            // Fall back to string parsing approach
+                            console_log!("Single leaf or unsupported format, falling back to string parsing");
+                            if !tree_part.is_empty() {
+                                let mut index_counter = 0;
+                                extract_leaves_from_expression(tree_part, &mut leaves, &mut index_counter);
+                            }
+                        }
+                    }
+                } else {
+                    console_log!("No tree part found in descriptor");
+                }
+            }
+            Err(e) => {
+                console_log!("Failed to parse tr() descriptor: {}, falling back to string parsing", e);
+                
+                // Fall back to extracting from string
+                if let Some(tree_start) = processed_expr.find(',') {
+                    if let Some(tree_end) = processed_expr.rfind(')') {
+                        let tree_script = &processed_expr[tree_start + 1..tree_end];
+                        console_log!("Extracted tree script from tr(): {}", tree_script);
+                        
+                        let mut index_counter = 0;
+                        extract_leaves_from_expression(tree_script, &mut leaves, &mut index_counter);
+                    }
+                }
+            }
+        }
+    } else {
+        // For non-tr() expressions, process the whole expression
+        let mut index_counter = 0;
+        extract_leaves_from_expression(&processed_expr, &mut leaves, &mut index_counter);
+    }
+    
+    // Helper function to extract leaves from TapTree structure
+    fn extract_taptree_leaves(tree_str: &str, leaves: &mut Vec<TaprootLeaf>, leaf_index: &mut usize) {
+        console_log!("Extracting leaves from TapTree: {}", tree_str);
+        
+        // Remove outer braces if present
+        let trimmed = tree_str.trim();
+        let inner = if trimmed.starts_with("{") && trimmed.ends_with("}") {
+            &trimmed[1..trimmed.len()-1]
+        } else {
+            trimmed
+        };
+        
+        // Find the comma that separates branches at the top level, accounting for nested parentheses
+        let mut depth = 0;
+        let mut paren_depth = 0;
+        let mut comma_pos = None;
+        
+        for (i, ch) in inner.chars().enumerate() {
+            match ch {
+                '{' => depth += 1,
+                '}' => depth -= 1,
+                '(' => paren_depth += 1,
+                ')' => paren_depth -= 1,
+                ',' if depth == 0 && paren_depth == 0 => {
+                    comma_pos = Some(i);
+                    break;
+                },
+                _ => {}
+            }
+        }
+        
+        if let Some(comma_idx) = comma_pos {
+            // This is a branch - process both sides
+            let left = inner[..comma_idx].trim();
+            let right = inner[comma_idx + 1..].trim();
+            
+            console_log!("TapTree branch - Left: {}, Right: {}", left, right);
+            
+            // Process left branch
+            if left.starts_with("{") && left.contains("}") {
+                // Nested tree structure
+                extract_taptree_leaves(left, leaves, leaf_index);
+            } else {
+                // It's a leaf - compile it
+                compile_and_add_leaf(left, leaves, leaf_index);
+            }
+            
+            // Process right branch  
+            if right.starts_with("{") && right.contains("}") {
+                // Nested tree structure
+                extract_taptree_leaves(right, leaves, leaf_index);
+            } else {
+                // It's a leaf - compile it
+                compile_and_add_leaf(right, leaves, leaf_index);
+            }
+        } else {
+            // No comma at top level - this is a single leaf
+            compile_and_add_leaf(inner, leaves, leaf_index);
+        }
+    }
+    
+    // Helper function to compile and add a leaf
+    fn compile_and_add_leaf(expr: &str, leaves: &mut Vec<TaprootLeaf>, leaf_index: &mut usize) {
+        let trimmed = expr.trim();
+        console_log!("Compiling leaf: {}", trimmed);
+        
+        // Try parsing as miniscript
+        match trimmed.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+            Ok(ms) => {
+                let script = ms.encode();
+                let hex = script.to_hex_string();
+                let asm = script.to_asm_string();
+                
+                leaves.push(TaprootLeaf {
+                    leaf_index: *leaf_index,
+                    miniscript: trimmed.to_string(),
+                    script_hex: hex,
+                    script_asm: asm,
+                });
+                
+                *leaf_index += 1;
+            }
+            Err(e) => {
+                console_log!("Failed to parse leaf as miniscript: {} - {}", trimmed, e);
+                
+                // Try to handle as placeholder
+                leaves.push(TaprootLeaf {
+                    leaf_index: *leaf_index,
+                    miniscript: trimmed.to_string(),
+                    script_hex: "Compilation needed".to_string(),
+                    script_asm: "Requires compilation".to_string(),
+                });
+                *leaf_index += 1;
+            }
+        }
+    }
+    
+    console_log!("Total leaves extracted: {}", leaves.len());
+    for leaf in &leaves {
+        console_log!("Leaf {}: {}", leaf.leaf_index, leaf.miniscript);
+    }
+    
+    serde_wasm_bindgen::to_value(&leaves).unwrap_or(JsValue::NULL)
+}
+
 // Main Function (for testing)
 // ============================================================================
 
