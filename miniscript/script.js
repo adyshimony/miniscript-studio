@@ -827,7 +827,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -845,7 +845,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -2148,6 +2148,7 @@ class MiniscriptCompiler {
         this.keyVariables.set('Uma', '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c');
         
         // Taproot keys (x-only, 64-char) - for Taproot examples
+        this.keyVariables.set('NUMS', '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0');
         this.keyVariables.set('David', 'fae4284884079a8134f553af138f5206584de24c44f2ba1b2d9215a32fc6b188');
         this.keyVariables.set('Helen', '96b6d68aefbcb7fd24c8847f98ec1d48bc24c3afd7d4fffda8ca3657ba6ab829');
         this.keyVariables.set('Ivan', 'ad9b3c720375428bb4f1e894b900f196537895d3c83878bcac7f008be7deedc2');
@@ -4036,7 +4037,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -4054,7 +4055,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
