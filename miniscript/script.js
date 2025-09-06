@@ -712,7 +712,7 @@ class MiniscriptCompiler {
                 }
                 
                 // Show policy success message 
-                this.showPolicySuccess(displayMiniscript);
+                this.showPolicySuccess(displayMiniscript, result);
                 
                 // Check if this is a descriptor validation from policy compilation
                 const isDescriptorValidation = result.miniscript_type === 'Descriptor';
@@ -862,7 +862,7 @@ class MiniscriptCompiler {
         `;
     }
 
-    showPolicySuccess(miniscript) {
+    showPolicySuccess(miniscript, result = null) {
         const policyErrorsDiv = document.getElementById('policy-errors');
         
         // Check if we should update existing success message during auto-compile
@@ -870,13 +870,13 @@ class MiniscriptCompiler {
             const existingSuccess = policyErrorsDiv.querySelector('.result-box.success');
             if (existingSuccess) {
                 // Update the content for auto-compile
-                this.updatePolicySuccessContent(existingSuccess, miniscript);
+                this.updatePolicySuccessContent(existingSuccess, miniscript, result);
                 return; // Don't replace the entire message box
             }
         }
         
         // Normal behavior - create new message
-        const content = this.generatePolicySuccessContent(miniscript);
+        const content = this.generatePolicySuccessContent(miniscript, result);
         policyErrorsDiv.innerHTML = `
             <div class="result-box success" style="margin: 0; text-align: left;">
                 <h4>✅ Policy compilation successful</h4>
@@ -885,10 +885,10 @@ class MiniscriptCompiler {
         `;
     }
     
-    generatePolicySuccessContent(miniscript) {
+    generatePolicySuccessContent(miniscript, result = null) {
         // Check if this is a taproot descriptor
         if (miniscript.startsWith('tr(')) {
-            return this.generateTaprootPolicyContent(miniscript);
+            return this.generateTaprootPolicyContent(miniscript, result);
         } else {
             // Standard miniscript display
             return `
@@ -903,7 +903,7 @@ class MiniscriptCompiler {
         }
     }
     
-    generateTaprootPolicyContent(descriptor) {
+    generateTaprootPolicyContent(descriptor, result = null) {
         console.log(`=== TAPROOT PARSING DEBUG ===`);
         console.log(`Input descriptor: "${descriptor}"`);
         
@@ -978,8 +978,37 @@ class MiniscriptCompiler {
                 <div style="margin-bottom: 15px;">
                     <strong>Descriptor:</strong><br>
                     <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${descriptor}</code>
-                </div>
+                </div>`;
+        
+        // Add weight information if available from compilation result
+        if (result) {
+            if (result.script_size && result.max_weight_to_satisfy) {
+                const scriptWeight = result.script_size;
+                const totalWeight = result.max_weight_to_satisfy;
+                const inputWeight = totalWeight - scriptWeight;
                 
+                content += `
+                <div style="margin-bottom: 15px;">
+                    <strong>Weight Information:</strong><br>
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                        Script: ${scriptWeight} WU<br>
+                        Input: ${inputWeight}.000000 WU<br>
+                        Total: ${totalWeight}.000000 WU
+                    </div>
+                </div>`;
+            } else if (result.max_satisfaction_size) {
+                content += `
+                <div style="margin-bottom: 15px;">
+                    <strong>Weight Information:</strong><br>
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                        Input: ${result.max_satisfaction_size}.000000 WU<br>
+                        Total: ${result.script_size + result.max_satisfaction_size}.000000 WU
+                    </div>
+                </div>`;
+            }
+        }
+        
+        content += `
                 <div style="margin-bottom: 15px;">
                     <strong>Taproot Structure:</strong><br>
                     <div style="margin: 8px 0 8px 16px; font-family: monospace; font-size: 13px;">
@@ -1219,11 +1248,11 @@ class MiniscriptCompiler {
         return [singleBranch];
     }
     
-    updatePolicySuccessContent(existingSuccess, miniscript) {
+    updatePolicySuccessContent(existingSuccess, miniscript, result = null) {
         // Update the content for auto-compile scenarios
         const contentDiv = existingSuccess.querySelector('div[style*="margin-top: 10px"]');
         if (contentDiv) {
-            const newContent = this.generatePolicySuccessContent(miniscript);
+            const newContent = this.generatePolicySuccessContent(miniscript, result);
             contentDiv.outerHTML = newContent;
         }
     }
@@ -1708,13 +1737,9 @@ class MiniscriptCompiler {
         }
         
         for (const [name, value] of this.keyVariables) {
-            let keyToUse = value;
-            
-            // For Taproot context, convert compressed keys to x-only by removing prefix
-            if (context === 'taproot' && value.length === 66 && (value.startsWith('02') || value.startsWith('03'))) {
-                keyToUse = value.substring(2); // Remove the 02/03 prefix for Taproot
-                console.log(`Converting ${name} from compressed ${value} to x-only ${keyToUse} for Taproot context`);
-            }
+            // Use the key value as-is without any conversion
+            // Users must select appropriate key types for their context
+            const keyToUse = value;
             
             // Replace key variables in pk(), using word boundaries to avoid partial matches
             const regex = new RegExp('\\b' + name + '\\b', 'g');

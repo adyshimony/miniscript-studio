@@ -1,6 +1,7 @@
 //! Key translators for converting between different key types
 
 use miniscript::{Translator, DescriptorPublicKey, MiniscriptKey, ToPublicKey};
+use miniscript::descriptor::ConversionError;
 use bitcoin::{PublicKey, XOnlyPublicKey};
 
 // ============================================================================
@@ -56,10 +57,19 @@ impl XOnlyKeyTranslator {
 
 impl Translator<DescriptorPublicKey, XOnlyPublicKey, ()> for XOnlyKeyTranslator {
     fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<XOnlyPublicKey, ()> {
-        pk.clone()
+        let key = pk.clone()
             .at_derivation_index(0)
-            .map(|key| XOnlyPublicKey::from(key.to_public_key()))
-            .map_err(|_| ())
+            .map_err(|_| ())?;
+        
+        let pk = key.to_public_key();
+        // Only allow actual x-only keys (32 bytes), reject compressed keys (33 bytes)
+        if pk.to_bytes().len() == 32 {
+            // This should be an actual x-only key
+            XOnlyPublicKey::from_slice(&pk.to_bytes()).map_err(|_| ())
+        } else {
+            // Reject compressed keys - don't convert them
+            Err(())
+        }
     }
     
     fn sha256(&mut self, hash: &<DescriptorPublicKey as MiniscriptKey>::Sha256) -> Result<<XOnlyPublicKey as MiniscriptKey>::Sha256, ()> {
@@ -94,7 +104,13 @@ impl PublicKeyToXOnlyTranslator {
 
 impl Translator<PublicKey, XOnlyPublicKey, ()> for PublicKeyToXOnlyTranslator {
     fn pk(&mut self, pk: &PublicKey) -> Result<XOnlyPublicKey, ()> {
-        Ok(XOnlyPublicKey::from(*pk))
+        // Only allow actual x-only keys (32 bytes), reject compressed keys (33 bytes)  
+        if pk.to_bytes().len() == 32 {
+            XOnlyPublicKey::from_slice(&pk.to_bytes()).map_err(|_| ())
+        } else {
+            // Reject compressed keys - don't convert them
+            Err(())
+        }
     }
     
     fn sha256(&mut self, hash: &<PublicKey as MiniscriptKey>::Sha256) -> Result<<XOnlyPublicKey as MiniscriptKey>::Sha256, ()> {

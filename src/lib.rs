@@ -11,7 +11,7 @@ mod utils;
 
 // Re-exports from modules
 use types::{CompilationResult, LiftResult, AddressResult, DescriptorInfo, ParsedDescriptor};
-use translators::{DescriptorKeyTranslator, XOnlyKeyTranslator, PublicKeyToXOnlyTranslator};
+use translators::{DescriptorKeyTranslator};
 use opcodes::{OPCODE_MAP, parse_asm_to_script};
 
 // External crate imports
@@ -56,6 +56,7 @@ fn needs_descriptor_processing(expression: &str) -> bool {
 fn is_descriptor_wrapper(expression: &str) -> bool {
     expression.starts_with("wsh(") || expression.starts_with("sh(") || expression.starts_with("wpkh(")
 }
+
 
 /// Extract the first x-only key from a miniscript string
 fn extract_xonly_key_from_miniscript(miniscript: &str) -> Option<XOnlyPublicKey> {
@@ -993,7 +994,7 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
         Err(e) => {
             let error_msg = format!("{}", e);
             if error_msg.contains("malformed public key") {
-                Err(format!("Taproot parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix). Check that you're using the correct key format for Taproot context.", e))
+                Err(format!("Taproot parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix).", e))
             } else {
                 Err(format!("Taproot parsing failed: {}", e))
             }
@@ -1007,6 +1008,32 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
     }
 
     let trimmed = policy.trim();
+    
+    // Check for incompatible key types based on context
+    if context != "taproot" {
+        // Check for x-only keys (64 hex chars) in non-taproot contexts
+        let xonly_key_regex = regex::Regex::new(r"\b[a-fA-F0-9]{64}\b").unwrap();
+        if xonly_key_regex.is_match(trimmed) {
+            // Check if it's not an xpub/tpub (which can also be long hex-like strings in descriptors)
+            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
+                return Err(format!(
+                    "{} context requires compressed public keys (66 characters starting with 02/03). Found x-only key (64 characters).",
+                    if context == "legacy" { "Legacy" } else { "Segwit v0" }
+                ));
+            }
+        }
+    } else {
+        // Check for compressed keys (66 hex chars starting with 02/03) in taproot context
+        let compressed_key_regex = regex::Regex::new(r"\b(02|03)[a-fA-F0-9]{64}\b").unwrap();
+        if compressed_key_regex.is_match(trimmed) {
+            // Check if it's not part of a descriptor
+            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
+                return Err(format!(
+                    "Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03)."
+                ));
+            }
+        }
+    }
     
     // Detect network based on key type
     let network = if trimmed.contains("tpub") {
@@ -1138,7 +1165,6 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                 Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
             };
             
-            // Policy parsing successful for descriptor path
             
             match context {
                 "legacy" => compile_legacy_policy(concrete_policy, network),
@@ -1147,10 +1173,21 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             }
         },
         Err(_) => {
+            // For taproot context, try parsing as XOnlyPublicKey first
+            if context == "taproot" {
+                match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
+                    Ok(xonly_policy) => {
+                        return compile_taproot_policy_xonly(xonly_policy, network);
+                    },
+                    Err(_) => {
+                        // Fall through to try PublicKey parsing, but it will fail with proper error
+                    }
+                }
+            }
+            
             // If descriptor parsing fails, try parsing as regular Concrete<PublicKey>
             match processed_policy.parse::<Concrete<PublicKey>>() {
                 Ok(concrete_policy) => {
-                    // Policy parsing successful
                     
                     match context {
                         "legacy" => compile_legacy_policy(concrete_policy, network),
@@ -1385,78 +1422,13 @@ fn compile_taproot_policy_xonly_single_leaf(
     }
 }
 
-/// Compile policy for Taproot context (with PublicKey conversion)
+/// Compile policy for Taproot context (should fail for compressed keys)
 fn compile_taproot_policy(
-    policy: Concrete<PublicKey>,
-    network: Network
+    _policy: Concrete<PublicKey>,
+    _network: Network
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    // Flag to control compilation method - for now default to true for multi-leaf
-    // This could be read from a setting in the future
-    let use_multi_leaf_compilation = true;
-    
-    // Convert PublicKey policy to XOnlyPublicKey policy
-    let mut translator = PublicKeyToXOnlyTranslator::new();
-    let xonly_policy = policy.translate_pk(&mut translator)
-        .map_err(|_| "Failed to translate policy keys to X-only format")?;
-    
-    if use_multi_leaf_compilation {
-        // New method: compile_tr() for multi-leaf taproot tree
-        console_log!("Using compile_tr() for multi-leaf taproot compilation");
-        
-        // Parse NUMS point as XOnlyPublicKey for unspendable key
-        let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-        let nums_key = nums_point_str.parse::<XOnlyPublicKey>()
-            .map_err(|_| "Failed to parse NUMS point")?;
-        
-        match xonly_policy.compile_tr(Some(nums_key)) {
-            Ok(descriptor) => {
-                console_log!("Policy compiled to multi-leaf taproot descriptor");
-                
-                // Get the output script (scriptPubKey)
-                let script = descriptor.script_pubkey();
-                let script_hex = hex::encode(script.as_bytes());
-                let script_asm = script.to_asm_string();
-                
-                // Generate address from descriptor
-                let address = descriptor.address(network)
-                    .map(|addr| addr.to_string())
-                    .ok();
-                
-                // Get script size
-                let script_size = script.len();
-                
-                // For display, we'll show the descriptor
-                let compiled_miniscript_display = descriptor.to_string();
-                
-                // Get max satisfaction weight if available
-                let max_weight_to_satisfy = descriptor.max_weight_to_satisfy()
-                    .ok()
-                    .and_then(|w| w.to_wu().try_into().ok());
-                
-                Ok((
-                    script_hex,
-                    script_asm,
-                    address,
-                    script_size,
-                    "Taproot".to_string(),
-                    compiled_miniscript_display,
-                    None, // max_satisfaction_size not needed for taproot
-                    max_weight_to_satisfy,
-                    Some(true), // sanity_check - assume true for valid compilation
-                    Some(true), // is_non_malleable - taproot is non-malleable
-                ))
-            }
-            Err(e) => {
-                console_log!("compile_tr() failed: {}", e);
-                // Fall back to single-leaf method
-                console_log!("Falling back to single-leaf compilation");
-                compile_taproot_policy_single_leaf(xonly_policy, network)
-            }
-        }
-    } else {
-        // Original method: compile::<Tap>() for single complex miniscript
-        compile_taproot_policy_single_leaf(xonly_policy, network)
-    }
+    // Don't do automatic conversion - fail with proper error message
+    Err("Taproot context requires x-only keys (32 bytes). Found compressed keys (33 bytes).".to_string())
 }
 
 /// Original single-leaf taproot compilation method
