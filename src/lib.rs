@@ -1363,8 +1363,10 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
         Err(_) => {
             // For taproot context, try parsing as XOnlyPublicKey first
             if context == "taproot" {
+                console_log!("DEBUG: Parsing policy for taproot with XOnly keys: {}", processed_policy);
                 match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
                     Ok(xonly_policy) => {
+                        console_log!("DEBUG: Successfully parsed XOnly policy: {}", xonly_policy);
                         return compile_taproot_policy_xonly(xonly_policy, network);
                     },
                     Err(_) => {
@@ -1491,9 +1493,30 @@ fn compile_taproot_policy_xonly(
         let nums_key = nums_point_str.parse::<XOnlyPublicKey>()
             .map_err(|_| "Failed to parse NUMS point")?;
         
+        // Add debug logging for the input policy
+        console_log!("DEBUG: Input policy before compile_tr: {}", policy);
+        console_log!("DEBUG: NUMS key used: {}", nums_point_str);
+        
         match policy.compile_tr(Some(nums_key)) {
             Ok(descriptor) => {
                 console_log!("XOnly policy compiled to multi-leaf taproot descriptor");
+                console_log!("DEBUG: Resulting descriptor: {}", descriptor);
+                
+                // Check if descriptor is taproot and extract tree info
+                if let Some(tree_info) = descriptor.taproot_tree() {
+                    console_log!("DEBUG: Taproot tree found, analyzing structure...");
+                    // Try to get information about the tree structure
+                    match tree_info {
+                        Some(tree) => {
+                            console_log!("DEBUG: Tree structure present");
+                        },
+                        None => {
+                            console_log!("DEBUG: No tree structure (key-path only)");
+                        }
+                    }
+                } else {
+                    console_log!("DEBUG: Not a taproot descriptor or no tree info available");
+                }
                 
                 // Get the output script (scriptPubKey)
                 let script = descriptor.script_pubkey();
@@ -2131,8 +2154,14 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
     
     // First process any descriptor keys in the expression
     let processed_expr = match process_expression_descriptors(expression) {
-        Ok(processed) => processed,
-        Err(_) => expression.to_string(),
+        Ok(processed) => {
+            console_log!("DEBUG: Processed expression descriptors: {} -> {}", expression, processed);
+            processed
+        },
+        Err(e) => {
+            console_log!("DEBUG: Failed to process descriptors: {:?}, using original", e);
+            expression.to_string()
+        },
     };
     
     // Helper function to recursively extract leaves from a miniscript expression

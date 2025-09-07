@@ -6546,6 +6546,15 @@ window.showPolicyDescription = function(exampleId) {
             efficiency: '⚡ **Efficiency:** All paths require timelock verification plus threshold logic (~200+ bytes), but prevents any spending before activation date.',
             security: '✅ **Security benefits:** Absolute prevention of early spending (even with all signatures), requires majority consensus after activation, immutable schedule prevents coercion or impulsive changes.',
             bestFor: '✅ **Best for:** Vesting schedules, trust funds, scheduled distributions, escrow services, any scenario requiring guaranteed future activation with group control, regulatory compliance requiring time delays'
+        },
+        'multi_branch': {
+            title: '📄 Multi-Branch OR Policy - Taproot Key-Path Optimization',
+            conditions: '🔓 David: Key-path spending (most efficient - just a signature)\n🔓 Helen: Script-path spending (reveal script + signature)\n🔓 Uma: Script-path spending (reveal script + signature)',
+            useCase: '**Taproot Smart Optimization:** This policy demonstrates how Taproot automatically optimizes OR conditions. Instead of 3 script leaves, it creates: David as the internal key (key-path spending) + Helen/Uma as script leaves. David gets the most efficient spending path, while Helen/Uma share the script tree.',
+            examples: '💡 **Perfect Optimization:** The miniscript library intelligently chose David for key-path spending (no script revelation needed) and put Helen/Uma in the script tree. This is more efficient than forcing all three into script paths. Switch to "Taproot compilation (multi-leaf TapTree)" mode to see the tr(David,{pk(Helen),pk(Uma)}) structure.',
+            efficiency: '⚡ **Efficiency:** David spends with just 64 bytes (signature only). Helen/Uma each need ~34 bytes script + 64 bytes signature = ~98 bytes. Key-path spending is the most efficient option in Taproot. Total possible: key-path (64B) vs script-path (~98B).',
+            security: '✅ **Security benefits:** David\'s spending reveals no scripts or other participants. Helen/Uma spending only reveals their specific script, not David\'s key or the other person\'s script. Maximum privacy through selective revelation.',
+            bestFor: '✅ **Best for:** Scenarios where one party (David) is primary/preferred and others are alternatives, inheritance with preferred heir + backups, business with primary signer + emergency alternatives, demonstrating Taproot\'s intelligent optimization over naive 3-leaf structures'
         }
     };
     
@@ -6983,6 +6992,15 @@ window.showPolicyDescription = function(exampleId) {
             efficiency: '⚡ **Efficiency:** All paths require timelock verification plus threshold logic (~200+ bytes), but prevents any spending before activation date.',
             security: '✅ **Security benefits:** Absolute prevention of early spending (even with all signatures), requires majority consensus after activation, immutable schedule prevents coercion or impulsive changes.',
             bestFor: '✅ **Best for:** Vesting schedules, trust funds, scheduled distributions, escrow services, any scenario requiring guaranteed future activation with group control, regulatory compliance requiring time delays'
+        },
+        'multi_branch': {
+            title: '📄 Multi-Branch OR Policy - Taproot Key-Path Optimization',
+            conditions: '🔓 David: Key-path spending (most efficient - just a signature)\n🔓 Helen: Script-path spending (reveal script + signature)\n🔓 Uma: Script-path spending (reveal script + signature)',
+            useCase: '**Taproot Smart Optimization:** This policy demonstrates how Taproot automatically optimizes OR conditions. Instead of 3 script leaves, it creates: David as the internal key (key-path spending) + Helen/Uma as script leaves. David gets the most efficient spending path, while Helen/Uma share the script tree.',
+            examples: '💡 **Perfect Optimization:** The miniscript library intelligently chose David for key-path spending (no script revelation needed) and put Helen/Uma in the script tree. This is more efficient than forcing all three into script paths. Switch to "Taproot compilation (multi-leaf TapTree)" mode to see the tr(David,{pk(Helen),pk(Uma)}) structure.',
+            efficiency: '⚡ **Efficiency:** David spends with just 64 bytes (signature only). Helen/Uma each need ~34 bytes script + 64 bytes signature = ~98 bytes. Key-path spending is the most efficient option in Taproot. Total possible: key-path (64B) vs script-path (~98B).',
+            security: '✅ **Security benefits:** David\'s spending reveals no scripts or other participants. Helen/Uma spending only reveals their specific script, not David\'s key or the other person\'s script. Maximum privacy through selective revelation.',
+            bestFor: '✅ **Best for:** Scenarios where one party (David) is primary/preferred and others are alternatives, inheritance with preferred heir + backups, business with primary signer + emergency alternatives, demonstrating Taproot\'s intelligent optimization over naive 3-leaf structures'
         }
     };
     
