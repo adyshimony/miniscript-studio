@@ -708,7 +708,15 @@ class MiniscriptCompiler {
                     }
                 }
                 
-                expressionInput.textContent = editorMiniscript;
+                // Check if result is in JSON-like policy format with curly braces like {pk(Helen),pk(Uma)}
+                // If so, don't load it into the miniscript editor
+                const isPolicyResult = editorMiniscript && editorMiniscript.match(/^\s*\{.*\}\s*$/);
+                
+                if (!isPolicyResult) {
+                    expressionInput.textContent = editorMiniscript;
+                } else {
+                    console.log('Policy compilation returned a policy, not loading into miniscript editor:', editorMiniscript);
+                }
                 
                 // Reset format button state since compiled miniscript is always clean/unformatted
                 formatButton.style.color = 'var(--text-secondary)';
@@ -790,16 +798,22 @@ class MiniscriptCompiler {
                     }
                 }
                 
-                // Pass the compiled miniscript expression for tree visualization
-                let treeExpression = displayMiniscript;
-                this.showMiniscriptSuccess(successMsg, treeExpression);
-                
                 // Store the compiled miniscript (with actual keys) for network switching
                 result.processedMiniscript = result.compiled_miniscript;
                 
-                // After putting miniscript in editor, compile it fresh with current mode
-                // This ensures proper mode handling (single-leaf vs multi-leaf)
-                this.compileExpression();
+                // Only show miniscript success and auto-compile if we actually loaded a miniscript into the editor
+                if (!isPolicyResult) {
+                    // Pass the compiled miniscript expression for tree visualization
+                    let treeExpression = displayMiniscript;
+                    this.showMiniscriptSuccess(successMsg, treeExpression);
+                    
+                    // After putting miniscript in editor, compile it fresh with current mode
+                    // This ensures proper mode handling (single-leaf vs multi-leaf)
+                    this.compileExpression();
+                } else {
+                    // Clear/hide miniscript messages when policy returns policy result
+                    this.clearMiniscriptMessages();
+                }
             } else {
                 // Error: show policy-specific error
                 this.showPolicyError(result.error || 'Policy compilation failed');
