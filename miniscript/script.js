@@ -80,6 +80,11 @@ class MiniscriptCompiler {
             this.showSaveModal();
         });
 
+        // Load miniscript button
+        document.getElementById('load-btn').addEventListener('click', () => {
+            this.showSavedMiniscriptsModal();
+        });
+
         // Clear button
         document.getElementById('clear-btn').addEventListener('click', () => {
             this.clearExpression();
@@ -5524,6 +5529,105 @@ class MiniscriptCompiler {
                 </div>
             </div>
         `).join('');
+    }
+
+    showSavedMiniscriptsModal() {
+        const expressions = this.getSavedExpressions();
+        
+        // Create modal HTML
+        const modalHtml = `
+            <div id="saved-miniscripts-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: var(--container-bg); border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">📂 Saved Miniscripts</h3>
+                        <button onclick="document.getElementById('saved-miniscripts-modal').remove()" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; padding: 0;">×</button>
+                    </div>
+                    <div id="modal-miniscripts-list">
+                        ${expressions.length === 0 ? 
+                            '<p style="color: var(--text-muted); font-style: italic; font-size: 14px; text-align: center; padding: 20px;">No saved miniscripts yet.</p>' :
+                            expressions.map(expr => `
+                                <div class="expression-item" style="margin-bottom: 10px;">
+                                    <div class="expression-info">
+                                        <div class="expression-name">${this.escapeHtml(expr.name)}</div>
+                                        <div class="expression-preview">${this.escapeHtml(expr.expression)}</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                                        <button onclick="compiler.loadMiniscriptFromModal('${this.escapeHtml(expr.name)}')" class="secondary-btn" style="padding: 6px 12px; font-size: 12px;">📂 Load</button>
+                                        <button onclick="compiler.deleteMiniscriptFromModal('${this.escapeHtml(expr.name)}')" class="danger-btn" style="padding: 6px 12px; font-size: 12px;">🗑️</button>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to the page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Close modal on ESC key
+        const closeOnEsc = (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('saved-miniscripts-modal');
+                if (modal) modal.remove();
+                document.removeEventListener('keydown', closeOnEsc);
+            }
+        };
+        document.addEventListener('keydown', closeOnEsc);
+        
+        // Close modal on background click
+        const modal = document.getElementById('saved-miniscripts-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+    }
+
+    loadMiniscriptFromModal(name) {
+        // Close the modal
+        const modal = document.getElementById('saved-miniscripts-modal');
+        if (modal) modal.remove();
+        
+        // Load the expression
+        this.loadExpression(name);
+    }
+
+    deleteMiniscriptFromModal(name) {
+        if (!confirm(`Are you sure you want to delete miniscript "${name}"?`)) {
+            return;
+        }
+
+        const expressions = this.getSavedExpressions();
+        const filteredExpressions = expressions.filter(expr => expr.name !== name);
+        this.setSavedExpressions(filteredExpressions);
+        
+        // Update the modal content
+        const modalList = document.getElementById('modal-miniscripts-list');
+        if (modalList) {
+            if (filteredExpressions.length === 0) {
+                modalList.innerHTML = '<p style="color: var(--text-muted); font-style: italic; font-size: 14px; text-align: center; padding: 20px;">No saved miniscripts yet.</p>';
+            } else {
+                modalList.innerHTML = filteredExpressions.map(expr => `
+                    <div class="expression-item" style="margin-bottom: 10px;">
+                        <div class="expression-info">
+                            <div class="expression-name">${this.escapeHtml(expr.name)}</div>
+                            <div class="expression-preview">${this.escapeHtml(expr.expression)}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                            <button onclick="compiler.loadMiniscriptFromModal('${this.escapeHtml(expr.name)}')" class="secondary-btn" style="padding: 6px 12px; font-size: 12px;">📂 Load</button>
+                            <button onclick="compiler.deleteMiniscriptFromModal('${this.escapeHtml(expr.name)}')" class="danger-btn" style="padding: 6px 12px; font-size: 12px;">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Also update the main saved expressions list if it's visible
+        this.loadSavedExpressions();
     }
 
     loadExpression(name) {
