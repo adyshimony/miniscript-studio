@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, get_taproot_leaves } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -3985,7 +3985,7 @@ class MiniscriptCompiler {
             const addressDisplay = addressDiv.querySelector('#address-display');
             addressDisplay.dataset.scriptHex = result.script;
             addressDisplay.dataset.scriptType = result.miniscript_type || 'Unknown';
-            // Store the processed miniscript (with actual keys) for taproot network switching
+            // Store the processed miniscript for taproot network switching
             addressDisplay.dataset.miniscript = result.processedMiniscript || '';
             
             // Add event listener for network toggle
@@ -5432,11 +5432,11 @@ class MiniscriptCompiler {
         try {
             console.log(`Switching from ${currentNetwork} to ${newNetwork} for ${scriptType} script`);
             
-            // For Taproot, use the special function with miniscript
+            // For Taproot, use TaprootBuilder approach (same as compilation)
             let result;
             if (scriptType === 'Taproot' && miniscript) {
-                console.log(`Using taproot-specific network switch with miniscript: ${miniscript}`);
-                result = generate_taproot_address_for_network(miniscript, newNetwork);
+                console.log('DEBUG: Using TaprootBuilder for miniscript:', miniscript);
+                result = generate_taproot_address_with_builder(miniscript, newNetwork);
             } else {
                 // Call original WASM function for other script types
                 result = generate_address_for_network(scriptHex, scriptType, newNetwork);
