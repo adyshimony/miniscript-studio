@@ -70,6 +70,11 @@ class MiniscriptCompiler {
             this.showSavePolicyModal();
         });
 
+        // Load policy button
+        document.getElementById('load-policy-btn').addEventListener('click', () => {
+            this.showSavedPoliciesModal();
+        });
+
         // Save button
         document.getElementById('save-btn').addEventListener('click', () => {
             this.showSaveModal();
@@ -1026,7 +1031,9 @@ class MiniscriptCompiler {
         content += `
                 <div style="margin-bottom: 15px;">
                     <strong>Descriptor:</strong><br>
-                    <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${descriptor}</code>
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                        ${descriptor}
+                    </div>
                 </div>`;
         
         // Add weight information if available from compilation result
@@ -1060,14 +1067,14 @@ class MiniscriptCompiler {
         content += `
                 <div style="margin-bottom: 15px;">
                     <strong>Taproot Structure:</strong><br>
-                    <div style="margin: 8px 0 8px 16px; font-family: monospace; font-size: 13px;">
-                        • Internal Key: <span class="key-tooltip" style="color: var(--accent-color); cursor: help; text-decoration: underline dotted;" title="${this.getKeyTooltip(internalKey)}">${internalKey}</span> (key-path spending)
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                        • Internal Key: ${internalKey} (key-path spending)
         `;
         
         if (treeScript) {
             // Parse the tree to show branches
             const branches = this.parseTaprootBranches(treeScript);
-            content += `<br>• Script Tree: ${branches.length} branch${branches.length !== 1 ? 'es' : ''} (script-path spending)`;
+            content += `<br>        • Script Tree: ${branches.length} branch${branches.length !== 1 ? 'es' : ''} (script-path spending)`;
             content += `</div></div>`;
             
             // Handle auto-load behavior for single branches in multi-leaf mode
@@ -1135,18 +1142,14 @@ class MiniscriptCompiler {
                     
                     content += `
                     <div style="margin-bottom: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                        <strong><button class="branch-loader" 
-                               onclick="window.loadBranchMiniscript('${branch.replace(/'/g, "\\'")}')" 
-                               style="background: none; border: none; color: var(--accent-color); cursor: pointer; 
-                                      text-decoration: underline; font-size: inherit; font-weight: bold; padding: 0;">
-                               Branch ${index + 1}
-                        </button>:</strong><br>
-                        <div style="margin: 8px 0;">
-                            <strong>Miniscript:</strong><br>
-                            <code style="padding: 6px; border-radius: 3px; display: block; margin: 4px 0; font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.1);">${displayMiniscript}</code>
-                        </div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">
-                            💡 Click "Branch ${index + 1}" above to load this miniscript into the editor
+                        <strong>Branch:</strong> ${index + 1}<br>
+                        <strong>Miniscript:</strong> 
+                        <a href="#" onclick="window.loadBranchMiniscript('${branch.replace(/'/g, "\\'")}')" 
+                           style="color: var(--accent-color); text-decoration: underline; font-family: monospace; font-size: 13px;">
+                           ${displayMiniscript}
+                        </a>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                            💡 Click the miniscript above to load it into the editor
                         </div>
                     </div>
                     `;
@@ -5805,6 +5808,105 @@ class MiniscriptCompiler {
                 </div>
             </div>
         `).join('');
+    }
+
+    showSavedPoliciesModal() {
+        const policies = this.getSavedPolicies();
+        
+        // Create modal HTML
+        const modalHtml = `
+            <div id="saved-policies-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: var(--container-bg); border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">📂 Saved Policies</h3>
+                        <button onclick="document.getElementById('saved-policies-modal').remove()" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; padding: 0;">×</button>
+                    </div>
+                    <div id="modal-policies-list">
+                        ${policies.length === 0 ? 
+                            '<p style="color: var(--text-muted); font-style: italic; font-size: 14px; text-align: center; padding: 20px;">No saved policies yet.</p>' :
+                            policies.map(policy => `
+                                <div class="expression-item" style="margin-bottom: 10px;">
+                                    <div class="expression-info">
+                                        <div class="expression-name">${this.escapeHtml(policy.name)}</div>
+                                        <div class="expression-preview">${this.escapeHtml(policy.expression)}</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                                        <button onclick="compiler.loadPolicyFromModal('${this.escapeHtml(policy.name)}')" class="secondary-btn" style="padding: 6px 12px; font-size: 12px;">📂 Load</button>
+                                        <button onclick="compiler.deletePolicyFromModal('${this.escapeHtml(policy.name)}')" class="danger-btn" style="padding: 6px 12px; font-size: 12px;">🗑️</button>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to the page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Close modal on ESC key
+        const closeOnEsc = (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('saved-policies-modal');
+                if (modal) modal.remove();
+                document.removeEventListener('keydown', closeOnEsc);
+            }
+        };
+        document.addEventListener('keydown', closeOnEsc);
+        
+        // Close modal on background click
+        const modal = document.getElementById('saved-policies-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+    }
+
+    loadPolicyFromModal(name) {
+        // Close the modal
+        const modal = document.getElementById('saved-policies-modal');
+        if (modal) modal.remove();
+        
+        // Load the policy
+        this.loadPolicy(name);
+    }
+
+    deletePolicyFromModal(name) {
+        if (!confirm(`Are you sure you want to delete policy "${name}"?`)) {
+            return;
+        }
+
+        const policies = this.getSavedPolicies();
+        const filteredPolicies = policies.filter(policy => policy.name !== name);
+        this.setSavedPolicies(filteredPolicies);
+        
+        // Update the modal content
+        const modalList = document.getElementById('modal-policies-list');
+        if (modalList) {
+            if (filteredPolicies.length === 0) {
+                modalList.innerHTML = '<p style="color: var(--text-muted); font-style: italic; font-size: 14px; text-align: center; padding: 20px;">No saved policies yet.</p>';
+            } else {
+                modalList.innerHTML = filteredPolicies.map(policy => `
+                    <div class="expression-item" style="margin-bottom: 10px;">
+                        <div class="expression-info">
+                            <div class="expression-name">${this.escapeHtml(policy.name)}</div>
+                            <div class="expression-preview">${this.escapeHtml(policy.expression)}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                            <button onclick="compiler.loadPolicyFromModal('${this.escapeHtml(policy.name)}')" class="secondary-btn" style="padding: 6px 12px; font-size: 12px;">📂 Load</button>
+                            <button onclick="compiler.deletePolicyFromModal('${this.escapeHtml(policy.name)}')" class="danger-btn" style="padding: 6px 12px; font-size: 12px;">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Also update the main saved policies list if it's visible
+        this.loadSavedPolicies();
     }
 
     loadPolicy(name) {
