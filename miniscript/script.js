@@ -594,9 +594,13 @@ class MiniscriptCompiler {
                     if (result.address) {
                         successMsg += `Address:<br>${result.address}`;
                         
-                        // Add Taproot descriptor for Taproot context
+                        // Add Taproot descriptor for Taproot context in multi-leaf mode only
                         if (result.miniscript_type === 'Taproot' && result.compiled_miniscript) {
-                            successMsg += `<br><br>Taproot descriptor:<br><code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${result.compiled_miniscript}</code>`;
+                            const currentMode = window.currentTaprootMode || 'single-leaf';
+                            if (currentMode === 'multi-leaf') {
+                                const cleanDescriptor = result.compiled_miniscript.trim();
+                                successMsg += `<br><br>Taproot descriptor:<br>${cleanDescriptor}`;
+                            }
                         }
                     }
                 }
