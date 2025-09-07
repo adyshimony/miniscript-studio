@@ -1051,6 +1051,29 @@
                 </div>
             </div>
             
+            <!-- Policy Script context section -->
+            <div class="context-section" style="margin-top: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Policy context:</label>
+                <div class="radio-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="policy-context" value="legacy" style="margin: 0;">
+                        <span>Legacy (p2SH)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="policy-context" value="segwit" checked style="margin: 0;">
+                        <span>Segwit v0 (p2WSH)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="policy-context" value="taproot" style="margin: 0;">
+                        <span>Taproot (single leaf)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="policy-context" value="taproot-multi" style="margin: 0;">
+                        <span>Taproot (multi-leaf)</span>
+                    </label>
+                </div>
+            </div>
+            
         </div>
         
         <div class="input-section">
@@ -1151,7 +1174,7 @@
             
             
             <div class="context-section" style="margin-top: 20px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Script context:</label>
+                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-secondary);">Miniscript context:</label>
                 <div class="radio-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                         <input type="radio" name="context" value="legacy" style="margin: 0;">
@@ -1163,7 +1186,11 @@
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                         <input type="radio" name="context" value="taproot" style="margin: 0;">
-                        <span>Taproot</span>
+                        <span>Taproot (single leaf)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="context" value="taproot-multi" style="margin: 0;">
+                        <span>Taproot (multi-leaf)</span>
                     </label>
                 </div>
             </div>
@@ -2470,7 +2497,11 @@
             if (window.compiler && window.compiler.detectContextFromExpression) {
                 const detectedContext = window.compiler.detectContextFromExpression(example);
                 const context = detectedContext || 'segwit';
-                document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+                // Set both policy and miniscript context radio buttons
+                const policyRadio = document.querySelector(`input[name="policy-context"][value="${context}"]`);
+                const miniscriptRadio = document.querySelector(`input[name="context"][value="${context}"]`);
+                if (policyRadio) policyRadio.checked = true;
+                if (miniscriptRadio) miniscriptRadio.checked = true;
             }
             
             // Reset the "Show key names" checkbox
@@ -2505,7 +2536,11 @@
             if (window.compiler && window.compiler.detectContextFromExpression) {
                 const detectedContext = window.compiler.detectContextFromExpression(example);
                 const context = detectedContext || 'segwit';
-                document.querySelector(`input[name="context"][value="${context}"]`).checked = true;
+                // Set both policy and miniscript context radio buttons
+                const policyRadio = document.querySelector(`input[name="policy-context"][value="${context}"]`);
+                const miniscriptRadio = document.querySelector(`input[name="context"][value="${context}"]`);
+                if (policyRadio) policyRadio.checked = true;
+                if (miniscriptRadio) miniscriptRadio.checked = true;
             }
             
             // Reset the "Show key names" checkbox since we cleared the miniscript
