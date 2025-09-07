@@ -749,7 +749,13 @@ fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, O
                                 max_weight_to_satisfy,
                                 Some(true), // sanity_check
                                 Some(true), // is_non_malleable  
-                                Some(format!("tr({},{})", nums_point_str, normalized_miniscript))
+                                {
+                                    let tr_descriptor_str = format!("tr({},{})", nums_point_str, normalized_miniscript);
+                                    match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
+                                        Ok(descriptor) => Some(descriptor.to_string()),
+                                        Err(_) => Some(tr_descriptor_str)
+                                    }
+                                }
                             ))
                         },
                         Err(e) => Err(format!("TapTree finalization failed: {:?}", e))
@@ -817,7 +823,13 @@ fn compile_taproot_miniscript_multiline(expression: &str) -> Result<(String, Str
                                 max_weight_to_satisfy,
                                 Some(true), // sanity_check
                                 Some(true), // is_non_malleable
-                                Some(format!("tr({},{})", nums_point_str, normalized_miniscript))
+                                {
+                                    let tr_descriptor_str = format!("tr({},{})", nums_point_str, normalized_miniscript);
+                                    match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
+                                        Ok(descriptor) => Some(descriptor.to_string()),
+                                        Err(_) => Some(tr_descriptor_str)
+                                    }
+                                }
                             ))
                         },
                         Err(e) => Err(format!("TapTree finalization failed: {:?}", e))
@@ -1971,6 +1983,7 @@ pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str
     
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
+
 
 /// Internal function using TaprootBuilder (same logic as compile_taproot_miniscript_raw)
 fn perform_taproot_builder_address_generation(miniscript: &str, network_str: &str) -> Result<String, String> {
