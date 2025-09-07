@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -697,8 +697,16 @@ class MiniscriptCompiler {
             delete policyInput.dataset.lastHighlightedText;
             this.highlightPolicySyntax();
             
-            // Call the WASM function with context
-            const result = compile_policy(processedPolicy, context);
+            // Call the WASM function with context and mode for taproot
+            let result;
+            if (context === 'taproot') {
+                // Get the current taproot mode (default to 'single-leaf' if not set)
+                const mode = window.currentTaprootMode || 'single-leaf';
+                console.log('Compiling policy with mode:', mode);
+                result = compile_policy_with_mode(processedPolicy, context, mode);
+            } else {
+                result = compile_policy(processedPolicy, context);
+            }
             
             // Reset button
             compilePolicyBtn.textContent = originalText;
@@ -793,8 +801,8 @@ class MiniscriptCompiler {
                     }
                 }
                 
-                // Show policy success message 
-                this.showPolicySuccess(displayMiniscript, result);
+                // Show policy success message with context
+                this.showPolicySuccess(displayMiniscript, result, context);
                 
                 // Check if this is a descriptor validation from policy compilation
                 const isDescriptorValidation = result.miniscript_type === 'Descriptor';
@@ -954,7 +962,7 @@ class MiniscriptCompiler {
         `;
     }
 
-    showPolicySuccess(miniscript, result = null) {
+    showPolicySuccess(miniscript, result = null, context = null) {
         const policyErrorsDiv = document.getElementById('policy-errors');
         
         // Check if we should update existing success message during auto-compile
@@ -962,13 +970,13 @@ class MiniscriptCompiler {
             const existingSuccess = policyErrorsDiv.querySelector('.result-box.success');
             if (existingSuccess) {
                 // Update the content for auto-compile
-                this.updatePolicySuccessContent(existingSuccess, miniscript, result);
+                this.updatePolicySuccessContent(existingSuccess, miniscript, result, context);
                 return; // Don't replace the entire message box
             }
         }
         
         // Normal behavior - create new message
-        const content = this.generatePolicySuccessContent(miniscript, result);
+        const content = this.generatePolicySuccessContent(miniscript, result, context);
         policyErrorsDiv.innerHTML = `
             <div class="result-box success" style="margin: 0; text-align: left;">
                 <h4>✅ Policy compilation successful</h4>
@@ -977,9 +985,9 @@ class MiniscriptCompiler {
         `;
     }
     
-    generatePolicySuccessContent(miniscript, result = null) {
-        // Check if this is a taproot descriptor
-        if (miniscript.startsWith('tr(')) {
+    generatePolicySuccessContent(miniscript, result = null, context = null) {
+        // Check if this is taproot context or a taproot descriptor
+        if (context === 'taproot' || miniscript.startsWith('tr(')) {
             return this.generateTaprootPolicyContent(miniscript, result);
         } else {
             // Standard miniscript display
@@ -1002,24 +1010,31 @@ class MiniscriptCompiler {
         console.log(`=== TAPROOT PARSING DEBUG ===`);
         console.log(`Input descriptor: "${descriptor}"`);
         
-        // Parse using helper function
-        const parsed = this.parseTrDescriptor(descriptor);
-        if (!parsed) {
-            console.error('Taproot parsing failed:', descriptor);
-            return this.generateStandardContent(descriptor);
+        // Parse using helper function if it's a tr() descriptor
+        let internalKey = null;
+        let treeScript = null;
+        
+        if (descriptor.startsWith('tr(')) {
+            const parsed = this.parseTrDescriptor(descriptor);
+            if (parsed) {
+                internalKey = parsed.internalKey;
+                treeScript = parsed.treeScript;
+            }
+        } else {
+            // For non-tr() descriptors in taproot context (single-leaf mode result)
+            // The descriptor itself is the miniscript
+            treeScript = descriptor;
         }
         
-        const { internalKey, treeScript } = parsed;
-        
-        // Check current mode (default to multi-leaf if not set) - define at top level
-        const currentMode = window.currentTaprootMode || 'multi-leaf';
+        // Check current mode (default to single-leaf if not set) - define at top level
+        const currentMode = window.currentTaprootMode || 'single-leaf';
         
         let content = `
             <div style="margin-top: 10px; text-align: left;">
         `;
         
-        // Only show mode selection if there's a tree script (multiple spending paths)
-        if (treeScript) {
+        // Always show mode selection in taproot context
+        if (true) {
             
             content += `
                 <div style="margin-bottom: 15px; padding: 10px; background: var(--success-bg); border-radius: 6px; border: 1px solid var(--success-border);">
@@ -1350,11 +1365,11 @@ class MiniscriptCompiler {
         return [singleBranch];
     }
     
-    updatePolicySuccessContent(existingSuccess, miniscript, result = null) {
+    updatePolicySuccessContent(existingSuccess, miniscript, result = null, context = null) {
         // Update the content for auto-compile scenarios
         const contentDiv = existingSuccess.querySelector('div[style*="margin-top: 10px"]');
         if (contentDiv) {
-            const newContent = this.generatePolicySuccessContent(miniscript, result);
+            const newContent = this.generatePolicySuccessContent(miniscript, result, context);
             contentDiv.outerHTML = newContent;
         }
     }

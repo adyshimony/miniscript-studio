@@ -611,6 +611,48 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
+/// Compile a policy to miniscript with mode support
+#[wasm_bindgen]
+pub fn compile_policy_with_mode(policy: &str, context: &str, mode: &str) -> JsValue {
+    console_log!("Compiling policy with mode: {} (context: {})", mode, context);
+    
+    let result = match compile_policy_to_miniscript_with_mode(policy, context, mode) {
+        Ok((script, script_asm, address, script_size, ms_type, compiled_miniscript, 
+            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => {
+            CompilationResult {
+                success: true,
+                error: None,
+                script: Some(script),
+                script_asm: Some(script_asm),
+                address,
+                script_size: Some(script_size),
+                miniscript_type: Some(ms_type),
+                compiled_miniscript: Some(compiled_miniscript),
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                sanity_check,
+                is_non_malleable,
+            }
+        },
+        Err(e) => CompilationResult {
+            success: false,
+            error: Some(e),
+            script: None,
+            script_asm: None,
+            address: None,
+            script_size: None,
+            miniscript_type: None,
+            compiled_miniscript: None,
+            max_satisfaction_size: None,
+            max_weight_to_satisfy: None,
+            sanity_check: None,
+            is_non_malleable: None,
+        }
+    };
+    
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
 /// Compile a miniscript expression to Bitcoin script
 #[wasm_bindgen]
 pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
@@ -1191,6 +1233,10 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
 }
 
 fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    compile_policy_to_miniscript_with_mode(policy, context, "multi-leaf")
+}
+
+fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     if policy.trim().is_empty() {
         return Err("Empty policy - please enter a policy expression".to_string());
     }
@@ -1335,7 +1381,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
         // First try parsing as XOnlyPublicKey for 64-char keys
         match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
             Ok(xonly_policy) => {
-                return compile_taproot_policy_xonly(xonly_policy, network);
+                return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
             },
             Err(_) => {
                 // Fall through to try PublicKey parsing
@@ -1356,7 +1402,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
             
             match context {
                 "legacy" => compile_legacy_policy(concrete_policy, network),
-                "taproot" => compile_taproot_policy(concrete_policy, network),
+                "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
                 _ => compile_segwit_policy(concrete_policy, network),
             }
         },
@@ -1367,7 +1413,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                 match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
                     Ok(xonly_policy) => {
                         console_log!("DEBUG: Successfully parsed XOnly policy: {}", xonly_policy);
-                        return compile_taproot_policy_xonly(xonly_policy, network);
+                        return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
                     },
                     Err(_) => {
                         // Fall through to try PublicKey parsing, but it will fail with proper error
@@ -1381,7 +1427,7 @@ fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, 
                     
                     match context {
                         "legacy" => compile_legacy_policy(concrete_policy, network),
-                        "taproot" => compile_taproot_policy(concrete_policy, network),
+                        "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
                         _ => compile_segwit_policy(concrete_policy, network),
                     }
                 },
@@ -1481,8 +1527,19 @@ fn compile_taproot_policy_xonly(
     policy: Concrete<XOnlyPublicKey>,
     network: Network
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    // Flag to control compilation method - for now default to true for multi-leaf
-    let use_multi_leaf_compilation = true;
+    compile_taproot_policy_xonly_with_mode(policy, network, "multi-leaf")
+}
+
+/// Compile policy for Taproot context with XOnlyPublicKey and mode
+fn compile_taproot_policy_xonly_with_mode(
+    policy: Concrete<XOnlyPublicKey>,
+    network: Network,
+    mode: &str
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    // Flag to control compilation method based on mode
+    console_log!("compile_taproot_policy_xonly_with_mode called with mode: {}", mode);
+    let use_multi_leaf_compilation = mode == "multi-leaf";
+    console_log!("use_multi_leaf_compilation: {}", use_multi_leaf_compilation);
     
     if use_multi_leaf_compilation {
         // New method: compile_tr() for multi-leaf taproot tree
@@ -1501,22 +1558,6 @@ fn compile_taproot_policy_xonly(
             Ok(descriptor) => {
                 console_log!("XOnly policy compiled to multi-leaf taproot descriptor");
                 console_log!("DEBUG: Resulting descriptor: {}", descriptor);
-                
-                // Check if descriptor is taproot and extract tree info
-                if let Some(tree_info) = descriptor.taproot_tree() {
-                    console_log!("DEBUG: Taproot tree found, analyzing structure...");
-                    // Try to get information about the tree structure
-                    match tree_info {
-                        Some(tree) => {
-                            console_log!("DEBUG: Tree structure present");
-                        },
-                        None => {
-                            console_log!("DEBUG: No tree structure (key-path only)");
-                        }
-                    }
-                } else {
-                    console_log!("DEBUG: Not a taproot descriptor or no tree info available");
-                }
                 
                 // Get the output script (scriptPubKey)
                 let script = descriptor.script_pubkey();
@@ -1637,6 +1678,16 @@ fn compile_taproot_policy_xonly_single_leaf(
 fn compile_taproot_policy(
     _policy: Concrete<PublicKey>,
     _network: Network
+) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    // Don't do automatic conversion - fail with proper error message
+    Err("Taproot context requires x-only keys (32 bytes). Found compressed keys (33 bytes).".to_string())
+}
+
+/// Compile policy for Taproot context with mode (should fail for compressed keys)
+fn compile_taproot_policy_with_mode(
+    _policy: Concrete<PublicKey>,
+    _network: Network,
+    _mode: &str
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     // Don't do automatic conversion - fail with proper error message
     Err("Taproot context requires x-only keys (32 bytes). Found compressed keys (33 bytes).".to_string())
