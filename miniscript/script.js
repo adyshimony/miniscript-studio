@@ -787,10 +787,10 @@ class MiniscriptCompiler {
                 
                 // Store the compiled miniscript (with actual keys) for network switching
                 result.processedMiniscript = result.compiled_miniscript;
-                // Don't display the compiled_miniscript in results since it's now in the text box
-                result.compiled_miniscript = null;
-                // Display results (script, asm, address)
-                this.displayResults(result);
+                
+                // After putting miniscript in editor, compile it fresh with current mode
+                // This ensures proper mode handling (single-leaf vs multi-leaf)
+                this.compileExpression();
             } else {
                 // Error: show policy-specific error
                 this.showPolicyError(result.error || 'Policy compilation failed');
@@ -810,6 +810,9 @@ class MiniscriptCompiler {
     clearPolicy() {
         document.getElementById('policy-input').innerHTML = '';
         this.clearPolicyErrors();
+        
+        // Reset taproot mode to default
+        window.currentTaprootMode = 'single-leaf';
         
         // Hide policy description panel
         const policyPanel = document.querySelector('.policy-description-panel');
@@ -4875,7 +4878,7 @@ class MiniscriptCompiler {
                             
                             leavesHtml += `
                                 <div style="margin-top: 10px; padding: 8px; border: 1px solid var(--border-color); border-radius: 3px; background: transparent;">
-                                    <div><strong>Leaf #${leaf.leaf_index}</strong></div>
+                                    <div><strong>Leaf #${leaf.leaf_index} (${leaf.branch_path})</strong></div>
                                     <div style="margin-top: 6px;">
                                         <strong>Miniscript:</strong><br>
                                         <span style="font-family: monospace; word-break: break-all; color: var(--text-secondary);">${displayMiniscript}</span>
@@ -4918,6 +4921,7 @@ class MiniscriptCompiler {
                                 <div style="margin-top: 8px; color: var(--text-secondary);">
                                     ℹ️ This miniscript is optimized into multiple tapscript leaves for efficient spending paths.
                                 </div>
+                                ${leavesHtml}
                             </div>
                         </div>
                     `;
@@ -5189,6 +5193,9 @@ class MiniscriptCompiler {
         document.getElementById('results').innerHTML = '';
         this.initializeEmptyResults();
         this.clearMiniscriptMessages();
+        
+        // Reset taproot mode to default
+        window.currentTaprootMode = 'single-leaf';
         
         // Reset description states to default (expanded)
         if (window.resetDescriptionStates) {
@@ -5491,6 +5498,9 @@ class MiniscriptCompiler {
         const expressions = this.getSavedExpressions();
         const savedExpr = expressions.find(expr => expr.name === name);
         
+        // Reset taproot mode to default
+        window.currentTaprootMode = 'single-leaf';
+        
         if (savedExpr) {
             document.getElementById('expression-input').textContent = savedExpr.expression;
             this.highlightMiniscriptSyntax();
@@ -5772,6 +5782,9 @@ class MiniscriptCompiler {
         const policies = this.getSavedPolicies();
         const savedPolicy = policies.find(policy => policy.name === name);
         
+        // Reset taproot mode to default
+        window.currentTaprootMode = 'single-leaf';
+        
         if (savedPolicy) {
             document.getElementById('policy-input').textContent = savedPolicy.expression;
             this.highlightPolicySyntax();
@@ -5874,6 +5887,9 @@ window.generateKey = function() {
 window.loadExample = function(example, exampleId) {
     const expressionInput = document.getElementById('expression-input');
     const isMobile = window.innerWidth <= 768;
+    
+    // Reset taproot mode to default
+    window.currentTaprootMode = 'single-leaf';
     
     // Set the content
     expressionInput.textContent = example;
@@ -5995,6 +6011,9 @@ window.loadPolicyExample = function(example, exampleId) {
     
     const policyInput = document.getElementById('policy-input');
     const isMobile = window.innerWidth <= 768;
+    
+    // Reset taproot mode to default
+    window.currentTaprootMode = 'single-leaf';
     
     // Set the content
     policyInput.textContent = example;

@@ -2041,6 +2041,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
     #[derive(Serialize)]
     struct TaprootLeaf {
         leaf_index: usize,
+        branch_path: String,
         miniscript: String,
         script_hex: String,
         script_asm: String,
@@ -2055,7 +2056,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
     };
     
     // Helper function to recursively extract leaves from a miniscript expression
-    fn extract_leaves_from_expression(expr: &str, leaves: &mut Vec<TaprootLeaf>, index_counter: &mut usize) {
+    fn extract_leaves_from_expression(expr: &str, leaves: &mut Vec<TaprootLeaf>, index_counter: &mut usize, branch_path: String) {
         let trimmed = expr.trim();
         console_log!("Processing expression for leaves: {}", trimmed);
         
@@ -2113,8 +2114,10 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                     console_log!("Found or branches - Left: {}, Right: {}", left_branch, right_branch);
                     
                     // Recursively process each branch
-                    extract_leaves_from_expression(left_branch, leaves, index_counter);
-                    extract_leaves_from_expression(right_branch, leaves, index_counter);
+                    let left_path = if branch_path.is_empty() { "A".to_string() } else { format!("{}A", branch_path) };
+                    let right_path = if branch_path.is_empty() { "B".to_string() } else { format!("{}B", branch_path) };
+                    extract_leaves_from_expression(left_branch, leaves, index_counter, left_path);
+                    extract_leaves_from_expression(right_branch, leaves, index_counter, right_path);
                     
                     return;
                 }
@@ -2133,6 +2136,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                 
                 leaves.push(TaprootLeaf {
                     leaf_index: *index_counter,
+                    branch_path: if branch_path.is_empty() { "Root".to_string() } else { format!("Branch {}", branch_path) },
                     miniscript: trimmed.to_string(),
                     script_hex: hex,
                     script_asm: asm,
@@ -2151,6 +2155,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                         // Create a placeholder leaf indicating conversion needed
                         leaves.push(TaprootLeaf {
                             leaf_index: *index_counter,
+                            branch_path: if branch_path.is_empty() { "Root".to_string() } else { format!("Branch {}", branch_path) },
                             miniscript: trimmed.to_string(),
                             script_hex: "requires_key_conversion".to_string(),
                             script_asm: "PublicKey format - needs x-only conversion".to_string(),
@@ -2205,6 +2210,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                                                 
                                                 leaves.push(TaprootLeaf {
                                                     leaf_index: leaf_idx,
+                                                    branch_path: format!("Leaf {}", leaf_idx),
                                                     miniscript: miniscript_str.to_string(),
                                                     script_hex,
                                                     script_asm,
@@ -2214,6 +2220,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                                                 console_log!("Failed to compile leaf miniscript: {}", e);
                                                 leaves.push(TaprootLeaf {
                                                     leaf_index: leaf_idx,
+                                                    branch_path: format!("Leaf {}", leaf_idx),
                                                     miniscript: miniscript_str.to_string(),
                                                     script_hex: "Compilation failed".to_string(),
                                                     script_asm: format!("Error: {}", e),
@@ -2239,6 +2246,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                                         
                                         leaves.push(TaprootLeaf {
                                             leaf_index: leaf_idx,
+                                            branch_path: format!("Leaf {}", leaf_idx),
                                             miniscript: miniscript_str.to_string(),
                                             script_hex,
                                             script_asm,
@@ -2248,6 +2256,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                                         console_log!("Failed to compile last leaf miniscript: {}", e);
                                         leaves.push(TaprootLeaf {
                                             leaf_index: leaf_idx,
+                                            branch_path: format!("Leaf {}", leaf_idx),
                                             miniscript: miniscript_str.to_string(),
                                             script_hex: "Compilation failed".to_string(),
                                             script_asm: format!("Error: {}", e),
@@ -2262,7 +2271,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                             console_log!("Single leaf or unsupported format, falling back to string parsing");
                             if !tree_part.is_empty() {
                                 let mut index_counter = 0;
-                                extract_leaves_from_expression(tree_part, &mut leaves, &mut index_counter);
+                                extract_leaves_from_expression(tree_part, &mut leaves, &mut index_counter, String::new());
                             }
                         }
                     }
@@ -2280,7 +2289,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                         console_log!("Extracted tree script from tr(): {}", tree_script);
                         
                         let mut index_counter = 0;
-                        extract_leaves_from_expression(tree_script, &mut leaves, &mut index_counter);
+                        extract_leaves_from_expression(tree_script, &mut leaves, &mut index_counter, String::new());
                     }
                 }
             }
@@ -2288,7 +2297,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
     } else {
         // For non-tr() expressions, process the whole expression
         let mut index_counter = 0;
-        extract_leaves_from_expression(&processed_expr, &mut leaves, &mut index_counter);
+        extract_leaves_from_expression(&processed_expr, &mut leaves, &mut index_counter, String::new());
     }
     
     // Helper function to extract leaves from TapTree structure
@@ -2366,6 +2375,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                 
                 leaves.push(TaprootLeaf {
                     leaf_index: *leaf_index,
+                    branch_path: format!("Leaf {}", *leaf_index),
                     miniscript: trimmed.to_string(),
                     script_hex: hex,
                     script_asm: asm,
@@ -2379,6 +2389,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                 // Try to handle as placeholder
                 leaves.push(TaprootLeaf {
                     leaf_index: *leaf_index,
+                    branch_path: format!("Leaf {}", *leaf_index),
                     miniscript: trimmed.to_string(),
                     script_hex: "Compilation needed".to_string(),
                     script_asm: "Requires compilation".to_string(),
