@@ -596,7 +596,9 @@ class MiniscriptCompiler {
                         // Create simplified version with key names (same as script field)
                         const simplifiedAsm = this.simplifyAsm(result.script_asm);
                         let finalAsm = simplifiedAsm;
-                        if (this.keyVariables.size > 0) {
+                        // Only replace keys with names if toggle is active
+                        const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                        if (showKeyNames && this.keyVariables.size > 0) {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
                         successMsg += `ASM:<br>${finalAsm}<br><br>`;
@@ -608,7 +610,12 @@ class MiniscriptCompiler {
                         if (result.miniscript_type === 'Taproot' && result.compiled_miniscript) {
                             const currentMode = window.currentTaprootMode || 'single-leaf';
                             if (currentMode === 'multi-leaf') {
-                                const cleanDescriptor = result.compiled_miniscript.trim();
+                                let cleanDescriptor = result.compiled_miniscript.trim();
+                                // Replace keys with names if toggle is active
+                                const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                                if (showKeyNames && this.keyVariables.size > 0) {
+                                    cleanDescriptor = this.replaceKeysWithNames(cleanDescriptor);
+                                }
                                 successMsg += `<br><br>Taproot descriptor:<br>${cleanDescriptor}`;
                             }
                         }
@@ -827,7 +834,9 @@ class MiniscriptCompiler {
                         // Create simplified version with key names (same as script field)
                         const simplifiedAsm = this.simplifyAsm(result.script_asm);
                         let finalAsm = simplifiedAsm;
-                        if (this.keyVariables.size > 0) {
+                        // Only replace keys with names if toggle is active
+                        const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                        if (showKeyNames && this.keyVariables.size > 0) {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
                         successMsg += `ASM:<br>${finalAsm}<br><br>`;
@@ -1055,7 +1064,7 @@ class MiniscriptCompiler {
             // No tree script (key-path only) - no mode selection needed, show simple message
             content += `
                 <div style="margin-bottom: 15px; color: var(--text-secondary); font-size: 13px;">
-                    💡 This is a key-path only taproot output. Only ${internalKey} can spend using a single signature.
+                    💡 This is a key-path only taproot output. Only ${displayInternalKey} can spend using a single signature.
                 </div>
             </div>`;
             return content;
@@ -1098,11 +1107,18 @@ class MiniscriptCompiler {
             }
         }
         
+        // Check if we should show key names or raw keys
+        const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+        let displayInternalKey = internalKey;
+        if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+            displayInternalKey = this.replaceKeysWithNames(internalKey);
+        }
+        
         content += `
                 <div style="margin-bottom: 15px;">
                     <strong>Taproot Structure:</strong><br>
                     <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
-                        • Internal Key: ${internalKey} (key-path spending)
+                        • Internal Key: ${displayInternalKey} (key-path spending)
         `;
         
         if (treeScript) {
@@ -1168,9 +1184,9 @@ class MiniscriptCompiler {
                 
                 // Add branch details with clickable names
                 branches.forEach((branch, index) => {
-                    // Replace key names if available
+                    // Replace key names if available and toggle is active
                     let displayMiniscript = branch;
-                    if (this.keyVariables && this.keyVariables.size > 0) {
+                    if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
                         displayMiniscript = this.replaceKeysWithNames(branch);
                     }
                     
@@ -1191,7 +1207,7 @@ class MiniscriptCompiler {
                 
                 content += `
                     <div style="color: var(--text-secondary); font-size: 13px; margin-top: 15px;">
-                        💡 This creates an optimized taproot output where ${internalKey} can spend directly with just a signature, while other parties require revealing only their specific branch script.
+                        💡 This creates an optimized taproot output where ${displayInternalKey} can spend directly with just a signature, while other parties require revealing only their specific branch script.
                     </div>
                 `;
             }
@@ -1199,7 +1215,7 @@ class MiniscriptCompiler {
             // No tree script (key-path only) - no mode selection needed, show simple message
             content += `
                 <div style="margin-bottom: 15px; color: var(--text-secondary); font-size: 13px;">
-                    💡 This is a key-path only taproot output. Only ${internalKey} can spend using a single signature.
+                    💡 This is a key-path only taproot output. Only ${displayInternalKey} can spend using a single signature.
                 </div>
             </div>`;
             return content;
@@ -4926,9 +4942,10 @@ class MiniscriptCompiler {
                         `;
                         
                         leaves.forEach((leaf, index) => {
-                            // Replace keys back with names for display
+                            // Replace keys back with names for display if toggle is active
                             let displayMiniscript = leaf.miniscript;
-                            if (this.keyVariables.size > 0) {
+                            const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                            if (showKeyNames && this.keyVariables.size > 0) {
                                 displayMiniscript = this.replaceKeysWithNames(leaf.miniscript);
                             }
                             
@@ -4940,6 +4957,10 @@ class MiniscriptCompiler {
                             } else {
                                 scriptHex = leaf.script_hex;
                                 scriptAsm = leaf.script_asm || "Not available";
+                                // Replace keys in ASM if toggle is active and ASM is available
+                                if (showKeyNames && this.keyVariables.size > 0 && leaf.script_asm && leaf.script_asm !== "Not available") {
+                                    scriptAsm = this.replaceKeysWithNames(leaf.script_asm);
+                                }
                             }
                             
                             leavesHtml += `
@@ -5005,7 +5026,20 @@ class MiniscriptCompiler {
             
             // Determine if internal key is NUMS or a real key
             const isNUMS = internalKey.includes('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0');
-            const keyType = isNUMS ? 'NUMS point (unspendable)' : 'User-provided key';
+            
+            let keyType;
+            if (isNUMS) {
+                keyType = 'NUMS point (unspendable)';
+            } else {
+                // Show key name if toggle is active, otherwise show "User-provided key"
+                const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                if (showKeyNames && this.keyVariables.size > 0) {
+                    const keyWithNames = this.replaceKeysWithNames(internalKey);
+                    keyType = keyWithNames !== internalKey ? keyWithNames : 'User-provided key';
+                } else {
+                    keyType = 'User-provided key';
+                }
+            }
             const spendPaths = [];
             
             if (!isNUMS) {
