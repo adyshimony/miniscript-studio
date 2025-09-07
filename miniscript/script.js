@@ -719,13 +719,42 @@ class MiniscriptCompiler {
                 }
                 
                 // Check if result is in JSON-like policy format with curly braces like {pk(Helen),pk(Uma)}
-                // If so, don't load it into the miniscript editor
+                // If so, don't load it into the miniscript editor and clear everything
                 const isPolicyResult = editorMiniscript && editorMiniscript.match(/^\s*\{.*\}\s*$/);
                 
                 if (!isPolicyResult) {
                     expressionInput.textContent = editorMiniscript;
                 } else {
-                    console.log('Policy compilation returned a policy, not loading into miniscript editor:', editorMiniscript);
+                    console.log('Policy compilation returned multiple miniscripts, clearing miniscript editor:', editorMiniscript);
+                    // Clear the miniscript editor
+                    expressionInput.textContent = '';
+                    
+                    // Clear hex and ASM fields
+                    const scriptHexDisplay = document.getElementById('script-hex-display');
+                    const scriptAsmDisplay = document.getElementById('script-asm-display');
+                    if (scriptHexDisplay) {
+                        scriptHexDisplay.value = '';
+                        scriptHexDisplay.placeholder = 'Hex script will appear here after compilation, or paste your own and lift it...';
+                    }
+                    if (scriptAsmDisplay) {
+                        scriptAsmDisplay.value = '';
+                        scriptAsmDisplay.placeholder = 'ASM script will appear here after compilation, or paste your own and lift it...';
+                    }
+                    
+                    // Clear the address field
+                    const addressField = document.getElementById('address');
+                    if (addressField) {
+                        addressField.textContent = '';
+                    }
+                    
+                    // Clear taproot descriptor if visible
+                    const taprootDescriptor = document.getElementById('taproot-descriptor');
+                    if (taprootDescriptor) {
+                        taprootDescriptor.style.display = 'none';
+                    }
+                    
+                    // Clear miniscript success/error messages
+                    this.clearMiniscriptMessages();
                 }
                 
                 // Reset format button state since compiled miniscript is always clean/unformatted
