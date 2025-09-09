@@ -725,9 +725,13 @@ class MiniscriptCompiler {
                 // Store the last compiled descriptor for branch parsing
                 this.lastCompiledDescriptor = result.compiled_miniscript;
                 
-                // Replace keys with names in the compiled miniscript if we have key variables
+                // Replace keys with names in the compiled miniscript if toggle is active
+                // Check POLICY toggle for policy compilation
                 let displayMiniscript = result.compiled_miniscript;
-                if (this.keyVariables.size > 0) {
+                const policyToggle = document.getElementById('policy-key-names-toggle');
+                const showKeyNames = policyToggle?.dataset.active !== 'false'; // Default to true if not set
+                
+                if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
                     displayMiniscript = this.replaceKeysWithNames(result.compiled_miniscript);
                 }
                 
@@ -8074,6 +8078,22 @@ function updateTreeDisplay() {
 
 // Load shared content from URL on page load
 window.addEventListener('DOMContentLoaded', function() {
+    // Initialize key names toggle to show names by default
+    const keyNamesToggle = document.getElementById('key-names-toggle');
+    const policyKeyNamesToggle = document.getElementById('policy-key-names-toggle');
+    
+    if (keyNamesToggle && !keyNamesToggle.dataset.active) {
+        keyNamesToggle.dataset.active = 'true';
+        keyNamesToggle.style.color = 'var(--success-border)';
+        keyNamesToggle.title = 'Hide key names';
+    }
+    
+    if (policyKeyNamesToggle && !policyKeyNamesToggle.dataset.active) {
+        policyKeyNamesToggle.dataset.active = 'true';
+        policyKeyNamesToggle.style.color = 'var(--success-border)';
+        policyKeyNamesToggle.title = 'Hide key names';
+    }
+    
     // Handle mobile vs desktop tree display settings
     const isMobile = window.innerWidth <= 768 || 
                       /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(navigator.userAgent) ||
