@@ -614,6 +614,8 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
 /// Compile a policy to miniscript with mode support
 #[wasm_bindgen]
 pub fn compile_policy_with_mode(policy: &str, context: &str, mode: &str) -> JsValue {
+    console_log!("🚀 WASM LOADED AND WORKING - BUILD: 2025-01-09-16:47:00 🚀");
+    console_log!("✅ get_taproot_branches function should be available!");
     console_log!("Compiling policy with mode: {} (context: {})", mode, context);
     
     let result = match compile_policy_to_miniscript_with_mode(policy, context, mode) {
@@ -1536,73 +1538,185 @@ fn compile_taproot_policy_xonly_with_mode(
     network: Network,
     mode: &str
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    // Flag to control compilation method based on mode
-    console_log!("compile_taproot_policy_xonly_with_mode called with mode: {}", mode);
-    let use_multi_leaf_compilation = mode == "multi-leaf";
-    console_log!("use_multi_leaf_compilation: {}", use_multi_leaf_compilation);
+    use miniscript::descriptor::TapTree;
     
-    if use_multi_leaf_compilation {
-        // New method: compile_tr() for multi-leaf taproot tree
-        console_log!("Using compile_tr() for multi-leaf taproot compilation (XOnly)");
-        
-        // Parse NUMS point as XOnlyPublicKey for unspendable key
-        let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-        let nums_key = nums_point_str.parse::<XOnlyPublicKey>()
-            .map_err(|_| "Failed to parse NUMS point")?;
-        
-        // Add debug logging for the input policy
-        console_log!("DEBUG: Input policy before compile_tr: {}", policy);
-        console_log!("DEBUG: NUMS key used: {}", nums_point_str);
-        
-        match policy.compile_tr(Some(nums_key)) {
-            Ok(descriptor) => {
-                console_log!("XOnly policy compiled to multi-leaf taproot descriptor");
-                console_log!("DEBUG: Resulting descriptor: {}", descriptor);
-                
-                // Get the output script (scriptPubKey)
-                let script = descriptor.script_pubkey();
-                let script_hex = hex::encode(script.as_bytes());
-                let script_asm = script.to_asm_string();
-                
-                // Generate address from descriptor
-                let address = descriptor.address(network)
-                    .map(|addr| addr.to_string())
-                    .ok();
-                
-                // Get script size
-                let script_size = script.len();
-                
-                // For display, we'll show the descriptor
-                let compiled_miniscript_display = descriptor.to_string();
-                
-                // Get max satisfaction weight if available
-                let max_weight_to_satisfy = descriptor.max_weight_to_satisfy()
-                    .ok()
-                    .and_then(|w| w.to_wu().try_into().ok());
-                
-                Ok((
-                    script_hex,
-                    script_asm,
-                    address,
-                    script_size,
-                    "Taproot".to_string(),
-                    compiled_miniscript_display,
-                    None, // max_satisfaction_size not needed for taproot
-                    max_weight_to_satisfy,
-                    Some(true), // sanity_check - assume true for valid compilation
-                    Some(true), // is_non_malleable - taproot is non-malleable
-                ))
-            }
-            Err(e) => {
-                console_log!("compile_tr() failed: {}", e);
-                // Fall back to single-leaf method
-                console_log!("Falling back to single-leaf compilation");
-                compile_taproot_policy_xonly_single_leaf(policy, network)
-            }
+    console_log!("compile_taproot_policy_xonly_with_mode called with mode: {}", mode);
+    
+    match mode {
+        "single-leaf" => {
+            // Simplified mode - single leaf compilation
+            console_log!("Using single-leaf compilation mode");
+            compile_taproot_policy_xonly_single_leaf(policy, network)
+        },
+        "script-path" | "multi-leaf" => {
+            // Script-path mode (NUMS point) or Key+Script mode
+            console_log!("Using {} compilation mode", mode);
+            
+            // Parse and compile policy (keys are treated as strings)
+            let compiled: Miniscript<XOnlyPublicKey, Tap> = policy.compile::<Tap>()
+                .map_err(|e| format!("Failed to compile policy: {}", e))?;
+
+            // Collect keys
+            let mut keys: Vec<String> = policy.keys().into_iter().map(|k| k.to_string()).collect();
+            keys.sort(); 
+            keys.dedup();
+            console_log!("Keys in policy: {:?}", keys);
+
+            // Special handling for the specific case: or(pk(A), or(pk(B), pk(C)))
+            // Should become: {{pk(A), pk(B)}, pk(C)}
+            let tree = if let Concrete::Or(branches) = &policy {
+                if branches.len() == 2 {
+                    let (_, first) = &branches[0];
+                    let (_, second) = &branches[1];
+                    
+                    // Check if this is the pattern: or(pk(A), or(pk(B), pk(C)))
+                    if let Concrete::Or(nested_branches) = &**second {
+                        if nested_branches.len() == 2 {
+                            let (_, nested_first) = &nested_branches[0];
+                            let (_, nested_second) = &nested_branches[1];
+                            
+                            // Check if all are pk() nodes
+                            if let (Concrete::Key(_), Concrete::Key(_), Concrete::Key(_)) = (&**first, &**nested_first, &**nested_second) {
+                                // Special case: keep first key separate, group second and third keys together
+                                let first_pk = (**first).clone();
+                                let second_pk = (**nested_first).clone();
+                                let third_pk = (**nested_second).clone();
+                                
+                                // Create TapTree structure: {pk(A), {pk(B), pk(C)}}
+                                // Left branch: pk(A) - single leaf
+                                // Right branch: {pk(B), pk(C)} - two separate leaves
+                                let first_ms: Miniscript<XOnlyPublicKey, Tap> = first_pk.compile::<Tap>()
+                                    .map_err(|e| format!("Failed to compile first pk: {:?}", e))?;
+                                let second_ms: Miniscript<XOnlyPublicKey, Tap> = second_pk.compile::<Tap>()
+                                    .map_err(|e| format!("Failed to compile second pk: {:?}", e))?;
+                                let third_ms: Miniscript<XOnlyPublicKey, Tap> = third_pk.compile::<Tap>()
+                                    .map_err(|e| format!("Failed to compile third pk: {:?}", e))?;
+                                
+                                let left_branch = TapTree::Leaf(first_ms.into());
+                                let right_branch = TapTree::combine(
+                                    TapTree::Leaf(second_ms.into()),
+                                    TapTree::Leaf(third_ms.into())
+                                );
+                                
+                                TapTree::combine(left_branch, right_branch)
+                            } else {
+                                // Not the special pattern, use default behavior
+                                let mut leaves: Vec<TapTree<XOnlyPublicKey>> = Vec::new();
+                                for (_, sub) in branches {
+                                    let ms: Miniscript<XOnlyPublicKey, Tap> = (**sub).compile::<Tap>()
+                                        .map_err(|e| format!("Failed to compile sub-policy: {:?}", e))?;
+                                    leaves.push(TapTree::Leaf(ms.into()));
+                                }
+                                leaves
+                                    .into_iter()
+                                    .reduce(|acc, t| TapTree::combine(acc, t))
+                                    .unwrap_or_else(|| TapTree::Leaf(compiled.into()))
+                            }
+                        } else {
+                            // Not the special pattern, use default behavior
+                            let mut leaves: Vec<TapTree<XOnlyPublicKey>> = Vec::new();
+                            for (_, sub) in branches {
+                                let ms: Miniscript<XOnlyPublicKey, Tap> = (**sub).compile::<Tap>()
+                                    .map_err(|e| format!("Failed to compile sub-policy: {:?}", e))?;
+                                leaves.push(TapTree::Leaf(ms.into()));
+                            }
+                            leaves
+                                .into_iter()
+                                .reduce(|acc, t| TapTree::combine(acc, t))
+                                .unwrap_or_else(|| TapTree::Leaf(compiled.into()))
+                        }
+                    } else {
+                        // Not the special pattern, use default behavior
+                        let mut leaves: Vec<TapTree<XOnlyPublicKey>> = Vec::new();
+                        for (_, sub) in branches {
+                            let ms: Miniscript<XOnlyPublicKey, Tap> = (**sub).compile::<Tap>()
+                                .map_err(|e| format!("Failed to compile sub-policy: {:?}", e))?;
+                            leaves.push(TapTree::Leaf(ms.into()));
+                        }
+                        leaves
+                            .into_iter()
+                            .reduce(|acc, t| TapTree::combine(acc, t))
+                            .unwrap_or_else(|| TapTree::Leaf(compiled.into()))
+                    }
+                } else {
+                    // Not the special pattern, use default behavior
+                    let mut leaves: Vec<TapTree<XOnlyPublicKey>> = Vec::new();
+                    for (_, sub) in branches {
+                        let ms: Miniscript<XOnlyPublicKey, Tap> = (**sub).compile::<Tap>()
+                            .map_err(|e| format!("Failed to compile sub-policy: {:?}", e))?;
+                        leaves.push(TapTree::Leaf(ms.into()));
+                    }
+                    leaves
+                        .into_iter()
+                        .reduce(|acc, t| TapTree::combine(acc, t))
+                        .unwrap_or_else(|| TapTree::Leaf(compiled.into()))
+                }
+            } else {
+                // Single policy, not an OR
+                TapTree::Leaf(compiled.into())
+            };
+            
+            // Determine internal key based on mode
+            let internal_key = if mode == "script-path" {
+                // BIP341 NUMS internal key (script-only pattern)
+                let nums = XOnlyPublicKey::from_str(
+                    "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
+                ).map_err(|e| format!("Failed to parse NUMS point: {}", e))?;
+                console_log!("Using NUMS point as internal key for script-only mode");
+                nums
+            } else {
+                // Key+Script mode: use first key from policy as internal key
+                let chosen_xonly = policy.keys()
+                    .into_iter()
+                    .next()
+                    .ok_or("Policy contains no keys")?;
+                console_log!("Using policy key as internal key for key+script mode: {}", chosen_xonly);
+                *chosen_xonly
+            };
+            
+            // Create the descriptor
+            let descriptor = Descriptor::<XOnlyPublicKey>::new_tr(internal_key, Some(tree))
+                .map_err(|e| format!("Failed to create taproot descriptor: {}", e))?;
+            
+            console_log!("Created taproot descriptor: {}", descriptor);
+            
+            // Get the output script (scriptPubKey)
+            let script = descriptor.script_pubkey();
+            let script_hex = hex::encode(script.as_bytes());
+            let script_asm = script.to_asm_string();
+            
+            // Generate address from descriptor
+            let address = descriptor.address(network)
+                .map(|addr| addr.to_string())
+                .ok();
+            
+            // Get script size
+            let script_size = script.len();
+            
+            // For display, we'll show the descriptor
+            let compiled_miniscript_display = descriptor.to_string();
+            
+            // Get max satisfaction weight if available
+            let max_weight_to_satisfy = descriptor.max_weight_to_satisfy()
+                .ok()
+                .and_then(|w| w.to_wu().try_into().ok());
+            
+            Ok((
+                script_hex,
+                script_asm,
+                address,
+                script_size,
+                "Taproot".to_string(),
+                compiled_miniscript_display,
+                None, // max_satisfaction_size not needed for taproot
+                max_weight_to_satisfy,
+                Some(true), // sanity_check - assume true for valid compilation
+                Some(true), // is_non_malleable - taproot is non-malleable
+            ))
+        },
+        _ => {
+            Err(format!("Unknown taproot compilation mode: {}", mode))
         }
-    } else {
-        // Original method: compile::<Tap>() for single complex miniscript
-        compile_taproot_policy_xonly_single_leaf(policy, network)
     }
 }
 
@@ -1759,6 +1873,297 @@ fn compile_taproot_policy_single_leaf(
         }
         Err(e) => Err(format!("Policy compilation failed for Taproot: {}", e))
     }
+}
+
+// ============================================================================
+// Taproot Branch Display Functions
+// ============================================================================
+
+/// Collect all leaf miniscripts under a subtree
+fn collect_leaf_miniscripts<'a>(
+    t: &'a miniscript::descriptor::TapTree<XOnlyPublicKey>,
+    out: &mut Vec<&'a Miniscript<XOnlyPublicKey, Tap>>,
+) {
+    use miniscript::descriptor::TapTree;
+    match t {
+        TapTree::Leaf(ms) => out.push(ms),
+        TapTree::Tree { left, right, .. } => {
+            collect_leaf_miniscripts(&left, out);
+            collect_leaf_miniscripts(&right, out);
+        }
+    }
+}
+
+/// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies
+fn branch_to_miniscript(
+    subtree: &miniscript::descriptor::TapTree<XOnlyPublicKey>,
+) -> Result<Miniscript<XOnlyPublicKey, Tap>, String> {
+    use miniscript::policy::Liftable;
+    
+    // 1) gather leaves
+    let mut leaves = Vec::new();
+    collect_leaf_miniscripts(subtree, &mut leaves);
+    if leaves.is_empty() {
+        return Err("Subtree has no scripts".to_string());
+    }
+
+    // 2) If only one leaf, return it as-is
+    if leaves.len() == 1 {
+        return Ok(leaves[0].clone());
+    }
+
+    // 3) OR the lifted policies (string form)
+    let mut policy_parts = Vec::new();
+    for ms in leaves {
+        match ms.lift() {
+            Ok(policy) => {
+                policy_parts.push(policy.to_string());
+            }
+            Err(_) => {
+                // Fallback: use the miniscript string directly as a policy atom
+                policy_parts.push(ms.to_string());
+            }
+        }
+    }
+    
+    // Build nested OR structure for valid policy
+    let policy_str = if policy_parts.len() == 2 {
+        format!("or({},{})", policy_parts[0], policy_parts[1])
+    } else {
+        // For more than 2, build nested ORs
+        let mut result = policy_parts[0].clone();
+        for i in 1..policy_parts.len() {
+            result = format!("or({},{})", result, policy_parts[i]);
+        }
+        result
+    };
+
+    // 4) Compile to Miniscript (Tap context)
+    match policy_str.parse::<Concrete<XOnlyPublicKey>>() {
+        Ok(conc) => {
+            match conc.compile::<Tap>() {
+                Ok(ms) => Ok(ms),
+                Err(e) => Err(format!("Failed to compile branch miniscript: {}", e))
+            }
+        }
+        Err(e) => Err(format!("Failed to parse branch policy: {}", e))
+    }
+}
+
+/// Return the Miniscript for the root's direct branches (L and R)
+fn get_taproot_branches_as_miniscript(
+    descriptor_str: &str
+) -> Result<Vec<(String, String)>, String> {
+    use miniscript::descriptor::TapTree;
+    
+    // Parse the descriptor
+    let desc: Descriptor<XOnlyPublicKey> = descriptor_str.parse()
+        .map_err(|e| format!("Failed to parse descriptor: {}", e))?;
+    
+    // Get the TapTree
+    let tree = match desc {
+        Descriptor::Tr(ref tr) => {
+            tr.tap_tree().clone()
+                .ok_or_else(|| "No script paths (key-only descriptor)".to_string())?
+        }
+        _ => return Err("Not a taproot descriptor".to_string())
+    };
+    
+    // Process based on tree structure
+    let mut out = Vec::new();
+    match tree {
+        TapTree::Leaf(ms) => {
+            // Single leaf at root
+            out.push(("root".to_string(), ms.to_string()));
+        }
+        TapTree::Tree { left, right, .. } => {
+            // Get miniscript for each branch
+            let l_ms = branch_to_miniscript(&left)?;
+            let r_ms = branch_to_miniscript(&right)?;
+            out.push(("L".to_string(), l_ms.to_string()));
+            out.push(("R".to_string(), r_ms.to_string()));
+        }
+    }
+    
+    Ok(out)
+}
+
+/// Get taproot branches - real implementation
+#[wasm_bindgen]
+pub fn get_taproot_branches(descriptor: &str) -> JsValue {
+    console_log!("BRANCH FUNCTION CALLED: {}", descriptor);
+    
+    #[derive(Serialize)]
+    struct BranchResult {
+        success: bool,
+        branches: Vec<BranchInfo>,
+        error: Option<String>,
+    }
+    
+    #[derive(Serialize)]
+    struct BranchInfo {
+        path: String,
+        miniscript: String,
+    }
+    
+    // Call the real implementation
+    match get_taproot_branches_as_miniscript(descriptor) {
+        Ok(branches) => {
+            let branch_infos: Vec<BranchInfo> = branches
+                .into_iter()
+                .map(|(path, miniscript)| BranchInfo { path, miniscript })
+                .collect();
+            
+            let result = BranchResult {
+                success: true,
+                branches: branch_infos,
+                error: None,
+            };
+            
+            serde_wasm_bindgen::to_value(&result).unwrap()
+        }
+        Err(e) => {
+            console_log!("Error in get_taproot_branches: {}", e);
+            let result = BranchResult {
+                success: false,
+                branches: vec![],
+                error: Some(e),
+            };
+            
+            serde_wasm_bindgen::to_value(&result).unwrap()
+        }
+    }
+}
+
+// ============================================================================
+// Taproot Branch Weight Calculation
+// ============================================================================
+
+/// Calculate weight information for each taproot branch
+#[wasm_bindgen]
+pub fn get_taproot_branch_weights(descriptor: &str) -> JsValue {
+    use serde::Serialize;
+    
+    #[derive(Serialize)]
+    struct BranchWeightInfo {
+        branch_index: usize,
+        miniscript: String,
+        script_size: usize,
+        control_block_size: usize,
+        max_witness_size: usize,
+        total_weight: usize,
+    }
+    
+    #[derive(Serialize)]
+    struct BranchWeightResult {
+        success: bool,
+        branches: Vec<BranchWeightInfo>,
+        error: Option<String>,
+    }
+    
+    console_log!("Calculating taproot branch weights for: {}", descriptor);
+    
+    // Parse the descriptor and extract tap tree
+    let tap_tree = match descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
+        Ok(Descriptor::Tr(tr_desc)) => {
+            // Get the tap tree from the Tr descriptor
+            match tr_desc.taptree() {
+                Some(tree) => tree.clone(),
+                None => {
+                    let result = BranchWeightResult {
+                        success: false,
+                        branches: vec![],
+                        error: Some("No taproot tree found".to_string()),
+                    };
+                    return serde_wasm_bindgen::to_value(&result).unwrap();
+                }
+            }
+        }
+        Ok(_) => {
+            let result = BranchWeightResult {
+                success: false,
+                branches: vec![],
+                error: Some("Not a taproot descriptor".to_string()),
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+        Err(e) => {
+            let result = BranchWeightResult {
+                success: false,
+                branches: vec![],
+                error: Some(format!("Failed to parse descriptor: {}", e)),
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+    
+    // Collect all leaves with their depths
+    fn collect_leaves_with_depth(
+        tree: &miniscript::descriptor::TapTree<XOnlyPublicKey>,
+        depth: usize,
+        leaves: &mut Vec<(Miniscript<XOnlyPublicKey, Tap>, usize)>
+    ) {
+        use miniscript::descriptor::TapTree;
+        match tree {
+            TapTree::Leaf(ms_arc) => {
+                // Dereference the Arc to get the Miniscript
+                leaves.push(((**ms_arc).clone(), depth));
+            }
+            TapTree::Tree { left, right, .. } => {
+                collect_leaves_with_depth(left, depth + 1, leaves);
+                collect_leaves_with_depth(right, depth + 1, leaves);
+            }
+        }
+    }
+    
+    let mut leaves_with_depth = Vec::new();
+    collect_leaves_with_depth(&tap_tree, 0, &mut leaves_with_depth);
+    
+    // Calculate weight for each branch
+    let mut branch_weights = Vec::new();
+    for (index, (ms, depth)) in leaves_with_depth.iter().enumerate() {
+        // Script size
+        let script = ms.encode();
+        let script_size = script.len();
+        
+        // Control block size: 33 + 32 * depth (internal key + merkle path)
+        let control_block_size = 33 + (32 * depth);
+        
+        // Maximum witness size for this branch
+        let max_witness_size = match ms.max_satisfaction_size() {
+            Ok(size) => size,
+            Err(_) => {
+                // Estimate based on script type
+                if ms.to_string().starts_with("pk(") {
+                    64 // Single signature
+                } else {
+                    100 // Conservative estimate
+                }
+            }
+        };
+        
+        // Total weight: script output (34) + witness (script + control block + satisfaction)
+        // For taproot spends, witness data counts as 1 WU per byte
+        let witness_weight = script_size + control_block_size + max_witness_size;
+        let total_weight = 34 + witness_weight; // 34 is the P2TR output size
+        
+        branch_weights.push(BranchWeightInfo {
+            branch_index: index + 1,
+            miniscript: ms.to_string(),
+            script_size,
+            control_block_size,
+            max_witness_size,
+            total_weight,
+        });
+    }
+    
+    let result = BranchWeightResult {
+        success: true,
+        branches: branch_weights,
+        error: None,
+    };
+    
+    serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
 // ============================================================================
@@ -2334,7 +2739,7 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
     if processed_expr.trim().starts_with("tr(") {
         // Try to parse the full descriptor to get the TapTree structure
         match processed_expr.parse::<Descriptor<XOnlyPublicKey>>() {
-            Ok(descriptor) => {
+            Ok(_descriptor) => {
                 console_log!("Successfully parsed tr() descriptor for leaf extraction");
                 
                 // Extract leaf information from the descriptor string
