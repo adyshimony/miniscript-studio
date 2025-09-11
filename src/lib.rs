@@ -2749,10 +2749,10 @@ pub fn generate_taproot_address_for_network(miniscript: &str, network_str: &str)
 
 /// Generate taproot address using TaprootBuilder (matches compilation logic)
 #[wasm_bindgen]
-pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str) -> JsValue {
-    console_log!("Generating taproot address with builder: {} for network: {}", miniscript, network_str);
+pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, internal_key: Option<String>) -> JsValue {
+    console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, internal_key);
     
-    let result = match perform_taproot_builder_address_generation(miniscript, network_str) {
+    let result = match perform_taproot_builder_address_generation(miniscript, network_str, internal_key) {
         Ok(address) => AddressResult {
             success: true,
             error: None,
@@ -2770,7 +2770,7 @@ pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str
 
 
 /// Internal function using TaprootBuilder (same logic as compile_taproot_miniscript_raw)
-fn perform_taproot_builder_address_generation(miniscript: &str, network_str: &str) -> Result<String, String> {
+fn perform_taproot_builder_address_generation(miniscript: &str, network_str: &str, internal_key: Option<String>) -> Result<String, String> {
     // Parse network
     let network = match network_str {
         "mainnet" | "bitcoin" => Network::Bitcoin,
@@ -2787,18 +2787,24 @@ fn perform_taproot_builder_address_generation(miniscript: &str, network_str: &st
         Ok(ms) => {
             let script = ms.encode();
             
-            // Use NUMS point (same as original compilation)
-            let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-            let nums_key = match XOnlyPublicKey::from_str(nums_point_str) {
+            // Use provided internal key or NUMS point as fallback
+            let internal_key_str = internal_key.unwrap_or_else(|| {
+                console_log!("No internal key provided, using NUMS point");
+                "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0".to_string()
+            });
+            
+            console_log!("Using internal key for address generation: {}", internal_key_str);
+            
+            let internal_xonly_key = match XOnlyPublicKey::from_str(&internal_key_str) {
                 Ok(key) => key,
-                Err(_) => return Err("Failed to parse NUMS point".to_string())
+                Err(_) => return Err(format!("Failed to parse internal key: {}", internal_key_str))
             };
             
             // Create taproot address (exact same logic as compile_taproot_miniscript_raw)
             let secp = Secp256k1::verification_only();
             match TaprootBuilder::new().add_leaf(0, script.clone()) {
                 Ok(builder) => {
-                    match builder.finalize(&secp, nums_key) {
+                    match builder.finalize(&secp, internal_xonly_key) {
                         Ok(spend_info) => {
                             let output_key = spend_info.output_key();
                             let address = Address::p2tr(&secp, output_key.to_x_only_public_key(), None, network);

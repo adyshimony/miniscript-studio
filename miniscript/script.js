@@ -5813,7 +5813,27 @@ class MiniscriptCompiler {
             let result;
             if (scriptType === 'Taproot' && miniscript) {
                 console.log('DEBUG: Using TaprootBuilder for miniscript:', miniscript);
-                result = generate_taproot_address_with_builder(miniscript, newNetwork);
+                
+                // Determine the internal key based on the current Taproot mode
+                const currentMode = window.currentTaprootMode || 'single-leaf';
+                let internalKey = null;
+                
+                if (currentMode === 'multi-leaf') {
+                    // For "Key path + script path" mode, extract internal key from the miniscript
+                    // Look for the first pk() to use as internal key
+                    const pkMatch = miniscript.match(/pk\(([^)]+)\)/);
+                    if (pkMatch) {
+                        internalKey = pkMatch[1];
+                        console.log('Extracted internal key for multi-leaf mode:', internalKey);
+                    }
+                } else if (currentMode === 'script-path') {
+                    // For "Script path" mode, use NUMS
+                    internalKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+                    console.log('Using NUMS for script-path mode:', internalKey);
+                }
+                
+                // Pass the internal key to the Rust function
+                result = generate_taproot_address_with_builder(miniscript, newNetwork, internalKey);
             } else {
                 // Call original WASM function for other script types
                 result = generate_address_for_network(scriptHex, scriptType, newNetwork);
