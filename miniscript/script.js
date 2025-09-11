@@ -612,13 +612,13 @@ class MiniscriptCompiler {
                             successMsg += `<br>`;
                         }
                         
-                        successMsg += `Taproot descriptor:<br>${displayDescriptor}<br><br>`;
+                        successMsg += `Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${displayDescriptor}</span><br>`;
                         
                         // Add Data field for all Taproot contexts
                         if (result.script) {
                             // Remove OP_1 (51) + push32 (20) prefix to show just the tweaked key
                             const tweakedKey = result.script.substring(4);
-                            successMsg += `Data (tweaked public key):<br>${tweakedKey}<br><br>`;
+                            successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${tweakedKey}</span><br>`;
                         }
                     } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         const scriptWeight = result.script_size;
@@ -641,10 +641,10 @@ class MiniscriptCompiler {
                     if (result.script) {
                         if (isTaprootContext) {
                             // For Taproot contexts, show complete scriptPubKey as-is
-                            successMsg += `HEX:<br>${result.script}<br><br>`;
+                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
                         } else {
                             // For non-Taproot contexts, show original script in HEX
-                            successMsg += `HEX:<br>${result.script}<br><br>`;
+                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
                         }
                     }
                     if (result.script_asm) {
@@ -673,16 +673,16 @@ class MiniscriptCompiler {
                             }
                             
                             if (leafAsm) {
-                                successMsg += `ASM (leaf):<br>${leafAsm}<br><br>`;
+                                successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${leafAsm}</span><br>`;
                             }
-                            successMsg += `ASM (scriptPubKey):<br>${finalAsm}<br><br>`;
+                            successMsg += `ASM (scriptPubKey):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
                         } else {
                             // For other contexts, show normal ASM
-                            successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                            successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
                         }
                     }
                     if (result.address) {
-                        successMsg += `Address:<br>${result.address}`;
+                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.address}</span>`;
                         
                     }
                 }
@@ -916,7 +916,7 @@ class MiniscriptCompiler {
                     
                     // Add hex, asm, and address
                     if (result.script) {
-                        successMsg += `HEX:<br>${result.script}<br><br>`;
+                        successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
                     }
                     if (result.script_asm) {
                         // Create simplified version with key names (same as script field)
@@ -927,10 +927,10 @@ class MiniscriptCompiler {
                         if (showKeyNames && this.keyVariables.size > 0) {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
-                        successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                        successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
                     }
                     if (result.address) {
-                        successMsg += `Address:<br>${result.address}`;
+                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.address}</span>`;
                     }
                 }
                 
@@ -1074,7 +1074,7 @@ class MiniscriptCompiler {
             return `
                 <div style="margin-top: 10px; text-align: left;">
                     <strong>Generated Miniscript:</strong><br>
-                    <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${miniscript}</code>
+                    <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace;">${miniscript}</code>
                     <div style="color: var(--text-secondary); font-size: 13px; margin-top: 10px;">
                         ${miniscript.match(/^\s*\{.*\}\s*$/) ? 
                             '💡 Policy compiled into multiple miniscript expressions. Cannot load into miniscript editor. Switch to Taproot compilation (multi-leaf TapTree) mode to select your miniscript expression.' :
@@ -1139,7 +1139,7 @@ class MiniscriptCompiler {
         content += `
                 <div style="margin-bottom: 15px;">
                     <strong>Descriptor:</strong><br>
-                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px; word-break: break-all; overflow-wrap: anywhere;">
                         ${descriptor}
                     </div>
                 </div>`;
@@ -5143,7 +5143,7 @@ class MiniscriptCompiler {
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>✅ <strong>Success</strong></h4>
-                <div style="margin-top: 10px; word-wrap: break-word; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap;">${message}</div>
+                <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto;">${message}</div>
                 ${treeHtml}
                 ${taprootInfoHtml}
             </div>
