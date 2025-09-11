@@ -580,20 +580,41 @@ class MiniscriptCompiler {
                 } else {
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                     
-                    // For Taproot Key+Script and Script-path contexts, show descriptor instead of WU metrics
+                    // For all Taproot contexts, show descriptor and special formatting
                     const currentMode = window.currentTaprootMode || 'single-leaf';
-                    const isTaprootMultiLeaf = result.miniscript_type === 'Taproot' && (currentMode === 'multi-leaf' || currentMode === 'script-path');
+                    const isTaprootContext = result.miniscript_type === 'Taproot';
                     
-                    if (isTaprootMultiLeaf && result.compiled_miniscript) {
-                        // Show descriptor for Taproot multi-leaf contexts
-                        let displayDescriptor = result.compiled_miniscript;
+                    if (isTaprootContext && result.compiled_miniscript) {
+                        // Show descriptor for all Taproot contexts
+                        let rawDescriptor = result.compiled_miniscript;
+                        
+                        // Clean the descriptor by removing |LEAF_ASM: suffix if present
+                        if (rawDescriptor.includes('|LEAF_ASM:')) {
+                            rawDescriptor = rawDescriptor.split('|LEAF_ASM:')[0];
+                        }
+                        
+                        let displayDescriptor = rawDescriptor;
                         const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
                         if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
-                            displayDescriptor = this.replaceKeysWithNames(result.compiled_miniscript);
+                            displayDescriptor = this.replaceKeysWithNames(rawDescriptor);
                         }
-                        successMsg += `<br>Taproot descriptor:<br>${displayDescriptor}<br><br>`;
                         
-                        // Add Data field for Taproot contexts only
+                        // Add weight info for Taproot Simplified only (before descriptor)
+                        if (currentMode === 'single-leaf' && result.max_weight_to_satisfy && result.max_satisfaction_size) {
+                            const scriptWeight = result.script_size;
+                            const inputWeight = result.max_satisfaction_size;
+                            const totalWeight = scriptWeight + inputWeight;
+                            
+                            successMsg += `<br>Script: ${scriptWeight} WU<br>`;
+                            successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                            successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                        } else {
+                            successMsg += `<br>`;
+                        }
+                        
+                        successMsg += `Taproot descriptor:<br>${displayDescriptor}<br><br>`;
+                        
+                        // Add Data field for all Taproot contexts
                         if (result.script) {
                             // Remove OP_1 (51) + push32 (20) prefix to show just the tweaked key
                             const tweakedKey = result.script.substring(4);
@@ -618,7 +639,7 @@ class MiniscriptCompiler {
                     
                     // Add hex, asm, and address
                     if (result.script) {
-                        if (isTaprootMultiLeaf) {
+                        if (isTaprootContext) {
                             // For Taproot contexts, show complete scriptPubKey as-is
                             successMsg += `HEX:<br>${result.script}<br><br>`;
                         } else {
@@ -635,7 +656,30 @@ class MiniscriptCompiler {
                         if (showKeyNames && this.keyVariables.size > 0) {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
-                        successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                        
+                        if (isTaprootContext && currentMode === 'single-leaf') {
+                            // For Taproot Simplified, show both leaf and scriptPubKey ASM
+                            // Parse leaf ASM from compiled_miniscript if available
+                            let leafAsm = '';
+                            if (result.compiled_miniscript && result.compiled_miniscript.includes('|LEAF_ASM:')) {
+                                const parts = result.compiled_miniscript.split('|LEAF_ASM:');
+                                if (parts.length > 1) {
+                                    leafAsm = parts[1];
+                                    // Replace keys with names in leaf ASM if toggle is active
+                                    if (showKeyNames && this.keyVariables.size > 0) {
+                                        leafAsm = this.replaceKeysWithNames(leafAsm);
+                                    }
+                                }
+                            }
+                            
+                            if (leafAsm) {
+                                successMsg += `ASM (leaf):<br>${leafAsm}<br><br>`;
+                            }
+                            successMsg += `ASM (scriptPubKey):<br>${finalAsm}<br><br>`;
+                        } else {
+                            // For other contexts, show normal ASM
+                            successMsg += `ASM:<br>${finalAsm}<br><br>`;
+                        }
                     }
                     if (result.address) {
                         successMsg += `Address:<br>${result.address}`;

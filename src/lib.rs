@@ -1065,6 +1065,13 @@ fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str) -> Re
             
             console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Using NUMS key: {}", nums_xonly_key);
             
+            // Get the leaf script (raw miniscript script)
+            let leaf_script = ms.encode();
+            let leaf_script_hex = leaf_script.to_hex_string();
+            let leaf_script_asm = format!("{:?}", leaf_script).replace("Script(", "").trim_end_matches(')').to_string();
+            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script hex: {}", leaf_script_hex);
+            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script ASM: {}", leaf_script_asm);
+            
             // Create the tree with the miniscript (clone to avoid move)
             let tree = TapTree::Leaf(Arc::new(ms.clone()));
             console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Created TapTree leaf");
@@ -1098,7 +1105,7 @@ fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str) -> Re
                                 max_weight_to_satisfy,
                                 Some(true), // sanity_check
                                 Some(true), // is_non_malleable
-                                Some(descriptor.to_string()) // Return the full descriptor
+                                Some(format!("{}|LEAF_ASM:{}", descriptor.to_string(), leaf_script_asm)) // Descriptor + leaf ASM
                             ))
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))
