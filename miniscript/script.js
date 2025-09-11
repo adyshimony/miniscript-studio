@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_miniscript_with_mode, compile_miniscript_with_mode_and_network, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -476,6 +476,9 @@ class MiniscriptCompiler {
         
         const expression = document.getElementById('expression-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
+        
+        // Store original expression for network switching
+        this.originalExpression = expression;
         
         // Clear previous messages (preserve success if this is from auto-compile)
         const isAutoCompile = this.isAutoCompiling || false;
@@ -4269,8 +4272,18 @@ class MiniscriptCompiler {
             const addressDisplay = addressDiv.querySelector('#address-display');
             addressDisplay.dataset.scriptHex = result.script;
             addressDisplay.dataset.scriptType = result.miniscript_type || 'Unknown';
-            // Store the processed miniscript for taproot network switching
+            // Store the original miniscript (with key names) and mode for taproot network switching
             addressDisplay.dataset.miniscript = result.processedMiniscript || '';
+            addressDisplay.dataset.originalExpression = this.originalExpression || '';
+            addressDisplay.dataset.taprootMode = result.taprootMode || 'single-leaf';
+            
+            // Debug logging
+            console.log('STORED DATA FOR NETWORK TOGGLE:');
+            console.log('- scriptType:', result.miniscript_type);
+            console.log('- originalExpression:', this.originalExpression);
+            console.log('- processedMiniscript:', result.processedMiniscript);
+            console.log('- taprootMode:', result.taprootMode);
+            console.log('- currentTaprootMode:', window.currentTaprootMode);
             
             // Add event listener for network toggle
             const networkToggleBtn = addressDiv.querySelector('#network-toggle-btn');
@@ -5787,6 +5800,17 @@ class MiniscriptCompiler {
         const scriptHex = addressDisplay.dataset.scriptHex;
         const scriptType = addressDisplay.dataset.scriptType;
         const miniscript = addressDisplay.dataset.miniscript;
+        const originalExpression = addressDisplay.dataset.originalExpression;
+        const taprootMode = addressDisplay.dataset.taprootMode;
+        
+        // Debug logging
+        console.log('NETWORK TOGGLE RETRIEVED DATA:');
+        console.log('- currentNetwork:', currentNetwork);
+        console.log('- scriptType:', scriptType);
+        console.log('- originalExpression:', originalExpression);
+        console.log('- miniscript:', miniscript);
+        console.log('- taprootMode:', taprootMode);
+        console.log('- keyVariables size:', this.keyVariables ? this.keyVariables.size : 'undefined');
         
         if (!scriptHex || !scriptType) {
             console.error('Missing script information for network toggle');
@@ -5812,28 +5836,71 @@ class MiniscriptCompiler {
             // For Taproot, use TaprootBuilder approach (same as compilation)
             let result;
             if (scriptType === 'Taproot' && miniscript) {
-                console.log('DEBUG: Using TaprootBuilder for miniscript:', miniscript);
+                console.log('DEBUG: Using TaprootBuilder for taproot mode:', taprootMode);
+                console.log('DEBUG: Original expression:', originalExpression);
+                console.log('DEBUG: Processed miniscript:', miniscript);
                 
-                // Determine the internal key based on the current Taproot mode
-                const currentMode = window.currentTaprootMode || 'single-leaf';
-                let internalKey = null;
+                // Use the stored taproot mode or fallback to current mode
+                const currentMode = taprootMode || window.currentTaprootMode || 'single-leaf';
+                let internalKey;
                 
                 if (currentMode === 'multi-leaf') {
-                    // For "Key path + script path" mode, extract internal key from the miniscript
+                    // For "Key path + script path" mode, extract internal key from ORIGINAL expression
                     // Look for the first pk() to use as internal key
-                    const pkMatch = miniscript.match(/pk\(([^)]+)\)/);
+                    const expressionToUse = originalExpression || miniscript;
+                    const pkMatch = expressionToUse.match(/pk\(([^)]+)\)/);
                     if (pkMatch) {
-                        internalKey = pkMatch[1];
-                        console.log('Extracted internal key for multi-leaf mode:', internalKey);
+                        // Get the actual key value for this key name
+                        const keyName = pkMatch[1];
+                        if (this.keyVariables && this.keyVariables.has(keyName)) {
+                            internalKey = this.keyVariables.get(keyName);
+                            console.log('Extracted internal key for multi-leaf mode:', keyName, '→', internalKey);
+                        } else {
+                            // Fallback to NUMS if key not found
+                            internalKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+                            console.log('Key name not found, using NUMS as fallback');
+                        }
+                    } else {
+                        // Fallback to NUMS if no pk() found
+                        internalKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+                        console.log('No pk() found, using NUMS as fallback');
                     }
-                } else if (currentMode === 'script-path') {
-                    // For "Script path" mode, use NUMS
+                } else {
+                    // For "Script path" and "single-leaf" modes, use NUMS
                     internalKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
-                    console.log('Using NUMS for script-path mode:', internalKey);
+                    console.log('Using NUMS for mode:', currentMode);
                 }
                 
-                // Pass the internal key to the Rust function
-                result = generate_taproot_address_with_builder(miniscript, newNetwork, internalKey);
+                // Always pass the internal key to the Rust function
+                console.log('CALLING generate_taproot_address_with_builder with:');
+                console.log('- miniscript:', miniscript);
+                console.log('- newNetwork:', newNetwork);
+                console.log('- internalKey:', internalKey);
+                
+                try {
+                    // Use the same compilation function as original compilation with network parameter
+                    // This ensures the same taproot tree structure
+                    result = compile_miniscript_with_mode_and_network(miniscript, 'taproot', currentMode, internalKey, newNetwork);
+                    console.log('NETWORK TOGGLE COMPILATION RESULT:', result);
+                    
+                    if (result.success && result.address) {
+                        // Extract just the address for the toggle result
+                        result = { 
+                            success: true, 
+                            address: result.address,
+                            error: undefined 
+                        };
+                    } else {
+                        result = { 
+                            success: false, 
+                            error: result.error || 'Address generation failed',
+                            address: undefined 
+                        };
+                    }
+                } catch (error) {
+                    console.error('WASM FUNCTION ERROR:', error);
+                    result = { success: false, error: error.message };
+                }
             } else {
                 // Call original WASM function for other script types
                 result = generate_address_for_network(scriptHex, scriptType, newNetwork);

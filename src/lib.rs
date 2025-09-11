@@ -683,6 +683,60 @@ pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
     compile_miniscript_with_mode(expression, context, "single-leaf", "")
 }
 
+/// Compile a miniscript expression to Bitcoin script with compilation mode and network
+#[wasm_bindgen]
+pub fn compile_miniscript_with_mode_and_network(expression: &str, context: &str, mode: &str, nums_key: &str, network_str: &str) -> JsValue {
+    console_log!("Compiling miniscript: {}", expression);
+    console_log!("Context: {}", context);
+    console_log!("Mode: {}", mode);
+    console_log!("Network: {}", network_str);
+    
+    // Parse network
+    let network = match network_str {
+        "mainnet" | "bitcoin" => Network::Bitcoin,
+        "testnet" => Network::Testnet,
+        "regtest" => Network::Regtest,
+        "signet" => Network::Signet,
+        _ => Network::Bitcoin // Default to mainnet
+    };
+    
+    let result = match compile_expression_with_mode_network(expression, context, mode, nums_key, network) {
+        Ok((script, script_asm, address, script_size, ms_type, 
+            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+            CompilationResult {
+                success: true,
+                error: None,
+                script: Some(script),
+                script_asm: Some(script_asm),
+                address,
+                script_size: Some(script_size),
+                miniscript_type: Some(ms_type),
+                compiled_miniscript: normalized_miniscript,
+                max_satisfaction_size,
+                max_weight_to_satisfy,
+                sanity_check,
+                is_non_malleable,
+            }
+        },
+        Err(e) => CompilationResult {
+            success: false,
+            error: Some(e),
+            script: None,
+            script_asm: None,
+            address: None,
+            script_size: None,
+            miniscript_type: None,
+            compiled_miniscript: None,
+            max_satisfaction_size: None,
+            max_weight_to_satisfy: None,
+            sanity_check: None,
+            is_non_malleable: None,
+        }
+    };
+    
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
 /// Compile a miniscript expression to Bitcoin script with compilation mode
 #[wasm_bindgen]
 pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str, nums_key: &str) -> JsValue {
@@ -743,25 +797,318 @@ fn compile_expression_with_mode(
     if context == "taproot" {
         match mode {
             "multi-leaf" => {
-                console_log!("Using multi-leaf compilation (compile_tr)");
-                // Multi-leaf mode: extract internal key from expression  
-                return compile_taproot_miniscript_multiline(expression, None);
+                console_log!("Using multi-leaf compilation (descriptor approach)");
+                // Multi-leaf mode: extract internal key from expression and use descriptor  
+                return compile_taproot_keypath_descriptor(expression);
             },
             "script-path" => {
-                console_log!("Using script-path compilation (compile_tr) with NUMS: {}", nums_key);
-                // Script-path mode: use provided NUMS as internal key
-                return compile_taproot_miniscript_multiline(expression, Some(nums_key));
+                console_log!("Using script-path compilation (descriptor approach) with NUMS: {}", nums_key);
+                // Script-path mode: use descriptor approach with NUMS
+                return compile_taproot_script_path_descriptor(expression, nums_key);
             },
             _ => {
-                console_log!("Using single-leaf compilation (compile)");
-                // Single-leaf mode: show raw miniscript script, not taproot address
-                return compile_taproot_miniscript_raw(expression);
+                console_log!("Using single-leaf compilation (descriptor approach) with NUMS");
+                // Single-leaf mode: use descriptor approach with NUMS (same as script-path)
+                return compile_taproot_simplified_descriptor(expression, nums_key);
             }
         }
     }
     
     // For non-taproot contexts, use regular compilation
     compile_expression(expression, context)
+}
+
+/// Internal function to compile miniscript expressions with mode and network
+fn compile_expression_with_mode_network(
+    expression: &str,
+    context: &str,
+    mode: &str,
+    nums_key: &str,
+    network: Network
+) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    console_log!("=== COMPILE_EXPRESSION_WITH_MODE_NETWORK CALLED ===");
+    console_log!("Expression: {}", expression);
+    console_log!("Context: {}", context);
+    console_log!("Mode: {}", mode);
+    console_log!("Network: {:?}", network);
+    
+    // First compile with the existing function (uses Bitcoin network)
+    let mut result = compile_expression_with_mode(expression, context, mode, nums_key)?;
+    
+    // If it's taproot and we need a different network, regenerate the address
+    if context == "taproot" && network != Network::Bitcoin {
+        console_log!("Regenerating taproot address for different network: {:?}", network);
+        
+        // Parse the compiled miniscript to get the descriptor
+        if let Some(ref compiled_miniscript) = result.9 {
+            console_log!("DEBUG: Full compiled descriptor: {}", compiled_miniscript);
+            
+            // Try to parse as tr() descriptor and regenerate address
+            match compiled_miniscript.parse::<Descriptor<XOnlyPublicKey>>() {
+                Ok(descriptor) => {
+                    console_log!("DEBUG: Successfully parsed descriptor for address generation");
+                    console_log!("DEBUG: Descriptor details: {:?}", descriptor);
+                    
+                    match descriptor.address(network) {
+                        Ok(address) => {
+                            console_log!("DEBUG: Successfully regenerated address for network {:?}: {}", network, address);
+                            console_log!("DEBUG: Original address was: {:?}", result.2);
+                            result.2 = Some(address.to_string()); // Update the address field
+                            console_log!("DEBUG: Updated address to: {:?}", result.2);
+                        },
+                        Err(e) => console_log!("DEBUG: Failed to generate address for network: {:?}", e)
+                    }
+                },
+                Err(e) => console_log!("DEBUG: Failed to parse compiled descriptor: {:?}", e)
+            }
+        }
+    }
+    
+    Ok(result)
+}
+
+/// Compile Taproot Script path using Descriptor::new_tr() approach (the correct way)
+fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    use std::sync::Arc;
+    use miniscript::descriptor::TapTree;
+    
+    console_log!("=== COMPILE_TAPROOT_SCRIPT_PATH_DESCRIPTOR ===");
+    console_log!("Expression: {}", expression);
+    console_log!("NUMS key: {}", nums_key);
+    
+    let network = Network::Bitcoin;
+    let processed_expr = expression.trim();
+    
+    // Parse as XOnlyPublicKey miniscript for Taproot
+    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            
+            // Calculate satisfaction weights 
+            let max_satisfaction_size = ms.max_satisfaction_size().ok();
+            let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
+            
+            // Parse NUMS key
+            let nums_xonly_key = match XOnlyPublicKey::from_str(nums_key) {
+                Ok(key) => key,
+                Err(_) => return Err(format!("Failed to parse NUMS key: {}", nums_key))
+            };
+            
+            console_log!("DEBUG DESCRIPTOR: Using NUMS key: {}", nums_xonly_key);
+            
+            // Create the tree with the miniscript (clone to avoid move)
+            let tree = TapTree::Leaf(Arc::new(ms.clone()));
+            console_log!("DEBUG DESCRIPTOR: Created TapTree leaf");
+            
+            // Create descriptor using Descriptor::new_tr() approach (the correct way!)
+            match Descriptor::<XOnlyPublicKey>::new_tr(nums_xonly_key, Some(tree)) {
+                Ok(descriptor) => {
+                    console_log!("DEBUG DESCRIPTOR: Successfully created descriptor: {}", descriptor);
+                    
+                    // Generate address from descriptor
+                    match descriptor.address(network) {
+                        Ok(address) => {
+                            console_log!("DEBUG DESCRIPTOR: Generated address: {}", address);
+                            
+                            // Get the scriptPubKey (OP_1 + 32-byte tweaked key)
+                            let script_pubkey = address.script_pubkey();
+                            let script_hex = script_pubkey.to_hex_string();
+                            let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
+                            let script_size = script_pubkey.len();
+                            
+                            console_log!("DEBUG DESCRIPTOR: Script hex: {}", script_hex);
+                            console_log!("DEBUG DESCRIPTOR: Script ASM: {}", script_asm);
+                            
+                            Ok((
+                                script_hex,
+                                script_asm,
+                                Some(address.to_string()),
+                                script_size,
+                                "Taproot".to_string(),
+                                max_satisfaction_size,
+                                max_weight_to_satisfy,
+                                Some(true), // sanity_check
+                                Some(true), // is_non_malleable
+                                Some(descriptor.to_string()) // Return the full descriptor
+                            ))
+                        },
+                        Err(e) => Err(format!("Address generation failed: {:?}", e))
+                    }
+                },
+                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
+            }
+        },
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
+}
+
+/// Compile Taproot Key path + script path using Descriptor::new_tr() approach with extracted internal key
+fn compile_taproot_keypath_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    use std::sync::Arc;
+    use miniscript::descriptor::TapTree;
+    
+    console_log!("=== COMPILE_TAPROOT_KEYPATH_DESCRIPTOR ===");
+    console_log!("Expression: {}", expression);
+    
+    let network = Network::Bitcoin;
+    let processed_expr = expression.trim();
+    
+    // Parse as XOnlyPublicKey miniscript for Taproot
+    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            
+            // Calculate satisfaction weights 
+            let max_satisfaction_size = ms.max_satisfaction_size().ok();
+            let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
+            
+            // Extract internal key from expression (e.g., from pk(key))
+            let internal_key_str = extract_internal_key_from_expression(expression);
+            console_log!("DEBUG DESCRIPTOR KEYPATH: Extracted internal key: {}", internal_key_str);
+            
+            // Parse internal key
+            let internal_xonly_key = if let Ok(key_bytes) = hex::decode(&internal_key_str) {
+                if key_bytes.len() == 32 {
+                    if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                        console_log!("DEBUG DESCRIPTOR KEYPATH: Successfully created XOnlyPublicKey from hex");
+                        xonly_key
+                    } else {
+                        console_log!("DEBUG DESCRIPTOR KEYPATH: Failed to create XOnlyPublicKey, using NUMS");
+                        get_taproot_nums_point()
+                    }
+                } else {
+                    console_log!("DEBUG DESCRIPTOR KEYPATH: Key bytes length is not 32, using NUMS");
+                    get_taproot_nums_point()
+                }
+            } else {
+                console_log!("DEBUG DESCRIPTOR KEYPATH: Failed to decode hex key, using NUMS");
+                get_taproot_nums_point()
+            };
+            
+            console_log!("DEBUG DESCRIPTOR KEYPATH: Using internal key: {}", internal_xonly_key);
+            
+            // Create the tree with the miniscript (clone to avoid move)
+            let tree = TapTree::Leaf(Arc::new(ms.clone()));
+            console_log!("DEBUG DESCRIPTOR KEYPATH: Created TapTree leaf");
+            
+            // Create descriptor using Descriptor::new_tr() approach (the correct way!)
+            match Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree)) {
+                Ok(descriptor) => {
+                    console_log!("DEBUG DESCRIPTOR KEYPATH: Successfully created descriptor: {}", descriptor);
+                    
+                    // Generate address from descriptor
+                    match descriptor.address(network) {
+                        Ok(address) => {
+                            console_log!("DEBUG DESCRIPTOR KEYPATH: Generated address: {}", address);
+                            
+                            // Get the scriptPubKey (OP_1 + 32-byte tweaked key)
+                            let script_pubkey = address.script_pubkey();
+                            let script_hex = script_pubkey.to_hex_string();
+                            let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
+                            let script_size = script_pubkey.len();
+                            
+                            console_log!("DEBUG DESCRIPTOR KEYPATH: Script hex: {}", script_hex);
+                            console_log!("DEBUG DESCRIPTOR KEYPATH: Script ASM: {}", script_asm);
+                            
+                            Ok((
+                                script_hex,
+                                script_asm,
+                                Some(address.to_string()),
+                                script_size,
+                                "Taproot".to_string(),
+                                max_satisfaction_size,
+                                max_weight_to_satisfy,
+                                Some(true), // sanity_check
+                                Some(true), // is_non_malleable
+                                Some(descriptor.to_string()) // Return the full descriptor
+                            ))
+                        },
+                        Err(e) => Err(format!("Address generation failed: {:?}", e))
+                    }
+                },
+                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
+            }
+        },
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
+}
+
+/// Compile Taproot Simplified using Descriptor::new_tr() approach (same as script path)
+fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    use std::sync::Arc;
+    use miniscript::descriptor::TapTree;
+    
+    console_log!("=== COMPILE_TAPROOT_SIMPLIFIED_DESCRIPTOR ===");
+    console_log!("Expression: {}", expression);
+    console_log!("NUMS key: {}", nums_key);
+    
+    let network = Network::Bitcoin;
+    let processed_expr = expression.trim();
+    
+    // Parse as XOnlyPublicKey miniscript for Taproot
+    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            let normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            
+            // Calculate satisfaction weights 
+            let max_satisfaction_size = ms.max_satisfaction_size().ok();
+            let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
+            
+            // Parse NUMS key
+            let nums_xonly_key = match XOnlyPublicKey::from_str(nums_key) {
+                Ok(key) => key,
+                Err(_) => return Err(format!("Failed to parse NUMS key: {}", nums_key))
+            };
+            
+            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Using NUMS key: {}", nums_xonly_key);
+            
+            // Create the tree with the miniscript (clone to avoid move)
+            let tree = TapTree::Leaf(Arc::new(ms.clone()));
+            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Created TapTree leaf");
+            
+            // Create descriptor using Descriptor::new_tr() approach (the correct way!)
+            match Descriptor::<XOnlyPublicKey>::new_tr(nums_xonly_key, Some(tree)) {
+                Ok(descriptor) => {
+                    console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Successfully created descriptor: {}", descriptor);
+                    
+                    // Generate address from descriptor
+                    match descriptor.address(network) {
+                        Ok(address) => {
+                            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Generated address: {}", address);
+                            
+                            // Get the scriptPubKey (OP_1 + 32-byte tweaked key)
+                            let script_pubkey = address.script_pubkey();
+                            let script_hex = script_pubkey.to_hex_string();
+                            let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
+                            let script_size = script_pubkey.len();
+                            
+                            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Script hex: {}", script_hex);
+                            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Script ASM: {}", script_asm);
+                            
+                            Ok((
+                                script_hex,
+                                script_asm,
+                                Some(address.to_string()),
+                                script_size,
+                                "Taproot".to_string(),
+                                max_satisfaction_size,
+                                max_weight_to_satisfy,
+                                Some(true), // sanity_check
+                                Some(true), // is_non_malleable
+                                Some(descriptor.to_string()) // Return the full descriptor
+                            ))
+                        },
+                        Err(e) => Err(format!("Address generation failed: {:?}", e))
+                    }
+                },
+                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
+            }
+        },
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
 }
 
 /// Compile miniscript for single-leaf taproot (shows raw script, not taproot address)
@@ -2752,7 +3099,8 @@ pub fn generate_taproot_address_for_network(miniscript: &str, network_str: &str)
 pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, internal_key: Option<String>) -> JsValue {
     console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, internal_key);
     
-    let result = match perform_taproot_builder_address_generation(miniscript, network_str, internal_key) {
+    // Use the new descriptor-based approach for cleaner code
+    let result = match perform_descriptor_address_generation(miniscript, network_str, internal_key) {
         Ok(address) => AddressResult {
             success: true,
             error: None,
@@ -2815,6 +3163,59 @@ fn perform_taproot_builder_address_generation(miniscript: &str, network_str: &st
                     }
                 },
                 Err(e) => Err(format!("TapTree creation failed: {:?}", e))
+            }
+        },
+        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+    }
+}
+
+/// Internal function using Descriptor approach (cleaner than TaprootBuilder)
+fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, internal_key: Option<String>) -> Result<String, String> {
+    use std::sync::Arc;
+    use miniscript::descriptor::TapTree;
+    
+    // Parse network
+    let network = match network_str {
+        "mainnet" | "bitcoin" => Network::Bitcoin,
+        "testnet" => Network::Testnet,
+        "regtest" => Network::Regtest,
+        "signet" => Network::Signet,
+        _ => return Err(format!("Invalid network: {}", network_str))
+    };
+    
+    console_log!("Building taproot address with Descriptor for network: {:?}", network);
+    
+    // Parse as XOnlyPublicKey miniscript for Taproot
+    match miniscript.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+        Ok(ms) => {
+            // Require internal key to be provided
+            let internal_key_str = match internal_key {
+                Some(key) => key,
+                None => return Err("Internal key is required for taproot address generation".to_string())
+            };
+            
+            console_log!("Using internal key for address generation: {}", internal_key_str);
+            
+            let internal_xonly_key = match XOnlyPublicKey::from_str(&internal_key_str) {
+                Ok(key) => key,
+                Err(_) => return Err(format!("Failed to parse internal key: {}", internal_key_str))
+            };
+            
+            // Create the tree with the miniscript
+            let tree = TapTree::Leaf(Arc::new(ms));
+            
+            // Create descriptor and get address directly
+            match Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree)) {
+                Ok(descriptor) => {
+                    match descriptor.address(network) {
+                        Ok(addr) => {
+                            console_log!("Generated taproot address with Descriptor: {}", addr);
+                            Ok(addr.to_string())
+                        },
+                        Err(e) => Err(format!("Address generation failed: {:?}", e))
+                    }
+                },
+                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
             }
         },
         Err(e) => Err(format!("Miniscript parsing failed: {}", e))
