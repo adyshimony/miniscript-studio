@@ -578,7 +578,7 @@ class MiniscriptCompiler {
                     // For descriptor validation, build the message using original expression from editor
                     successMsg = `Valid descriptor: wsh(${expression})`;
                 } else {
-                    successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                    successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
                     
                     // For all Taproot contexts, show descriptor and special formatting
                     const currentMode = window.currentTaprootMode || 'single-leaf';
@@ -625,11 +625,13 @@ class MiniscriptCompiler {
                         const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
                         const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
                         
+                        successMsg += `<br>Spending cost analysis:<br>`;
                         successMsg += `Script: ${scriptWeight} WU<br>`;
                         successMsg += `Input: ${inputWeight}.000000 WU<br>`;
                         successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
                     } else if (result.max_satisfaction_size) {
                         // Fallback - show satisfaction size
+                        successMsg += `<br>Spending cost analysis:<br>`;
                         successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
                         successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
                     } else {
@@ -895,18 +897,20 @@ class MiniscriptCompiler {
                     result.script = "No single script - this descriptor defines multiple paths";
                 } else {
                     // Show normal compilation success message with spending cost analysis format
-                    successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
+                    successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
                     
                     if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         const scriptWeight = result.script_size;
                         const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
                         const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
                         
+                        successMsg += `<br>Spending cost analysis:<br>`;
                         successMsg += `Script: ${scriptWeight} WU<br>`;
                         successMsg += `Input: ${inputWeight}.000000 WU<br>`;
                         successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
                     } else if (result.max_satisfaction_size) {
                         // Fallback - show satisfaction size
+                        successMsg += `<br>Spending cost analysis:<br>`;
                         successMsg += `Input: ${result.max_satisfaction_size}.000000 WU<br>`;
                         successMsg += `Total: ${result.script_size + result.max_satisfaction_size}.000000 WU<br><br>`;
                     } else {
