@@ -18,8 +18,10 @@ use opcodes::{OPCODE_MAP, parse_asm_to_script};
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey, ScriptContext};
+use miniscript::descriptor::TapTree;
 use miniscript::policy::Liftable;
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf, taproot::TaprootBuilder};
+use std::sync::Arc;
 use bitcoin::blockdata::script::{Builder, PushBytesBuf};
 use bitcoin::blockdata::opcodes::all;
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
@@ -86,6 +88,25 @@ fn get_taproot_nums_point() -> XOnlyPublicKey {
     
     let nums_bytes = hex::decode(NUMS_POINT).expect("Valid NUMS hex");
     XOnlyPublicKey::from_slice(&nums_bytes).expect("Valid NUMS point")
+}
+
+/// Extract internal key from expression (same logic as JavaScript)
+fn extract_internal_key_from_expression(expression: &str) -> String {
+    console_log!("DEBUG: Extracting internal key from expression: {}", expression);
+    
+    // Match first pk() pattern to extract internal key
+    let re = regex::Regex::new(r"pk\(([^)]+)\)").unwrap();
+    if let Some(captures) = re.captures(expression) {
+        if let Some(key_match) = captures.get(1) {
+            let extracted_key = key_match.as_str().to_string();
+            console_log!("DEBUG: Extracted key from pk(): {}", extracted_key);
+            return extracted_key;
+        }
+    }
+    
+    // If no pk() found, use NUMS point
+    console_log!("DEBUG: No pk() found, using NUMS point");
+    "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0".to_string()
 }
 
 /// Determine the internal key for Taproot address generation
@@ -794,6 +815,7 @@ fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, O
                                 Some(true), // sanity_check
                                 Some(true), // is_non_malleable  
                                 {
+                                    let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
                                     let tr_descriptor_str = format!("tr({},{})", nums_point_str, normalized_miniscript);
                                     match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
                                         Ok(descriptor) => Some(descriptor.to_string()),
@@ -826,18 +848,37 @@ fn compile_taproot_miniscript_multiline(expression: &str) -> Result<(String, Str
             let normalized_miniscript = ms.to_string();
             console_log!("Parsed miniscript: {}", normalized_miniscript);
             
-            // Use NUMS point for internal key
-            let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-            let nums_key = match XOnlyPublicKey::from_str(nums_point_str) {
-                Ok(key) => key,
-                Err(_) => return Err("Failed to parse NUMS point".to_string())
+            // Extract internal key from the expression
+            let internal_key_name = extract_internal_key_from_expression(expression);
+            console_log!("DEBUG MULTILINE: Extracted internal key: {}", internal_key_name);
+            
+            let internal_key = if internal_key_name == "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0" {
+                console_log!("DEBUG MULTILINE: Using NUMS point as internal key");
+                get_taproot_nums_point()
+            } else if let Ok(key_bytes) = hex::decode(&internal_key_name) {
+                console_log!("DEBUG MULTILINE: Trying to decode hex key: {} (length: {})", internal_key_name, key_bytes.len());
+                if key_bytes.len() == 32 {
+                    if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                        console_log!("DEBUG MULTILINE: Successfully created XOnlyPublicKey from hex");
+                        xonly_key
+                    } else {
+                        console_log!("DEBUG MULTILINE: Failed to create XOnlyPublicKey from slice, using NUMS");
+                        get_taproot_nums_point()
+                    }
+                } else {
+                    console_log!("DEBUG MULTILINE: Key bytes length is not 32 ({}), using NUMS", key_bytes.len());
+                    get_taproot_nums_point()
+                }
+            } else {
+                console_log!("DEBUG MULTILINE: Failed to decode hex key: {}, using NUMS", internal_key_name);
+                get_taproot_nums_point()
             };
             
             // Create TapTree with the miniscript
             let secp = Secp256k1::verification_only();
             match TaprootBuilder::new().add_leaf(0, ms.encode()) {
                 Ok(builder) => {
-                    match builder.finalize(&secp, nums_key) {
+                    match builder.finalize(&secp, internal_key) {
                         Ok(spend_info) => {
                             // Get the output key for address
                             let output_key = spend_info.output_key();
@@ -868,7 +909,8 @@ fn compile_taproot_miniscript_multiline(expression: &str) -> Result<(String, Str
                                 Some(true), // sanity_check
                                 Some(true), // is_non_malleable
                                 {
-                                    let tr_descriptor_str = format!("tr({},{})", nums_point_str, normalized_miniscript);
+                                    let tr_descriptor_str = format!("tr({},{})", internal_key_name, normalized_miniscript);
+                                    console_log!("DEBUG MULTILINE: Generated descriptor: {}", tr_descriptor_str);
                                     match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
                                         Ok(descriptor) => Some(descriptor.to_string()),
                                         Err(_) => Some(tr_descriptor_str)
@@ -1149,7 +1191,7 @@ fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(Stri
 
 /// Compile Taproot context miniscript
 fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    // New approach: wrap miniscript in tr() descriptor with NUMS point
+    // New approach: wrap miniscript in tr() descriptor with extracted internal key
     console_log!("Compiling Taproot miniscript using tr() descriptor approach");
     console_log!("Original expression: {}", expression);
     
@@ -1159,13 +1201,41 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
             let normalized_miniscript = ms.to_string();
             console_log!("Normalized miniscript: {}", normalized_miniscript);
             
-            // Build tr() descriptor with NUMS point - use original expression, not normalized
-            let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-            let tr_descriptor = format!("tr({},{})", nums_point, expression);
-            console_log!("Built tr() descriptor: {}", tr_descriptor);
+            // Extract internal key name and resolve to actual key
+            let internal_key_name = extract_internal_key_from_expression(expression);
+            console_log!("Extracted internal key name: {}", internal_key_name);
             
-            // Parse as descriptor to get proper taproot script
-            match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
+            // Parse the tree part as miniscript and create TapTree
+            match expression.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+                Ok(tree_ms) => {
+                    // Create TapTree from the miniscript
+                    let tap_tree = TapTree::Leaf(Arc::new(tree_ms));
+                    
+                    // Resolve internal key name to actual XOnlyPublicKey
+                    let internal_key = if internal_key_name == "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0" {
+                        console_log!("DEBUG: Using NUMS point as internal key");
+                        get_taproot_nums_point()
+                    } else if let Ok(key_bytes) = hex::decode(&internal_key_name) {
+                        console_log!("DEBUG: Trying to decode hex key: {} (length: {})", internal_key_name, key_bytes.len());
+                        if key_bytes.len() == 32 {
+                            if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                                console_log!("DEBUG: Successfully created XOnlyPublicKey from hex");
+                                xonly_key
+                            } else {
+                                console_log!("DEBUG: Failed to create XOnlyPublicKey from slice, using NUMS");
+                                get_taproot_nums_point()
+                            }
+                        } else {
+                            console_log!("DEBUG: Key bytes length is not 32 ({}), using NUMS", key_bytes.len());
+                            get_taproot_nums_point()
+                        }
+                    } else {
+                        console_log!("DEBUG: Failed to decode hex key: {}, using NUMS", internal_key_name);
+                        get_taproot_nums_point()
+                    };
+                    
+                    // Create descriptor using new_tr method
+                    match Descriptor::new_tr(internal_key, Some(tap_tree)) {
                 Ok(descriptor) => {
                     console_log!("Successfully parsed tr() descriptor");
                     
@@ -1201,6 +1271,9 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
                     let sanity_check = ms.sanity_check().is_ok();
                     let is_non_malleable = ms.is_non_malleable();
                     
+                    // Build descriptor string with resolved internal key name  
+                    let descriptor_string = format!("tr({},{})", internal_key_name, expression);
+                    console_log!("Generated Taproot descriptor: {}", descriptor_string);
                     console_log!("Generated Taproot script hex: {}", script_hex);
                     console_log!("Generated Taproot address: {:?}", address);
                     
@@ -1214,13 +1287,16 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
                         max_weight_to_satisfy,
                         Some(sanity_check),
                         Some(is_non_malleable),
-                        Some(normalized_miniscript)
+                        Some(descriptor_string)
                     ))
                 }
                 Err(e) => {
                     console_log!("Failed to parse tr() descriptor: {}", e);
                     Err(format!("Failed to create tr() descriptor: {}", e))
                 }
+            }
+                }
+                Err(e) => Err(format!("Failed to parse miniscript for TapTree: {}", e))
             }
         }
         Err(e) => {
@@ -1879,6 +1955,7 @@ fn compile_taproot_policy_single_leaf(
 // Taproot Branch Display Functions
 // ============================================================================
 
+
 /// Collect all leaf miniscripts under a subtree
 fn collect_leaf_miniscripts<'a>(
     t: &'a miniscript::descriptor::TapTree<XOnlyPublicKey>,
@@ -1950,7 +2027,53 @@ fn branch_to_miniscript(
     }
 }
 
-/// Return the Miniscript for the root's direct branches (L and R)
+/// Collect all leaf miniscripts under a subtree - NEW VERSION FOR MINISCRIPT BRANCHES
+fn collect_leaf_miniscripts_new<'a, K: miniscript::MiniscriptKey>(
+    t: &'a miniscript::descriptor::TapTree<K>,
+    out: &mut Vec<&'a Miniscript<K, Tap>>,
+) {
+    use miniscript::descriptor::TapTree;
+    match t {
+        TapTree::Leaf(ms) => out.push(ms),
+        TapTree::Tree { left, right, .. } => {
+            collect_leaf_miniscripts_new(&left, out);
+            collect_leaf_miniscripts_new(&right, out);
+        }
+    }
+}
+
+/// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies - NEW VERSION
+fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKey>(
+    subtree: &miniscript::descriptor::TapTree<K>,
+) -> Result<Miniscript<K, Tap>, String> {
+    // 1) gather leaves
+    let mut leaves = Vec::new();
+    collect_leaf_miniscripts_new(subtree, &mut leaves);
+    if leaves.is_empty() {
+        return Err("subtree has no leaves".to_string());
+    }
+
+    // 2) OR the lifted policies (string form)
+    let parts: Vec<String> = leaves
+        .iter()
+        .map(|ms| ms.lift().map(|p| p.to_string()))
+        .collect::<Result<_, _>>()
+        .map_err(|e| format!("Failed to lift policy: {}", e))?;
+    let policy_str = if parts.len() == 1 { 
+        parts[0].clone() 
+    } else { 
+        format!("or({})", parts.join(","))
+    };
+
+    // 3) Compile to Miniscript (Tap context)
+    let conc = Concrete::<K>::from_str(&policy_str)
+        .map_err(|e| format!("Failed to parse policy: {}", e))?;
+    let ms: Miniscript<K, Tap> = conc.compile::<Tap>()
+        .map_err(|e| format!("Failed to compile miniscript: {}", e))?;
+    Ok(ms)
+}
+
+/// Return the Miniscript for the root's direct branches (L and R) - RESTORED ORIGINAL
 fn get_taproot_branches_as_miniscript(
     descriptor_str: &str
 ) -> Result<Vec<(String, String)>, String> {
@@ -1986,6 +2109,172 @@ fn get_taproot_branches_as_miniscript(
     }
     
     Ok(out)
+}
+
+/// Get miniscript branches for taproot descriptors using YOUR WORKING CODE
+#[wasm_bindgen]
+pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
+    use miniscript::descriptor::{TapTree, Tr};
+    use miniscript::policy::Liftable;
+    
+    #[derive(Serialize)]
+    struct BranchInfo {
+        miniscript: String,
+        hex: String,
+        asm: String,
+        script_wu: u64,
+        input_wu: u64,
+        total_wu: u64,
+    }
+    
+    #[derive(Serialize)]
+    struct MiniscriptBranchResult {
+        success: bool,
+        internal_key: String,
+        branches: Vec<BranchInfo>,
+        error: Option<String>,
+    }
+    
+    // Parse the descriptor
+    let desc: Descriptor<XOnlyPublicKey> = match descriptor.parse() {
+        Ok(d) => d,
+        Err(e) => {
+            return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
+                success: false,
+                internal_key: String::new(),
+                branches: vec![],
+                error: Some(format!("Failed to parse descriptor: {}", e)),
+            }).unwrap_or(JsValue::NULL);
+        }
+    };
+    
+    let tr: &Tr<XOnlyPublicKey> = match &desc {
+        Descriptor::Tr(tr) => tr,
+        _ => {
+            return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
+                success: false,
+                internal_key: String::new(),
+                branches: vec![],
+                error: Some("Not a taproot descriptor".to_string()),
+            }).unwrap_or(JsValue::NULL);
+        }
+    };
+    
+    // Get the internal key
+    let internal_key = tr.internal_key().to_string();
+    let nums_key = *tr.internal_key(); // Use the actual internal key for weight calculations
+    
+    // Get the tree
+    let tree = match tr.tap_tree().clone() {
+        Some(t) => t,
+        None => {
+            return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
+                success: true,
+                internal_key,
+                branches: vec![],
+                error: None,
+            }).unwrap_or(JsValue::NULL);
+        }
+    };
+    
+    let mut branches = Vec::new();
+    
+    // YOUR EXACT LOGIC
+    match &tree {
+        TapTree::Leaf(ms) => {
+            // If the single leaf miniscript lifts to an OR policy, split into branches
+            if let Ok(policy) = ms.lift() {
+                let pol_str = policy.to_string();
+                if let Ok(conc) = Concrete::<XOnlyPublicKey>::from_str(&pol_str) {
+                    if let Concrete::Or(or_branches) = conc {
+                        for (i, (_w, subp)) in or_branches.iter().enumerate() {
+                            let sub_conc: Concrete<XOnlyPublicKey> = (**subp).clone();
+                            if let Ok(sub_ms) = sub_conc.compile::<Tap>() {
+                                let script = sub_ms.encode();
+                                let hex = script.to_hex_string();
+                                let asm = script.to_asm_string();
+                                
+                                // Calculate weights using miniscript satisfaction size
+                                let script_wu = script.len() as u64 * 4; // Script weight units
+                                let input_wu = sub_ms.max_satisfaction_size()
+                                    .map(|size| size as u64 * 4) // Convert satisfaction size to weight units
+                                    .unwrap_or(0);
+                                let total_wu = script_wu + input_wu;
+                                
+                                branches.push(BranchInfo {
+                                    miniscript: sub_ms.to_string(),
+                                    hex,
+                                    asm,
+                                    script_wu,
+                                    input_wu,
+                                    total_wu,
+                                });
+                            }
+                        }
+                        return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
+                            success: true,
+                            internal_key,
+                            branches,
+                            error: None,
+                        }).unwrap_or(JsValue::NULL);
+                    }
+                }
+            }
+            // Fallback: just report the single leaf
+            let script = ms.encode();
+            let hex = script.to_hex_string();
+            let asm = script.to_asm_string();
+            
+            // Calculate weights using miniscript satisfaction size
+            let script_wu = script.len() as u64 * 4; // Script weight units
+            let input_wu = ms.max_satisfaction_size()
+                .map(|size| size as u64 * 4) // Convert satisfaction size to weight units
+                .unwrap_or(0);
+            let total_wu = script_wu + input_wu;
+            
+            branches.push(BranchInfo {
+                miniscript: ms.to_string(),
+                hex,
+                asm,
+                script_wu,
+                input_wu,
+                total_wu,
+            });
+        }
+        TapTree::Tree { .. } => {
+            // Collect and print each leaf miniscript as its own branch
+            let mut leaves = Vec::new();
+            collect_leaf_miniscripts(&tree, &mut leaves);
+            for ms in leaves.into_iter() {
+                let script = ms.encode();
+                let hex = script.to_hex_string();
+                let asm = script.to_asm_string();
+                
+                // Calculate weights using miniscript satisfaction size
+                let script_wu = script.len() as u64 * 4; // Script weight units
+                let input_wu = ms.max_satisfaction_size()
+                    .map(|size| size as u64 * 4) // Convert satisfaction size to weight units
+                    .unwrap_or(0);
+                let total_wu = script_wu + input_wu;
+                
+                branches.push(BranchInfo {
+                    miniscript: ms.to_string(),
+                    hex,
+                    asm,
+                    script_wu,
+                    input_wu,
+                    total_wu,
+                });
+            }
+        }
+    }
+    
+    serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
+        success: true,
+        internal_key,
+        branches,
+        error: None,
+    }).unwrap_or(JsValue::NULL)
 }
 
 /// Get taproot branches - real implementation
@@ -2569,9 +2858,9 @@ fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Re
     
     console_log!("Generating taproot address with miniscript: {} for network: {:?}", miniscript, network);
     
-    // Build tr() descriptor with NUMS point - exact same approach as compile_taproot_miniscript
-    let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-    let tr_descriptor = format!("tr({},{})", nums_point, miniscript);
+    // Build tr() descriptor with extracted internal key - same as compile_taproot_miniscript
+    let internal_key = extract_internal_key_from_expression(miniscript);
+    let tr_descriptor = format!("tr({},{})", internal_key, miniscript);
     console_log!("Built tr() descriptor for network switch: {}", tr_descriptor);
     
     // Parse as descriptor to get proper taproot address

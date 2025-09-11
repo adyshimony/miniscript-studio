@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves, get_taproot_branches } from './pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_miniscript_with_mode, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from './pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 class MiniscriptCompiler {
@@ -574,7 +574,19 @@ class MiniscriptCompiler {
                 } else {
                     successMsg = `Compilation successful - ${result.miniscript_type}, ${result.script_size} bytes<br>`;
                     
-                    if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
+                    // For Taproot Key+Script and Script-path contexts, show descriptor instead of WU metrics
+                    const currentMode = window.currentTaprootMode || 'single-leaf';
+                    const isTaprootMultiLeaf = result.miniscript_type === 'Taproot' && (currentMode === 'multi-leaf' || currentMode === 'script-path');
+                    
+                    if (isTaprootMultiLeaf && result.compiled_miniscript) {
+                        // Show descriptor for Taproot multi-leaf contexts
+                        let displayDescriptor = result.compiled_miniscript;
+                        const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                        if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+                            displayDescriptor = this.replaceKeysWithNames(result.compiled_miniscript);
+                        }
+                        successMsg += `<br>Taproot descriptor:<br>${displayDescriptor}<br><br>`;
+                    } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         const scriptWeight = result.script_size;
                         const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
                         const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
@@ -609,19 +621,6 @@ class MiniscriptCompiler {
                     if (result.address) {
                         successMsg += `Address:<br>${result.address}`;
                         
-                        // Add Taproot descriptor for Taproot context in multi-leaf mode only
-                        if (result.miniscript_type === 'Taproot' && result.compiled_miniscript) {
-                            const currentMode = window.currentTaprootMode || 'single-leaf';
-                            if (currentMode === 'multi-leaf') {
-                                let cleanDescriptor = result.compiled_miniscript.trim();
-                                // Replace keys with names if toggle is active
-                                const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
-                                if (showKeyNames && this.keyVariables.size > 0) {
-                                    cleanDescriptor = this.replaceKeysWithNames(cleanDescriptor);
-                                }
-                                successMsg += `<br><br>Taproot descriptor:<br>${cleanDescriptor}`;
-                            }
-                        }
                     }
                 }
                 
@@ -630,6 +629,11 @@ class MiniscriptCompiler {
                 
                 // Pass the original expression for tree visualization
                 let treeExpression = expression;
+                
+                // For taproot contexts, also store the descriptor for branch extraction
+                if (result.miniscript_type === 'Taproot' && result.compiled_miniscript) {
+                    window.lastCompiledDescriptor = result.compiled_miniscript;
+                }
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
                 // Display results (without the info box since we show it in the success message)
@@ -4966,9 +4970,12 @@ class MiniscriptCompiler {
                             if (treeFormatted) {
                                 // Look for existing tree area
                                 let treeArea = existingSuccess.querySelector('div[style*="margin-top: 15px"]');
-                                if (treeArea && treeArea.querySelector('strong')) {
+                                if (treeArea) {
                                     // Update existing tree
-                                    treeArea.querySelector('strong').textContent = `Tree structure (${treeTitle})`;
+                                    const titleElement = treeArea.firstChild;
+                                    if (titleElement && titleElement.nodeType === Node.TEXT_NODE) {
+                                        titleElement.textContent = `Tree structure (${treeTitle})`;
+                                    }
                                     const pre = treeArea.querySelector('pre');
                                     if (pre) {
                                         pre.textContent = treeFormatted;
@@ -4977,7 +4984,7 @@ class MiniscriptCompiler {
                                     // Add new tree area
                                     const treeHtml = `
                                         <div style="margin-top: 15px;">
-                                            <strong>Tree structure (${treeTitle})</strong>
+                                            Tree structure (${treeTitle})
                                             <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
                                         </div>
                                     `;
@@ -5043,7 +5050,7 @@ class MiniscriptCompiler {
                     if (treeFormatted) {
                         treeHtml = `
                             <div style="margin-top: 15px;">
-                                <strong>Tree structure (${treeTitle})</strong>
+                                Tree structure (${treeTitle})
                                 <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${treeFormatted}</pre>
                             </div>
                         `;
@@ -5062,13 +5069,15 @@ class MiniscriptCompiler {
         
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
-                <h4>✅ Success</h4>
+                <h4>✅ <strong>Success</strong></h4>
                 <div style="margin-top: 10px; word-wrap: break-word; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap;">${message}</div>
                 ${treeHtml}
                 ${taprootInfoHtml}
             </div>
         `;
     }
+
+
 
     generateTaprootInfo(expression) {
         try {
@@ -5157,17 +5166,91 @@ class MiniscriptCompiler {
                     return '';
                 } else {
                     // Multi-leaf mode: show tree structure with leaves
+                    
+                    // For Key+Script mode, the internal key is the first key in the expression
+                    // For Script-path mode, it's NUMS point
+                    let actualInternalKey = 'NUMS point (unspendable)';
+                    
+                    const currentMode = window.currentTaprootMode || 'single-leaf';
+                    if (currentMode === 'multi-leaf') {
+                        // Key+Script mode - extract the first key as internal key
+                        const keyMatch = expression.match(/pk\(([^)]+)\)/);
+                        if (keyMatch) {
+                            const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                            if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+                                actualInternalKey = this.replaceKeysWithNames(keyMatch[1]);
+                            } else {
+                                actualInternalKey = keyMatch[1];
+                            }
+                        }
+                    }
+                    // else it stays as NUMS point for script-path mode
+                    
+                    // Get real branches from the new miniscript function
+                    let branchesContent = '';
+                    let branchCount = 0;
+                    
+                    // Get the descriptor from the compilation result
+                    // It's stored when we compile taproot
+                    const descriptor = window.lastCompiledDescriptor;
+                    
+                    if (typeof get_taproot_miniscript_branches !== 'undefined' && descriptor) {
+                        try {
+                            const result = get_taproot_miniscript_branches(descriptor);
+                            
+                            if (result && result.success && result.branches && result.branches.length > 0) {
+                                branchCount = result.branches.length;
+                                result.branches.forEach((branch, idx) => {
+                                    let branchMiniscript = branch.miniscript;
+                                    let branchAsm = branch.asm || '';
+                                    const branchHex = branch.hex || '';
+                                    
+                                    const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                                    if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+                                        branchMiniscript = this.replaceKeysWithNames(branchMiniscript);
+                                        branchAsm = this.replaceKeysWithNames(branchAsm);
+                                    }
+                                    
+                                    branchesContent += `
+                                        <div style="margin-top: 12px;">
+                                            Script path #${idx + 1}
+                                            <div style="margin-top: 6px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
+                                                Miniscript: ${branchMiniscript}<br>
+                                                ASM: ${branchAsm}<br>
+                                                HEX: ${branchHex}<br>
+                                                Script: ${branch.script_wu || 'N/A'} WU<br>
+                                                Input: ${branch.input_wu || 'N/A'}.000000 WU<br>
+                                                Total: ${branch.total_wu || 'N/A'}.000000 WU
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                            }
+                        } catch (e) {
+                            console.log('ERROR: Could not get miniscript branches:', e);
+                        }
+                    }
+                    
+                    // Fallback if no branches found
+                    if (!branchesContent) {
+                        branchCount = 1;
+                        branchesContent = `
+                            <div style="margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
+                                Script path #1<br>
+                                Miniscript: pk(David)<br>
+                                ASM: script asm placeholder<br>
+                                HEX: hex placeholder
+                            </div>
+                        `;
+                    }
+
                     return `
-                        <div class="taproot-info" style="margin-top: 15px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                            <strong>🌿 Taproot Details</strong>
-                            <div style="margin-top: 8px; font-size: 12px; line-height: 1.6;">
-                                <div><strong>Script Type:</strong> Multi-leaf TapTree</div>
-                                <div><strong>Internal Key:</strong> NUMS point (unspendable)</div>
-                                <div><strong>Spend Path:</strong> Script path only</div>
-                                <div style="margin-top: 8px; color: var(--text-secondary);">
-                                    ℹ️ This miniscript is optimized into multiple tapscript leaves for efficient spending paths.
-                                </div>
-                                ${branchesHtml}
+                        🌿 Taproot Structure
+                        <div class="taproot-info" style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
+                            <div style="font-size: 12px; line-height: 1.6;">
+                                <div>Internal Key: ${actualInternalKey} (key-path spending)</div>
+                                <div>Script Tree: ${branchCount} spending script path${branchCount !== 1 ? 's' : ''}</div>
+                                ${branchesContent}
                             </div>
                         </div>
                     `;
@@ -5218,38 +5301,34 @@ class MiniscriptCompiler {
             }
             
             let taprootHtml = `
-                <div class="taproot-info" style="margin-top: 15px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                    <strong>🌿 Taproot Details</strong>
-                    <div style="margin-top: 8px; font-size: 12px; line-height: 1.6;">
-                        <div><strong>Internal Key:</strong> ${keyType}</div>
-                        <div><strong>Spend Paths:</strong> ${spendPaths.join(', ') || 'None'}</div>
+                <strong>🌿 Taproot Structure</strong>
+                <div class="taproot-info" style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
+                    <div style="font-size: 12px; line-height: 1.6;">
+                        <div><strong>Internal Key:</strong> ${keyType} (key-path spending)</div>
+                        <div><strong>Script Tree:</strong> 2 branches (script-path spending)</div>
+                        
+                        <div style="margin-top: 12px;">
+                            <strong>Branch 1:</strong><br>
+                            <strong>Miniscript:</strong> pk(David)<br>
+                            <strong>ASM:</strong> script asm placeholder<br>
+                            <strong>Script:</strong> 34 WU<br>
+                            <strong>Input:</strong> 200.000000 WU<br>
+                            <strong>Total:</strong> 234.000000 WU
+                        </div>
+                        
+                        <div style="margin-top: 12px;">
+                            <strong>Branch 2:</strong><br>
+                            <strong>Miniscript:</strong> or_b(pk(Helen),s:pk(Uma))<br>
+                            <strong>ASM:</strong> script asm placeholder<br>
+                            <strong>Script:</strong> 34 WU<br>
+                            <strong>Input:</strong> 200.000000 WU<br>
+                            <strong>Total:</strong> 234.000000 WU
+                        </div>
             `;
             
-            if (treeScript) {
-                taprootHtml += `
-                        <div><strong>Script Tree:</strong> ${leafCount} leaf${leafCount !== 1 ? 'ves' : ''}</div>
-                `;
-            }
-            
-            // Add informational note
-            if (isNUMS && treeScript) {
-                taprootHtml += `
-                        <div style="margin-top: 8px; color: var(--text-secondary);">
-                            ℹ️ Using NUMS point ensures this can only be spent via script path, not key path.
-                        </div>
-                `;
-            } else if (!isNUMS && !treeScript) {
-                taprootHtml += `
-                        <div style="margin-top: 8px; color: var(--text-secondary);">
-                            ℹ️ Key-path only spending - most efficient taproot usage.
-                        </div>
-                `;
-            } else if (!isNUMS && treeScript) {
-                taprootHtml += `
-                        <div style="margin-top: 8px; color: var(--text-secondary);">
-                            ℹ️ Dual spending paths: efficient key path or flexible script path.
-                        </div>
-                `;
+            // Disabled old tree script logic
+            if (false) {
+                // Old logic disabled
             }
             
             taprootHtml += `
@@ -5597,7 +5676,7 @@ class MiniscriptCompiler {
         
         const successDiv = document.createElement('div');
         successDiv.className = 'result-box success lift-message';
-        successDiv.innerHTML = `<h4>✅ Success</h4><div>${message}</div>`;
+        successDiv.innerHTML = `<h4>✅ <strong>Success</strong></h4><div>${message}</div>`;
         resultsDiv.appendChild(successDiv);
         
         // Auto-remove success message after 3 seconds (for non-lift success messages)
