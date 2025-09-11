@@ -512,13 +512,16 @@ class MiniscriptCompiler {
                 window.currentTaprootMode = currentMode; // Update the global mode
                 console.log(`Compiling miniscript in taproot context, mode: ${currentMode}`);
                 // Always pass 'taproot' as the actual context to Rust
-                result = compile_miniscript_with_mode(processedExpression, 'taproot', currentMode);
+                // Get NUMS key (hardcoded for now, will be configurable in settings later)
+                const numsKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+                result = compile_miniscript_with_mode(processedExpression, 'taproot', currentMode, numsKey);
                 if (result.success) {
                     result.taprootMode = currentMode;
                 }
             } else {
-                // Non-taproot contexts: use regular compilation
-                result = compile_miniscript(processedExpression, context);
+                // Non-taproot contexts: use regular compilation (NUMS not used)
+                const numsKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+                result = compile_miniscript_with_mode(processedExpression, context, 'single-leaf', numsKey);
             }
             
             // Reset button
@@ -586,6 +589,13 @@ class MiniscriptCompiler {
                             displayDescriptor = this.replaceKeysWithNames(result.compiled_miniscript);
                         }
                         successMsg += `<br>Taproot descriptor:<br>${displayDescriptor}<br><br>`;
+                        
+                        // Add Data field for Taproot contexts only
+                        if (result.script) {
+                            // Remove OP_1 (51) + push32 (20) prefix to show just the tweaked key
+                            const tweakedKey = result.script.substring(4);
+                            successMsg += `Data (tweaked public key):<br>${tweakedKey}<br><br>`;
+                        }
                     } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         const scriptWeight = result.script_size;
                         const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
@@ -605,7 +615,13 @@ class MiniscriptCompiler {
                     
                     // Add hex, asm, and address
                     if (result.script) {
-                        successMsg += `HEX:<br>${result.script}<br><br>`;
+                        if (isTaprootMultiLeaf) {
+                            // For Taproot contexts, show complete scriptPubKey as-is
+                            successMsg += `HEX:<br>${result.script}<br><br>`;
+                        } else {
+                            // For non-Taproot contexts, show original script in HEX
+                            successMsg += `HEX:<br>${result.script}<br><br>`;
+                        }
                     }
                     if (result.script_asm) {
                         // Create simplified version with key names (same as script field)

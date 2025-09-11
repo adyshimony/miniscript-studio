@@ -679,17 +679,18 @@ pub fn compile_policy_with_mode(policy: &str, context: &str, mode: &str) -> JsVa
 /// Compile a miniscript expression to Bitcoin script
 #[wasm_bindgen]
 pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
-    compile_miniscript_with_mode(expression, context, "single-leaf")
+    // No NUMS needed for single-leaf mode - will be ignored anyway
+    compile_miniscript_with_mode(expression, context, "single-leaf", "")
 }
 
 /// Compile a miniscript expression to Bitcoin script with compilation mode
 #[wasm_bindgen]
-pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str) -> JsValue {
+pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str, nums_key: &str) -> JsValue {
     console_log!("Compiling miniscript: {}", expression);
     console_log!("Context: {}", context);
     console_log!("Mode: {}", mode);
     
-    let result = match compile_expression_with_mode(expression, context, mode) {
+    let result = match compile_expression_with_mode(expression, context, mode, nums_key) {
         Ok((script, script_asm, address, script_size, ms_type, 
             max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
             CompilationResult {
@@ -730,7 +731,8 @@ pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str)
 fn compile_expression_with_mode(
     expression: &str,
     context: &str,
-    mode: &str
+    mode: &str,
+    nums_key: &str
 ) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("=== COMPILE_EXPRESSION_WITH_MODE CALLED ===");
     console_log!("Expression: {}", expression);
@@ -746,10 +748,9 @@ fn compile_expression_with_mode(
                 return compile_taproot_miniscript_multiline(expression, None);
             },
             "script-path" => {
-                console_log!("Using script-path compilation (compile_tr) with NUMS");
-                // Script-path mode: use NUMS as internal key
-                let nums = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-                return compile_taproot_miniscript_multiline(expression, Some(nums));
+                console_log!("Using script-path compilation (compile_tr) with NUMS: {}", nums_key);
+                // Script-path mode: use provided NUMS as internal key
+                return compile_taproot_miniscript_multiline(expression, Some(nums_key));
             },
             _ => {
                 console_log!("Using single-leaf compilation (compile)");
