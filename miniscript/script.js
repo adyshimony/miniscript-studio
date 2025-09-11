@@ -1057,9 +1057,13 @@ class MiniscriptCompiler {
         
         // Normal behavior - create new message
         const content = this.generatePolicySuccessContent(miniscript, result, context);
+        // Get current context for display 
+        const currentContext = document.querySelector('input[name="policy-context"]:checked')?.value || 'legacy';
+        const contextDisplay = this.getContextDisplayName(currentContext);
+        
         policyErrorsDiv.innerHTML = `
             <div class="result-box success" style="margin: 0; text-align: left;">
-                <h4>✅ Policy compilation successful</h4>
+                <h4>✅ Policy ${contextDisplay} compilation successful</h4>
                 ${content}
             </div>
         `;
@@ -1073,8 +1077,8 @@ class MiniscriptCompiler {
             // Standard miniscript display
             return `
                 <div style="margin-top: 10px; text-align: left;">
-                    <strong>Generated Miniscript:</strong><br>
-                    <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace;">${miniscript}</code>
+                    Generated Miniscript:
+                    <code style="display: block; margin: 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace;">${miniscript}</code>
                     <div style="color: var(--text-secondary); font-size: 13px; margin-top: 10px;">
                         ${miniscript.match(/^\s*\{.*\}\s*$/) ? 
                             '💡 Policy compiled into multiple miniscript expressions. Cannot load into miniscript editor. Switch to Taproot compilation (multi-leaf TapTree) mode to select your miniscript expression.' :
@@ -1121,8 +1125,8 @@ class MiniscriptCompiler {
             const displayMiniscript = treeScript || `pk(${internalKey})`;
             content += `
                 <div style="margin-bottom: 15px;">
-                    <strong>Generated Miniscript:</strong><br>
-                    <code style="padding: 8px; border-radius: 4px; display: block; margin: 8px 0; word-break: break-all; font-family: monospace;">${displayMiniscript}</code>
+                    Generated Miniscript:
+                    <code style="display: block; margin: 0; word-break: break-all; font-family: monospace;">${displayMiniscript}</code>
                 </div>
                 
                 <div style="color: var(--text-secondary); font-size: 13px;">
@@ -1138,7 +1142,7 @@ class MiniscriptCompiler {
         // Multi-leaf mode: full taproot information
         content += `
                 <div style="margin-bottom: 15px;">
-                    <strong>Descriptor:</strong><br>
+                    Descriptor:<br>
                     <div style="margin: 4px 0; font-family: monospace; font-size: 13px; word-break: break-all; overflow-wrap: anywhere;">
                         ${descriptor}
                     </div>
@@ -1186,7 +1190,7 @@ class MiniscriptCompiler {
         
         content += `
                 <div style="margin-bottom: 15px;">
-                    <strong>Taproot Structure:</strong><br>
+                    Taproot Structure:<br>
                     <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
                         • Internal Key: ${displayInternalKey}${isNUMSKey ? ' ("Nothing Up My Sleeve") - unspendable key, disables key-path spending' : ' (key-path spending)'}
         `;
@@ -1239,7 +1243,7 @@ class MiniscriptCompiler {
                 // Show simplified single-branch message
                 content += `
                     <div style="margin-bottom: 15px; padding: 10px; border: 1px solid var(--success-border); border-radius: 4px; background: var(--success-bg);">
-                        <strong>✓ Single Branch Auto-loaded</strong><br>
+                        ✓ Single Branch Auto-loaded<br>
                         <div style="margin: 8px 0; font-size: 13px;">
                             The miniscript: <code style="font-family: monospace; background: var(--success-bg); padding: 2px 4px; border-radius: 2px;">${branches[0]}</code> has been automatically loaded into the editor and compiled.
                         </div>
@@ -1293,8 +1297,8 @@ class MiniscriptCompiler {
                     
                     content += `
                     <div style="margin-bottom: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                        <strong>Branch ${index + 1}:</strong><br>
-                        <strong>Miniscript:</strong> 
+                        Branch ${index + 1}:<br>
+                        Miniscript: 
                         <a href="#" onclick="window.loadBranchMiniscript('${branch.replace(/'/g, "\\'")}')" 
                            style="color: var(--accent-color); text-decoration: underline; font-family: monospace; font-size: 13px; word-break: break-all; overflow-wrap: anywhere; display: inline-block; max-width: 100%;">
                            ${displayMiniscript}
@@ -1525,6 +1529,14 @@ class MiniscriptCompiler {
         if (contentDiv) {
             const newContent = this.generatePolicySuccessContent(miniscript, result, context);
             contentDiv.outerHTML = newContent;
+        }
+        
+        // Update title with current context
+        const titleElement = existingSuccess.querySelector('h4');
+        if (titleElement) {
+            const currentContext = document.querySelector('input[name="policy-context"]:checked')?.value || 'legacy';
+            const contextDisplay = this.getContextDisplayName(currentContext);
+            titleElement.innerHTML = `✅ Policy ${contextDisplay} compilation successful`;
         }
     }
 
@@ -5019,6 +5031,14 @@ class MiniscriptCompiler {
                     messageContent.innerHTML = message;
                 }
                 
+                // Update title with current context
+                const titleElement = existingSuccess.querySelector('h4');
+                if (titleElement) {
+                    const currentContext = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
+                    const contextDisplay = this.getContextDisplayName(currentContext);
+                    titleElement.innerHTML = `✅ <strong>Miniscript ${contextDisplay} compilation successful</strong>`;
+                }
+                
                 // Update or generate tree visualization
                 if (expression) {
                     try {
@@ -5140,9 +5160,13 @@ class MiniscriptCompiler {
             }
         }
         
+        // Get current context for display
+        const context = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
+        const contextDisplay = this.getContextDisplayName(context);
+        
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
-                <h4>✅ <strong>Success</strong></h4>
+                <h4>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></h4>
                 <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto;">${message}</div>
                 ${treeHtml}
                 ${taprootInfoHtml}
@@ -5150,7 +5174,16 @@ class MiniscriptCompiler {
         `;
     }
 
-
+    getContextDisplayName(context) {
+        const contextMap = {
+            'legacy': 'Legacy (p2WSH)',
+            'segwit': 'Segwit v0 (p2WSH)',  
+            'taproot': 'Taproot (Single leaf)',
+            'taproot-multi': 'Taproot (Script path)',
+            'taproot-keypath': 'Taproot (Key + script path)'
+        };
+        return contextMap[context] || context;
+    }
 
     generateTaprootInfo(expression) {
         try {
@@ -8261,7 +8294,7 @@ window.shareMiniscriptExpression = function(event) {
 function updateTreeDisplay() {
     // Find the last successful compilation result
     const miniscriptMessages = document.getElementById('miniscript-messages');
-    if (!miniscriptMessages || !miniscriptMessages.innerHTML.includes('✅ Success')) {
+    if (!miniscriptMessages || !miniscriptMessages.innerHTML.includes('compilation successful')) {
         return; // No successful compilation to update
     }
     
