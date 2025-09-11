@@ -742,8 +742,14 @@ fn compile_expression_with_mode(
         match mode {
             "multi-leaf" => {
                 console_log!("Using multi-leaf compilation (compile_tr)");
-                // Multi-leaf mode: compile miniscript with TapTree optimization  
-                return compile_taproot_miniscript_multiline(expression);
+                // Multi-leaf mode: extract internal key from expression  
+                return compile_taproot_miniscript_multiline(expression, None);
+            },
+            "script-path" => {
+                console_log!("Using script-path compilation (compile_tr) with NUMS");
+                // Script-path mode: use NUMS as internal key
+                let nums = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+                return compile_taproot_miniscript_multiline(expression, Some(nums));
             },
             _ => {
                 console_log!("Using single-leaf compilation (compile)");
@@ -835,7 +841,7 @@ fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, O
 }
 
 /// Compile miniscript for multi-leaf taproot (using TapTree optimization)
-fn compile_taproot_miniscript_multiline(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Option<&str>) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("=== COMPILE_TAPROOT_MINISCRIPT_MULTILINE ===");
     console_log!("Expression: {}", expression);
     
@@ -848,9 +854,18 @@ fn compile_taproot_miniscript_multiline(expression: &str) -> Result<(String, Str
             let normalized_miniscript = ms.to_string();
             console_log!("Parsed miniscript: {}", normalized_miniscript);
             
-            // Extract internal key from the expression
-            let internal_key_name = extract_internal_key_from_expression(expression);
-            console_log!("DEBUG MULTILINE: Extracted internal key: {}", internal_key_name);
+            // Use provided internal key or extract from expression
+            let internal_key_name = match internal_key {
+                Some(key) => {
+                    console_log!("DEBUG MULTILINE: Using provided internal key: {}", key);
+                    key.to_string()
+                },
+                None => {
+                    let extracted = extract_internal_key_from_expression(expression);
+                    console_log!("DEBUG MULTILINE: Extracted internal key from expression: {}", extracted);
+                    extracted
+                }
+            };
             
             let internal_key = if internal_key_name == "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0" {
                 console_log!("DEBUG MULTILINE: Using NUMS point as internal key");
