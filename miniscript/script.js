@@ -1296,12 +1296,12 @@ class MiniscriptCompiler {
                         <strong>Branch ${index + 1}:</strong><br>
                         <strong>Miniscript:</strong> 
                         <a href="#" onclick="window.loadBranchMiniscript('${branch.replace(/'/g, "\\'")}')" 
-                           style="color: var(--accent-color); text-decoration: underline; font-family: monospace; font-size: 13px;">
+                           style="color: var(--accent-color); text-decoration: underline; font-family: monospace; font-size: 13px; word-break: break-all; overflow-wrap: anywhere; display: inline-block; max-width: 100%;">
                            ${displayMiniscript}
                         </a>
                         ${weightInfo}
                         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
-                            💡 Click the miniscript above to load it into the editor
+                            💡 Click the Miniscript above to load it into the Miniscript editor
                         </div>
                     </div>
                     `;
