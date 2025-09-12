@@ -625,16 +625,58 @@ class MiniscriptCompiler {
                             successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${tweakedKey}</span><br>`;
                         }
                     } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                        const scriptWeight = result.script_size;            // e.g. 35
-                        const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
-                        
-                        const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
-                        const totalWeight = scriptWeight + inputWeight;     // 35 + 73 = 108
-                        
-                        successMsg += `<br>Spending cost analysis:<br>`;
-                        successMsg += `Script: ${scriptWeight} WU<br>`;
-                        successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                        successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                        // Different calculation for Legacy vs Segwit contexts
+                        if (context === 'legacy') {
+                            // Helper functions for precise calculation
+                            const cs = (n) => n < 253 ? 1 : (n <= 0xffff ? 3 : (n <= 0xffffffff ? 5 : 9));
+                            const pushOv = (n) => n <= 75 ? 1 : (n <= 255 ? 2 : (n <= 65535 ? 3 : 5));
+                            
+                            // P2SH satisfaction cost calculation
+                            const scriptSize = result.script_size;               // e.g. 35 bytes for pk(Alice)
+                            const sigLen = 73;                                   // worst-case DER + hashtype (71-73 typical)
+                            
+                            // P2SH scriptSig content: push(sig) + sig + push(script) + script
+                            const content = (pushOv(sigLen) + sigLen) + (pushOv(scriptSize) + scriptSize);
+                            const p2shSatisfactionWU = 4 * (cs(content) + content);
+                            
+                            // For display: also show the overhead
+                            const overheadBytes = 36 + 4;                        // outpoint (36) + nSequence (4) = 40
+                            const overheadWU = overheadBytes * 4;                // 40 * 4 = 160 WU
+                            const totalWU = p2shSatisfactionWU + overheadWU;
+                            
+                            successMsg += `<br>Spending cost analysis (P2SH):<br>`;
+                            successMsg += `Satisfaction cost (scriptSig content): ${p2shSatisfactionWU} WU<br>`;
+                            successMsg += `Input overhead (outpoint + nSequence): ${overheadWU} WU<br>`;
+                            successMsg += `Per-input total: ${totalWU} WU<br><br>`;
+                        } else if (context === 'segwit') {
+                            // For Segwit v0 (P2WSH)
+                            const scriptWeight = result.script_size;            // e.g. 35
+                            const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
+                            
+                            const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
+                            const satisfactionTotal = scriptWeight + inputWeight; // 35 + 73 = 108
+                            const inputOverhead = 160;                          // outpoint (36) + nSequence (4) = 40 bytes × 4
+                            const perInputTotal = satisfactionTotal + inputOverhead; // 108 + 160 = 268
+                            
+                            successMsg += `<br>Spending cost analysis:<br>`;
+                            successMsg += `Script (witnessScript): ${scriptWeight} WU<br>`;
+                            successMsg += `Input (witness, excl. script): ${inputWeight}.000000 WU<br>`;
+                            successMsg += `Satisfaction total: ${satisfactionTotal}.000000 WU<br>`;
+                            successMsg += `Input overhead (outpoint + nSequence): ${inputOverhead} WU<br>`;
+                            successMsg += `Per-input total: ${perInputTotal} WU<br><br>`;
+                        } else {
+                            // For other contexts (taproot_single_leaf, etc.) - keep the simpler format
+                            const scriptWeight = result.script_size;            // e.g. 35
+                            const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
+                            
+                            const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
+                            const totalWeight = scriptWeight + inputWeight;     // 35 + 73 = 108
+                            
+                            successMsg += `<br>Spending cost analysis:<br>`;
+                            successMsg += `Script: ${scriptWeight} WU<br>`;
+                            successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                            successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                        }
                     } else if (result.max_satisfaction_size) {
                         // Fallback - show satisfaction size
                         successMsg += `<br>Spending cost analysis:<br>`;
@@ -906,16 +948,58 @@ class MiniscriptCompiler {
                     successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
                     
                     if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                        const scriptWeight = result.script_size;            // e.g. 35
-                        const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
-                        
-                        const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
-                        const totalWeight = scriptWeight + inputWeight;     // 35 + 73 = 108
-                        
-                        successMsg += `<br>Spending cost analysis:<br>`;
-                        successMsg += `Script: ${scriptWeight} WU<br>`;
-                        successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                        successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                        // Different calculation for Legacy vs Segwit contexts
+                        if (context === 'legacy') {
+                            // Helper functions for precise calculation
+                            const cs = (n) => n < 253 ? 1 : (n <= 0xffff ? 3 : (n <= 0xffffffff ? 5 : 9));
+                            const pushOv = (n) => n <= 75 ? 1 : (n <= 255 ? 2 : (n <= 65535 ? 3 : 5));
+                            
+                            // P2SH satisfaction cost calculation
+                            const scriptSize = result.script_size;               // e.g. 35 bytes for pk(Alice)
+                            const sigLen = 73;                                   // worst-case DER + hashtype (71-73 typical)
+                            
+                            // P2SH scriptSig content: push(sig) + sig + push(script) + script
+                            const content = (pushOv(sigLen) + sigLen) + (pushOv(scriptSize) + scriptSize);
+                            const p2shSatisfactionWU = 4 * (cs(content) + content);
+                            
+                            // For display: also show the overhead
+                            const overheadBytes = 36 + 4;                        // outpoint (36) + nSequence (4) = 40
+                            const overheadWU = overheadBytes * 4;                // 40 * 4 = 160 WU
+                            const totalWU = p2shSatisfactionWU + overheadWU;
+                            
+                            successMsg += `<br>Spending cost analysis (P2SH):<br>`;
+                            successMsg += `Satisfaction cost (scriptSig content): ${p2shSatisfactionWU} WU<br>`;
+                            successMsg += `Input overhead (outpoint + nSequence): ${overheadWU} WU<br>`;
+                            successMsg += `Per-input total: ${totalWU} WU<br><br>`;
+                        } else if (context === 'segwit') {
+                            // For Segwit v0 (P2WSH)
+                            const scriptWeight = result.script_size;            // e.g. 35
+                            const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
+                            
+                            const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
+                            const satisfactionTotal = scriptWeight + inputWeight; // 35 + 73 = 108
+                            const inputOverhead = 160;                          // outpoint (36) + nSequence (4) = 40 bytes × 4
+                            const perInputTotal = satisfactionTotal + inputOverhead; // 108 + 160 = 268
+                            
+                            successMsg += `<br>Spending cost analysis:<br>`;
+                            successMsg += `Script (witnessScript): ${scriptWeight} WU<br>`;
+                            successMsg += `Input (witness, excl. script): ${inputWeight}.000000 WU<br>`;
+                            successMsg += `Satisfaction total: ${satisfactionTotal}.000000 WU<br>`;
+                            successMsg += `Input overhead (outpoint + nSequence): ${inputOverhead} WU<br>`;
+                            successMsg += `Per-input total: ${perInputTotal} WU<br><br>`;
+                        } else {
+                            // For other contexts (taproot_single_leaf, etc.) - keep the simpler format
+                            const scriptWeight = result.script_size;            // e.g. 35
+                            const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
+                            
+                            const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
+                            const totalWeight = scriptWeight + inputWeight;     // 35 + 73 = 108
+                            
+                            successMsg += `<br>Spending cost analysis:<br>`;
+                            successMsg += `Script: ${scriptWeight} WU<br>`;
+                            successMsg += `Input: ${inputWeight}.000000 WU<br>`;
+                            successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                        }
                     } else if (result.max_satisfaction_size) {
                         // Fallback - show satisfaction size
                         successMsg += `<br>Spending cost analysis:<br>`;
@@ -5188,7 +5272,7 @@ class MiniscriptCompiler {
 
     getContextDisplayName(context) {
         const contextMap = {
-            'legacy': 'Legacy (p2WSH)',
+            'legacy': 'Legacy (p2SH)',
             'segwit': 'Segwit v0 (p2WSH)',  
             'taproot': 'Taproot (Single leaf)',
             'taproot-multi': 'Taproot (Script path)',
