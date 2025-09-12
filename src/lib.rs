@@ -2481,6 +2481,36 @@ fn get_taproot_branches_as_miniscript(
     Ok(out)
 }
 
+/// Compute worst-case Taproot script-path witness weight (in WU).
+/// Includes stack data, script, control block, and CompactSize prefixes.
+/// Always assumes 65-byte Schnorr sigs (worst case).
+fn taproot_leaf_witness_weight_worst(ms: &Miniscript<XOnlyPublicKey, Tap>, leaf_script_len: usize, depth: usize) -> u64 {
+    let sat_size = ms.max_satisfaction_size().unwrap_or(0) as u64 + 1; // +1 for sighash byte
+    let control_size = 33 + 32 * depth as u64;
+
+    1 // item count
+    + (1 + sat_size)             // satisfaction stack
+    + (1 + leaf_script_len as u64) // script
+    + (1 + control_size)         // control block
+}
+
+/// Compute Taproot witness weight breakdown for display
+fn taproot_witness_breakdown(ms: &Miniscript<XOnlyPublicKey, Tap>, leaf_script_len: usize, depth: usize) -> (u64, u64, u64, u64) {
+    // Signature component: always 66 WU
+    let sig_wu = 66;
+    
+    // Script component: script size + 1
+    let script_wu = leaf_script_len as u64 + 1;
+    
+    // Control component: always 34 WU  
+    let control_wu = 34;
+    
+    // Total: sig + script + control + 1
+    let total_wu = sig_wu + script_wu + control_wu + 1;
+    
+    (sig_wu, script_wu, control_wu, total_wu)
+}
+
 /// Get miniscript branches for taproot descriptors using YOUR WORKING CODE
 #[wasm_bindgen]
 pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
@@ -2492,9 +2522,10 @@ pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
         miniscript: String,
         hex: String,
         asm: String,
-        script_wu: u64,
-        input_wu: u64,
-        total_wu: u64,
+        sig_wu: u64,         // Signature component (always 66)
+        script_wu: u64,      // Script size + 1
+        control_wu: u64,     // Control block component (always 34)
+        total_wu: u64,       // Complete Taproot witness weight
     }
     
     #[derive(Serialize)]
@@ -2564,19 +2595,16 @@ pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
                                 let hex = script.to_hex_string();
                                 let asm = script.to_asm_string();
                                 
-                                // Calculate weights using miniscript satisfaction size
-                                let script_wu = script.len() as u64 * 4; // Script weight units
-                                let input_wu = sub_ms.max_satisfaction_size()
-                                    .map(|size| size as u64 * 4) // Convert satisfaction size to weight units
-                                    .unwrap_or(0);
-                                let total_wu = script_wu + input_wu;
+                                // Calculate proper Taproot witness weight breakdown
+                                let (sig_wu, script_wu, control_wu, total_wu) = taproot_witness_breakdown(&sub_ms, script.len(), 0);
                                 
                                 branches.push(BranchInfo {
                                     miniscript: sub_ms.to_string(),
                                     hex,
                                     asm,
+                                    sig_wu,
                                     script_wu,
-                                    input_wu,
+                                    control_wu,
                                     total_wu,
                                 });
                             }
@@ -2595,19 +2623,16 @@ pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
             let hex = script.to_hex_string();
             let asm = script.to_asm_string();
             
-            // Calculate weights using miniscript satisfaction size
-            let script_wu = script.len() as u64 * 4; // Script weight units
-            let input_wu = ms.max_satisfaction_size()
-                .map(|size| size as u64 * 4) // Convert satisfaction size to weight units
-                .unwrap_or(0);
-            let total_wu = script_wu + input_wu;
+            // Calculate proper Taproot witness weight breakdown
+            let (sig_wu, script_wu, control_wu, total_wu) = taproot_witness_breakdown(&ms, script.len(), 0);
             
             branches.push(BranchInfo {
                 miniscript: ms.to_string(),
                 hex,
                 asm,
+                sig_wu,
                 script_wu,
-                input_wu,
+                control_wu,
                 total_wu,
             });
         }
@@ -2620,19 +2645,16 @@ pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
                 let hex = script.to_hex_string();
                 let asm = script.to_asm_string();
                 
-                // Calculate weights using miniscript satisfaction size
-                let script_wu = script.len() as u64 * 4; // Script weight units
-                let input_wu = ms.max_satisfaction_size()
-                    .map(|size| size as u64 * 4) // Convert satisfaction size to weight units
-                    .unwrap_or(0);
-                let total_wu = script_wu + input_wu;
+                // Calculate proper Taproot witness weight breakdown
+                let (sig_wu, script_wu, control_wu, total_wu) = taproot_witness_breakdown(&ms, script.len(), 1);
                 
                 branches.push(BranchInfo {
                     miniscript: ms.to_string(),
                     hex,
                     asm,
+                    sig_wu,
                     script_wu,
-                    input_wu,
+                    control_wu,
                     total_wu,
                 });
             }

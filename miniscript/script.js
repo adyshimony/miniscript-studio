@@ -601,13 +601,17 @@ class MiniscriptCompiler {
                         
                         // Add weight info for Taproot Simplified only (before descriptor)
                         if (currentMode === 'single-leaf' && result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                            const scriptWeight = result.script_size;
-                            const inputWeight = result.max_satisfaction_size;
-                            const totalWeight = scriptWeight + inputWeight;
+                            // Calculate Taproot witness weight breakdown
+                            const sigWU = 66; // Always 66 WU
+                            const scriptWU = result.script_size + 1; // Script size + 1
+                            const controlWU = 34; // Always 34 WU
+                            const totalWU = sigWU + scriptWU + controlWU + 1; // + 1 additional
                             
-                            successMsg += `<br>Script: ${scriptWeight} WU<br>`;
-                            successMsg += `Input: ${inputWeight}.000000 WU<br>`;
-                            successMsg += `Total: ${totalWeight}.000000 WU<br><br>`;
+                            successMsg += `<br>Spending cost analysis:<br>`;
+                            successMsg += `Sig: ${sigWU} WU<br>`;
+                            successMsg += `Script: ${scriptWU} WU<br>`;
+                            successMsg += `Control: ${controlWU} WU<br>`;
+                            successMsg += `Total: ${totalWU} WU<br><br>`;
                         } else {
                             successMsg += `<br>`;
                         }
@@ -5328,9 +5332,10 @@ class MiniscriptCompiler {
                                                 Miniscript: ${branchMiniscript}<br>
                                                 ASM: ${branchAsm}<br>
                                                 HEX: ${branchHex}<br>
+                                                Sig: ${branch.sig_wu || 'N/A'} WU<br>
                                                 Script: ${branch.script_wu || 'N/A'} WU<br>
-                                                Input: ${branch.input_wu || 'N/A'}.000000 WU<br>
-                                                Total: ${branch.total_wu || 'N/A'}.000000 WU
+                                                Control: ${branch.control_wu || 'N/A'} WU<br>
+                                                Total: ${branch.total_wu || 'N/A'} WU
                                             </div>
                                         </div>
                                     `;
