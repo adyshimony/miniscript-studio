@@ -625,9 +625,11 @@ class MiniscriptCompiler {
                             successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${tweakedKey}</span><br>`;
                         }
                     } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                        const scriptWeight = result.script_size;
-                        const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
-                        const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
+                        const scriptWeight = result.script_size;            // e.g. 35
+                        const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
+                        
+                        const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
+                        const totalWeight = scriptWeight + inputWeight;     // 35 + 73 = 108
                         
                         successMsg += `<br>Spending cost analysis:<br>`;
                         successMsg += `Script: ${scriptWeight} WU<br>`;
@@ -904,9 +906,11 @@ class MiniscriptCompiler {
                     successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
                     
                     if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                        const scriptWeight = result.script_size;
-                        const inputWeight = result.max_satisfaction_size; // Use satisfaction size for input weight
-                        const totalWeight = scriptWeight + inputWeight; // Calculate total as script + input
+                        const scriptWeight = result.script_size;            // e.g. 35
+                        const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
+                        
+                        const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
+                        const totalWeight = scriptWeight + inputWeight;     // 35 + 73 = 108
                         
                         successMsg += `<br>Spending cost analysis:<br>`;
                         successMsg += `Script: ${scriptWeight} WU<br>`;
