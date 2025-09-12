@@ -5329,9 +5329,10 @@ class MiniscriptCompiler {
                                         <div style="margin-top: 12px;">
                                             Script path #${idx + 1}
                                             <div style="margin-top: 6px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                                                Miniscript: ${branchMiniscript}<br>
-                                                ASM: ${branchAsm}<br>
-                                                HEX: ${branchHex}<br>
+                                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${branchMiniscript}</span><br>
+                                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${branchAsm}</span><br>
+                                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${branchHex}</span><br>
+                                                Spending cost analysis:<br>
                                                 Sig: ${branch.sig_wu || 'N/A'} WU<br>
                                                 Script: ${branch.script_wu || 'N/A'} WU<br>
                                                 Control: ${branch.control_wu || 'N/A'} WU<br>
@@ -5352,9 +5353,9 @@ class MiniscriptCompiler {
                         branchesContent = `
                             <div style="margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                                 Script path #1<br>
-                                Miniscript: pk(David)<br>
-                                ASM: script asm placeholder<br>
-                                HEX: hex placeholder
+                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">pk(David)</span><br>
+                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">script asm placeholder</span><br>
+                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">hex placeholder</span>
                             </div>
                         `;
                     }
