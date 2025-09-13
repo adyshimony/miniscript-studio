@@ -1696,8 +1696,8 @@ fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode: &st
         // Check for x-only keys (64 hex chars) in non-taproot contexts
         let xonly_key_regex = regex::Regex::new(r"\b[a-fA-F0-9]{64}\b").unwrap();
         if xonly_key_regex.is_match(trimmed) {
-            // Check if it's not an xpub/tpub (which can also be long hex-like strings in descriptors)
-            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
+            // Check if it's not an xpub/tpub, descriptor, or SHA256 hash
+            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") && !trimmed.contains("sha256(") {
                 return Err(format!(
                     "{} context requires compressed public keys (66 characters starting with 02/03). Found x-only key (64 characters).",
                     if context == "legacy" { "Legacy" } else { "Segwit v0" }

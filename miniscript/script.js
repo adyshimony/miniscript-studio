@@ -1103,7 +1103,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 60 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors, VaultXOnly1-2 X-only keys, and DavidTimeout/HelenTimeout timeout keys with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -1121,7 +1121,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 60 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors, VaultXOnly1-2 X-only keys, and DavidTimeout/HelenTimeout timeout keys with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -2138,26 +2138,68 @@ class MiniscriptCompiler {
         // Define all key pools (compressed: 60 keys, others: 20 keys each)
         const keyPools = {
             compressed: [
-                '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-                '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-                '03defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-                '034cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-                '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-                '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-                '03774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-                '02e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-                '03d01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-                '02791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-                '03581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-                '022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-                '02bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-                '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-                '020e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-                '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-                '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-                '03d30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-                '023da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-                '03acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
+                '03da6a0f9b14e0c82b2e3b0e9f9f3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f',
+                '02c8a5c2e3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3',
+                '03b7a0766e8b6b29700c970dbb0b48ac195cd8aedaa3d73152d01c0771c2874aa9',
+                '02f8073b09f6e6f0342456b8c27fb0187d618653cad737f3117bf5ce5dbb781325',
+                '03889b5a28cfeb2958873df03119a43536c12c52a6484fd4afe71229a5ae06b55c',
+                '021208140fbad9c4df73936df2e7e4a9333ad4925af7532f0c555b37399300e696',
+                '0242b595b5feeb32e4c5a86971542dc6d0ac1627165f22d37332085fc527d1c13f',
+                '02c98f1ee625379323ecaa58806f70f784256d5fc0fe84179935590a2156b233ef',
+                '030bf2c8353ed6360cc76ae447d20f3e52988ebb325057f551a6156c254b9fb9ab',
+                '02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0',
+                '03f4c1a73d0bd7dbc0c25aa361684bcb158c274ad76477eb145faea3858dc2fd4f',
+                '02318f455a1ef51763e1acb573449e4a52e8fcada49f8a0fea8387a4f4b146b3ac',
+                '03681ff8dd97a900012dc58dcb4b9ab3e40b29b96bc3e014ae1eba4f7b80abb3c8',
+                '0230efbeba3e9b9321c1cbcf93f416c25fbcb96c322b3ecc73e0dfd6db558ca682',
+                '03996553edf7dc7702e4f4ed8e2feadb5dbbd1f3c55c64c7ee943b32e870d1f2a0',
+                '0288c70836e9cb416570e2d693518d6cbee339f72b434630abdca636914bbc123f',
+                '021683fe7f8ebfabf5fb633742d62bec545832b8e4b5cc5edb587d08f8b4f02910',
+                '02d5c06cb7ff25d38cecd81aaa1bf773adeb6617d6eb003fd9f094633f3b4960a6',
+                '03d9be1c4959365a8dcea4aefa16fd59d2dd2283a60f3026e26cf75a431119f8f4',
+                '0391ca383cf8c5c6d6a35f444034acc271987648f3b4f729520fb208683b2b9ef1',
+                // Your new 20 keys
+                '03ba2ce74b3c84c71dce4a26a1333279115584cf87faad02f828668d3e7c47bc3c',
+                '02ffa28c77cae4923aa5eb52795e3fc9e448046064b3d7a765ce7bff73a073f3ed',
+                '0391ca383cf8c5c6d6a35f444034acc271987648f3b4f729520fb208683b2b9ef1',
+                '03b7a0766e8b6b29700c970dbb0b48ac195cd8aedaa3d73152d01c0771c2874aa9',
+                '03d9be1c4959365a8dcea4aefa16fd59d2dd2283a60f3026e26cf75a431119f8f4',
+                '021683fe7f8ebfabf5fb633742d62bec545832b8e4b5cc5edb587d08f8b4f02910',
+                '02d5c06cb7ff25d38cecd81aaa1bf773adeb6617d6eb003fd9f094633f3b4960a6',
+                '03681ff8dd97a900012dc58dcb4b9ab3e40b29b96bc3e014ae1eba4f7b80abb3c8',
+                '0230efbeba3e9b9321c1cbcf93f416c25fbcb96c322b3ecc73e0dfd6db558ca682',
+                '03996553edf7dc7702e4f4ed8e2feadb5dbbd1f3c55c64c7ee943b32e870d1f2a0',
+                '0288c70836e9cb416570e2d693518d6cbee339f72b434630abdca636914bbc123f',
+                '03889b5a28cfeb2958873df03119a43536c12c52a6484fd4afe71229a5ae06b55c',
+                '02f8073b09f6e6f0342456b8c27fb0187d618653cad737f3117bf5ce5dbb781325',
+                '02f4c1a73d0bd7dbc0c25aa361684bcb158c274ad76477eb145faea3858dc2fd4f',
+                '0318f455a1ef51763e1acb573449e4a52e8fcada49f8a0fea8387a4f4b146b3ac7',
+                '021208140fbad9c4df73936df2e7e4a9333ad4925af7532f0c555b37399300e696',
+                '0242b595b5feeb32e4c5a86971542dc6d0ac1627165f22d37332085fc527d1c13f',
+                '02c98f1ee625379323ecaa58806f70f784256d5fc0fe84179935590a2156b233ef',
+                '030bf2c8353ed6360cc76ae447d20f3e52988ebb325057f551a6156c254b9fb9ab',
+                '02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0',
+                // Third batch - 20 additional keys
+                '03e4c0b897a93b6aec22d8a7a5675788bfe87733bd171f4f55f26b02bcc60b9967',
+                '02cc96023563fe38b3215c38977a7bbf643a1f5922da6a21f8ed193540351c276e',
+                '03d0d9724554e4055798bcbc06a1fc4d84e7167e6ff5993d3dd45f6274f8b21276',
+                '021fa9c19bbed79d9cd8d19daa786c7580b1dc49fb6bee3f8232185b4e6ddb4bc1',
+                '03d295974ab5949100b3da2d3cf4bc5ebab7abfaa698b3db21095f5ce99dc853fd',
+                '03f2cd034586b5b6e91aad965728dde595399ac08c41919bf6b1a4cd1b343ea808',
+                '02462eb2f8570e25c294bb41d2ce07c0fae64cb339d51e41705516e34db3dbab52',
+                '02384ffe04b898c398ed623bde4a6021e626e5e3672f347b4a3c5cb70f562221cd',
+                '0321866a6d38bc813e9b07c7677d387ac500ed9a40b6914ac4fb028612de948cc6',
+                '02ceed6104e12d65a7f400e2324a76b997012958501795d428b6b98e2a260114df',
+                '032acc58ef59d3184ef0c3062520c02cb0259f65b32cd454e7d0f0bc4cfd99ec18',
+                '03689fe598aad546b0d80a1fae9995a4503d8d01d35432943205ff7a43e401541a',
+                '033709f80850266879dda370543a0d2d1cd6c9862a722614d466dd93f7f47eb50a',
+                '03a32f7874fe61b2d785836c6b3afb4352f4936c153d8dbb58302aa21cb241cfdf',
+                '029aac123da5c0460e644ac9ba9c0f9347d69f24120120f9b4a2bff3a64f4c34da',
+                '02b126e068fbd19934fa1f1683053dc3841d37b6fd892b544a61a51213e26c0f69',
+                '03a6ae2758f0d081a22a9331487269b58cc117fa24114b16bc682a61c19b2bdb5e',
+                '03ab2e75bcde03002722d44821b3d7bc61ebfddb488d928edf95d842ca699e1bb9',
+                '02bffe09fc5f0204a8bef65eef4a1cb0d847f03aeb36b56306602d5fd325fbaa19',
+                '021bd9dc0dd14fd7f34ec501892a8bcb725362f20a1541b216721e64f3f4e0b73e'
             ],
             xonly: [
                 'a3a3d9fe61d93ac31ec9699e0407b84e7f23c5bb638f0d755f6053646c1997df',
@@ -2336,123 +2378,7 @@ class MiniscriptCompiler {
         this.isGeneratingKey = false; // Clear flag after generation
     }
 
-    generateCompressedPublicKey(privateKey) {
-        // 66-character compressed keys for Legacy/Segwit v0 (60 keys total)
-        const compressedKeys = [
-            // Original 20 keys
-            '03da6a0f9b14e0c82b2e3b0e9f9f3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f',
-            '02c8a5c2e3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3',
-            '03b7a0766e8b6b29700c970dbb0b48ac195cd8aedaa3d73152d01c0771c2874aa9',
-            '02f8073b09f6e6f0342456b8c27fb0187d618653cad737f3117bf5ce5dbb781325',
-            '03889b5a28cfeb2958873df03119a43536c12c52a6484fd4afe71229a5ae06b55c',
-            '021208140fbad9c4df73936df2e7e4a9333ad4925af7532f0c555b37399300e696',
-            '0242b595b5feeb32e4c5a86971542dc6d0ac1627165f22d37332085fc527d1c13f',
-            '02c98f1ee625379323ecaa58806f70f784256d5fc0fe84179935590a2156b233ef',
-            '030bf2c8353ed6360cc76ae447d20f3e52988ebb325057f551a6156c254b9fb9ab',
-            '02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0',
-            '03f4c1a73d0bd7dbc0c25aa361684bcb158c274ad76477eb145faea3858dc2fd4f',
-            '02318f455a1ef51763e1acb573449e4a52e8fcada49f8a0fea8387a4f4b146b3ac',
-            '03681ff8dd97a900012dc58dcb4b9ab3e40b29b96bc3e014ae1eba4f7b80abb3c8',
-            '0230efbeba3e9b9321c1cbcf93f416c25fbcb96c322b3ecc73e0dfd6db558ca682',
-            '03996553edf7dc7702e4f4ed8e2feadb5dbbd1f3c55c64c7ee943b32e870d1f2a0',
-            '0288c70836e9cb416570e2d693518d6cbee339f72b434630abdca636914bbc123f',
-            '021683fe7f8ebfabf5fb633742d62bec545832b8e4b5cc5edb587d08f8b4f02910',
-            '02d5c06cb7ff25d38cecd81aaa1bf773adeb6617d6eb003fd9f094633f3b4960a6',
-            '03d9be1c4959365a8dcea4aefa16fd59d2dd2283a60f3026e26cf75a431119f8f4',
-            '0391ca383cf8c5c6d6a35f444034acc271987648f3b4f729520fb208683b2b9ef1',
-            // Your new 20 keys
-            '03ba2ce74b3c84c71dce4a26a1333279115584cf87faad02f828668d3e7c47bc3c',
-            '02ffa28c77cae4923aa5eb52795e3fc9e448046064b3d7a765ce7bff73a073f3ed',
-            '0391ca383cf8c5c6d6a35f444034acc271987648f3b4f729520fb208683b2b9ef1',
-            '03b7a0766e8b6b29700c970dbb0b48ac195cd8aedaa3d73152d01c0771c2874aa9',
-            '03d9be1c4959365a8dcea4aefa16fd59d2dd2283a60f3026e26cf75a431119f8f4',
-            '021683fe7f8ebfabf5fb633742d62bec545832b8e4b5cc5edb587d08f8b4f02910',
-            '02d5c06cb7ff25d38cecd81aaa1bf773adeb6617d6eb003fd9f094633f3b4960a6',
-            '03681ff8dd97a900012dc58dcb4b9ab3e40b29b96bc3e014ae1eba4f7b80abb3c8',
-            '0230efbeba3e9b9321c1cbcf93f416c25fbcb96c322b3ecc73e0dfd6db558ca682',
-            '03996553edf7dc7702e4f4ed8e2feadb5dbbd1f3c55c64c7ee943b32e870d1f2a0',
-            '0288c70836e9cb416570e2d693518d6cbee339f72b434630abdca636914bbc123f',
-            '03889b5a28cfeb2958873df03119a43536c12c52a6484fd4afe71229a5ae06b55c',
-            '02f8073b09f6e6f0342456b8c27fb0187d618653cad737f3117bf5ce5dbb781325',
-            '02f4c1a73d0bd7dbc0c25aa361684bcb158c274ad76477eb145faea3858dc2fd4f',
-            '0318f455a1ef51763e1acb573449e4a52e8fcada49f8a0fea8387a4f4b146b3ac7',
-            '021208140fbad9c4df73936df2e7e4a9333ad4925af7532f0c555b37399300e696',
-            '0242b595b5feeb32e4c5a86971542dc6d0ac1627165f22d37332085fc527d1c13f',
-            '02c98f1ee625379323ecaa58806f70f784256d5fc0fe84179935590a2156b233ef',
-            '030bf2c8353ed6360cc76ae447d20f3e52988ebb325057f551a6156c254b9fb9ab',
-            '02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0',
-            // Third batch - 20 additional keys
-            '03e4c0b897a93b6aec22d8a7a5675788bfe87733bd171f4f55f26b02bcc60b9967',
-            '02cc96023563fe38b3215c38977a7bbf643a1f5922da6a21f8ed193540351c276e',
-            '03d0d9724554e4055798bcbc06a1fc4d84e7167e6ff5993d3dd45f6274f8b21276',
-            '021fa9c19bbed79d9cd8d19daa786c7580b1dc49fb6bee3f8232185b4e6ddb4bc1',
-            '03d295974ab5949100b3da2d3cf4bc5ebab7abfaa698b3db21095f5ce99dc853fd',
-            '03f2cd034586b5b6e91aad965728dde595399ac08c41919bf6b1a4cd1b343ea808',
-            '02462eb2f8570e25c294bb41d2ce07c0fae64cb339d51e41705516e34db3dbab52',
-            '02384ffe04b898c398ed623bde4a6021e626e5e3672f347b4a3c5cb70f562221cd',
-            '0321866a6d38bc813e9b07c7677d387ac500ed9a40b6914ac4fb028612de948cc6',
-            '02ceed6104e12d65a7f400e2324a76b997012958501795d428b6b98e2a260114df',
-            '032acc58ef59d3184ef0c3062520c02cb0259f65b32cd454e7d0f0bc4cfd99ec18',
-            '03689fe598aad546b0d80a1fae9995a4503d8d01d35432943205ff7a43e401541a',
-            '033709f80850266879dda370543a0d2d1cd6c9862a722614d466dd93f7f47eb50a',
-            '03a32f7874fe61b2d785836c6b3afb4352f4936c153d8dbb58302aa21cb241cfdf',
-            '029aac123da5c0460e644ac9ba9c0f9347d69f24120120f9b4a2bff3a64f4c34da',
-            '02b126e068fbd19934fa1f1683053dc3841d37b6fd892b544a61a51213e26c0f69',
-            '03a6ae2758f0d081a22a9331487269b58cc117fa24114b16bc682a61c19b2bdb5e',
-            '03ab2e75bcde03002722d44821b3d7bc61ebfddb488d928edf95d842ca699e1bb9',
-            '02bffe09fc5f0204a8bef65eef4a1cb0d847f03aeb36b56306602d5fd325fbaa19',
-            '021bd9dc0dd14fd7f34ec501892a8bcb725362f20a1541b216721e64f3f4e0b73e'
-        ];
-        
-        // 64-character X-only keys for Taproot (20 keys)
-        const xOnlyKeys = [
-            'f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
-            'a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
-            'defdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34',
-            '4cf034640859162ba19ee5a5a33e713a86e2e285b79cdaf9d5db4a07aa59f765',
-            '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-            'c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
-            '774ae7f858a9411e5ef4246b70c65aac5649980be5c17891bbec17895da008cb',
-            'e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13',
-            'd01115d548e7561b15c38f004d734633687cf4419620095bc5b0f47070afe85a',
-            '791ca97e3d5c1dc6bc7e7e1a1e5fc19b90e0e8b1f9f0f1b2c3d4e5f6a7b8c9',
-            '581c63a4f65b4dfb3baf7d5c3e5a6d4f0e7b2c8a9f1d3e4b2a5c6d7e8f9a0b',
-            '2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4',
-            'bf0e7b0c8a7b1f9a3e4d2c5b6a8f9d0e7c1b4a3f6e9d2c5b8a1f4e7d0c3b6a',
-            '2c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-            '0e46e79a2a8d12b9b21b533e2f1c6d5a7f8e9c0b1d2a3f4e5c6b7a8f9d0e3c',
-            'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-            '5476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357',
-            'd30199d74fb5a22d47b6e054e2f378cedacffcb89904a61d75d0dbd407143e65',
-            '3da092f6980e58d2c037173180e9a465476026ee50f96695963e8efe436f54eb',
-            'acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe'
-        ];
-        
-        // Get selected context
-        const selectedContext = document.querySelector('input[name="context"]:checked')?.value || 'segwit';
-        
-        // Choose key pool based on context
-        let keyPool;
-        if (selectedContext === 'taproot') {
-            keyPool = xOnlyKeys; // 64-character X-only keys for Taproot
-        } else {
-            keyPool = compressedKeys; // 66-character compressed keys for Legacy/Segwit
-        }
-        
-        // Get already used keys
-        const usedKeys = Array.from(this.keyVariables.values());
-        
-        // Filter out already used keys from the appropriate pool
-        const availableKeys = keyPool.filter(key => !usedKeys.includes(key));
-        
-        // If all keys are used, return a random one anyway
-        const keysToUse = availableKeys.length > 0 ? availableKeys : keyPool;
-        
-        // Use private key bytes to deterministically select from available keys
-        const index = privateKey.reduce((acc, byte) => acc + byte, 0) % keysToUse.length;
-        return keysToUse[index];
-    }
-
+  
     addKeyVariable() {
         const name = document.getElementById('key-name-input').value.trim();
         const value = document.getElementById('key-value-input').value.trim();
@@ -2600,6 +2526,14 @@ class MiniscriptCompiler {
         this.keyVariables.set('VaultKey18', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<10;11>/*');
         this.keyVariables.set('VaultKey19', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<8;9>/*');
         
+        // X-only vault keys for Taproot inheritance scenarios
+        this.keyVariables.set('VaultXOnly1', 'a3a3d9fe61d93ac31ec9699e0407b84e7f23c5bb638f0d755f6053646c1997df');
+        this.keyVariables.set('VaultXOnly2', '7a6f3dbd569d59ee017341b96166b4f7e3dafbb31ec2212656af2fd907ca8572');
+        
+        // Timeout keys for Lightning Channel scenarios  
+        this.keyVariables.set('DavidTimeout', 'd392b6f1f367f211f42f9f78b70b3b0b396ceee8d7b271f098d253ead0991d23');
+        this.keyVariables.set('HelenTimeout', '6807e6f3055807b9fac782114835be3627a6adbcf78624748eff45ab3ef05834');
+        
         // Joint custody keys for 3-key joint custody example
         this.keyVariables.set('jcKey1', '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556');
         this.keyVariables.set('jcKey2', '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357');
@@ -2626,7 +2560,7 @@ class MiniscriptCompiler {
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 56 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKey1-19), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
+        if (confirm('This will restore 60 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKey1-19), plus X-only vault keys (VaultXOnly1, VaultXOnly2), plus timeout keys (DavidTimeout, HelenTimeout), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -4506,7 +4440,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 60 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors, VaultXOnly1-2 X-only keys, and DavidTimeout/HelenTimeout timeout keys with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -4524,7 +4458,7 @@ class MiniscriptCompiler {
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
 <button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
-<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 56 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
+<button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 60 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors, VaultXOnly1-2 X-only keys, and DavidTimeout/HelenTimeout timeout keys with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
                     `;
@@ -7128,6 +7062,33 @@ window.showPolicyDescription = function(exampleId) {
             efficiency: '⚡ **Efficiency:** David spends with just 64 bytes (signature only). Helen/Uma each need ~34 bytes script + 64 bytes signature = ~98 bytes. Key-path spending is the most efficient option in Taproot. Total possible: key-path (64B) vs script-path (~98B).',
             security: '✅ **Security benefits:** David\'s spending reveals no scripts or other participants. Helen/Uma spending only reveals their specific script, not David\'s key or the other person\'s script. Maximum privacy through selective revelation.',
             bestFor: '✅ **Best for:** Scenarios where one party (David) is primary/preferred and others are alternatives, inheritance with preferred heir + backups, business with primary signer + emergency alternatives, demonstrating Taproot\'s intelligent optimization over naive 3-leaf structures'
+        },
+        'lightning_channel': {
+            title: '📄 Lightning Channel Policy - Cooperative vs Dispute Resolution',
+            conditions: '🔓 David AND Helen: Cooperative channel close (immediate)\n🔓 DavidTimeout + 1 week: Unilateral close with timelock\n🔓 HelenTimeout + 1 week: Unilateral close with timelock',
+            useCase: '**Lightning Network Channels:** This represents a simplified Lightning Network payment channel structure. Both parties can cooperatively close the channel instantly (David AND Helen), or either party can force-close unilaterally after a 1-week dispute resolution period using their timeout keys (DavidTimeout, HelenTimeout). The timelock prevents immediate unilateral closes, giving the other party time to dispute fraud attempts.',
+            examples: '💡 **Real-world Lightning:** In actual Lightning channels, this pattern secures bidirectional payment channels. Cooperative closes use the main keys (David, Helen) and are instant and cheap. Unilateral closes use separate timeout keys (DavidTimeout, HelenTimeout) and trigger dispute windows where the other party can publish penalty transactions if fraud is detected. The 1008 block (~1 week) timelock is typical for Lightning dispute resolution.',
+            efficiency: '⚡ **Taproot Benefits:** When compiled for Taproot contexts, the cooperative path (David AND Helen) becomes key-path spending - just 64 bytes and maximum privacy. Dispute scenarios using timeout keys (DavidTimeout, HelenTimeout) go to script-path. **Try switching to "Taproot (Key + script path)" context to see this optimization - cooperative closes reveal nothing about the dispute mechanisms!**',
+            security: '✅ **Security model:** Cooperative case requires both main signatures (David + Helen - strongest security). Unilateral cases use separate timeout keys (DavidTimeout, HelenTimeout) with built-in delays for dispute resolution. The asymmetric timelock ensures both parties have equal dispute rights - neither can force-close without giving the other party response time.',
+            bestFor: '✅ **Best for:** Lightning Network implementations, payment channels, any scenario requiring cooperative-first design with dispute fallbacks, bidirectional payment protocols, demonstrating how Taproot optimizes the "happy path" while keeping complex dispute logic private'
+        },
+        'inheritance_vault': {
+            title: '📄 Inheritance Vault Policy - Long-term Family Wealth Transfer',
+            conditions: '🔓 David (Owner): Immediate access anytime\n🔓 2-of-3 Heirs: Access after 6 months (26,280 blocks)\n🔓 Heirs: Uma, VaultXOnly1, VaultXOnly2',
+            useCase: '**Family Inheritance Planning:** David maintains full control during his lifetime with immediate spending rights. If David becomes incapacitated or passes away, a 2-of-3 threshold of heirs (Uma, VaultXOnly1, VaultXOnly2) can access the funds after a substantial 6-month waiting period. All keys are X-only format for optimal Taproot usage.',
+            examples: '💡 **Estate Planning with X-only Keys:** The 6-month timelock serves multiple purposes: gives David time to recover lost keys, prevents immediate family disputes during emotional periods, allows legal processes to unfold, and ensures David can always override heir attempts during his lifetime. All heir keys (VaultXOnly1, VaultXOnly2) are X-only format, perfect for Taproot scripts.',
+            efficiency: '⚡ **Taproot Optimization:** Perfect use case for Taproot! David\'s normal spending (99.9% of transactions) uses key-path spending - just 64 bytes, maximum privacy, reveals nothing about heirs or inheritance structure. All keys are X-only format for optimal Taproot efficiency. **Switch to "Taproot (Key + script path)" to see how David\'s key becomes the internal key, with the complex inheritance logic hidden until needed.**',
+            security: '✅ **Long-term Security:** 26,280 blocks ≈ 26 weeks provides substantial buffer against attacks, accidents, or family conflicts. David cannot be locked out by heirs. Heirs cannot be disinherited by single key loss (2-of-3 redundancy with Uma, VaultXOnly1, VaultXOnly2). Time delay prevents emotional or fraudulent inheritance attempts.',
+            bestFor: '✅ **Best for:** Family wealth preservation with Taproot optimization, estate planning using X-only keys, long-term savings with inheritance provisions, business succession planning, any scenario where immediate control is desired but eventual family access is crucial, showcasing Taproot\'s privacy benefits with proper X-only key usage'
+        },
+        'atomic_swap': {
+            title: '📄 Atomic Swap Policy - Cross-Chain Trading with Hash Preimages',
+            conditions: '🔓 Alice: Must provide signature + wait for Bob or timeout\n🔓 Bob + Secret: Can spend by revealing SHA256 preimage\n🔓 Alice + Timeout: Can recover funds after 1 day if Bob doesn\'t claim',
+            useCase: '**Cross-Chain Atomic Swaps:** Alice wants to trade Bitcoin for another cryptocurrency with Bob. Alice locks Bitcoin requiring both her signature AND either: Bob provides the secret preimage (completing the swap), or Alice recovers after 1 day timeout. Bob creates a matching contract on the other chain with the same secret hash, enabling trustless cross-chain trading.',
+            examples: '💡 **Hash Time-Locked Contracts (HTLCs):** The SHA256 preimage acts as a cryptographic key that unlocks both sides of the trade. When Bob reveals the secret to claim Alice\'s Bitcoin, Alice can use that same secret to claim Bob\'s altcoins. If Bob doesn\'t participate, Alice gets her Bitcoin back after the timeout. No trusted third party needed!',
+            efficiency: '⚡ **Segwit Optimization:** This policy works best in Segwit contexts because the SHA256 preimage (32 bytes) goes in the witness data, benefiting from the witness discount. **Compile this in "Segwit v0 (p2WSH)" context for optimal efficiency - the hash preimage only costs 1 WU per byte instead of 4 WU in Legacy contexts.**',
+            security: '✅ **Trustless Security:** Alice cannot lose funds (timeout protection). Bob cannot claim without revealing the secret (which Alice can then use on other chains). The 144-block timeout (~1 day) provides sufficient window for Bob to act while preventing indefinite fund lockup. SHA256 ensures cryptographically secure secret revelation.',
+            bestFor: '✅ **Best for:** Cross-chain trading, atomic swaps between Bitcoin and altcoins, any protocol requiring cryptographic secret revelation, demonstrating hash-based contracts, trustless exchange mechanisms, showcasing Segwit witness discount benefits for preimage data'
         }
     };
     
@@ -7581,6 +7542,33 @@ window.showPolicyDescription = function(exampleId) {
             efficiency: '⚡ **Efficiency:** David spends with just 64 bytes (signature only). Helen/Uma each need ~34 bytes script + 64 bytes signature = ~98 bytes. Key-path spending is the most efficient option in Taproot. Total possible: key-path (64B) vs script-path (~98B).',
             security: '✅ **Security benefits:** David\'s spending reveals no scripts or other participants. Helen/Uma spending only reveals their specific script, not David\'s key or the other person\'s script. Maximum privacy through selective revelation.',
             bestFor: '✅ **Best for:** Scenarios where one party (David) is primary/preferred and others are alternatives, inheritance with preferred heir + backups, business with primary signer + emergency alternatives, demonstrating Taproot\'s intelligent optimization over naive 3-leaf structures'
+        },
+        'lightning_channel': {
+            title: '📄 Lightning Channel Policy - Cooperative vs Dispute Resolution',
+            conditions: '🔓 David AND Helen: Cooperative channel close (immediate)\n🔓 DavidTimeout + 1 week: Unilateral close with timelock\n🔓 HelenTimeout + 1 week: Unilateral close with timelock',
+            useCase: '**Lightning Network Channels:** This represents a simplified Lightning Network payment channel structure. Both parties can cooperatively close the channel instantly (David AND Helen), or either party can force-close unilaterally after a 1-week dispute resolution period using their timeout keys (DavidTimeout, HelenTimeout). The timelock prevents immediate unilateral closes, giving the other party time to dispute fraud attempts.',
+            examples: '💡 **Real-world Lightning:** In actual Lightning channels, this pattern secures bidirectional payment channels. Cooperative closes use the main keys (David, Helen) and are instant and cheap. Unilateral closes use separate timeout keys (DavidTimeout, HelenTimeout) and trigger dispute windows where the other party can publish penalty transactions if fraud is detected. The 1008 block (~1 week) timelock is typical for Lightning dispute resolution.',
+            efficiency: '⚡ **Taproot Benefits:** When compiled for Taproot contexts, the cooperative path (David AND Helen) becomes key-path spending - just 64 bytes and maximum privacy. Dispute scenarios using timeout keys (DavidTimeout, HelenTimeout) go to script-path. **Try switching to "Taproot (Key + script path)" context to see this optimization - cooperative closes reveal nothing about the dispute mechanisms!**',
+            security: '✅ **Security model:** Cooperative case requires both main signatures (David + Helen - strongest security). Unilateral cases use separate timeout keys (DavidTimeout, HelenTimeout) with built-in delays for dispute resolution. The asymmetric timelock ensures both parties have equal dispute rights - neither can force-close without giving the other party response time.',
+            bestFor: '✅ **Best for:** Lightning Network implementations, payment channels, any scenario requiring cooperative-first design with dispute fallbacks, bidirectional payment protocols, demonstrating how Taproot optimizes the "happy path" while keeping complex dispute logic private'
+        },
+        'inheritance_vault': {
+            title: '📄 Inheritance Vault Policy - Long-term Family Wealth Transfer',
+            conditions: '🔓 David (Owner): Immediate access anytime\n🔓 2-of-3 Heirs: Access after 6 months (26,280 blocks)\n🔓 Heirs: Uma, VaultXOnly1, VaultXOnly2',
+            useCase: '**Family Inheritance Planning:** David maintains full control during his lifetime with immediate spending rights. If David becomes incapacitated or passes away, a 2-of-3 threshold of heirs (Uma, VaultXOnly1, VaultXOnly2) can access the funds after a substantial 6-month waiting period. All keys are X-only format for optimal Taproot usage.',
+            examples: '💡 **Estate Planning with X-only Keys:** The 6-month timelock serves multiple purposes: gives David time to recover lost keys, prevents immediate family disputes during emotional periods, allows legal processes to unfold, and ensures David can always override heir attempts during his lifetime. All heir keys (VaultXOnly1, VaultXOnly2) are X-only format, perfect for Taproot scripts.',
+            efficiency: '⚡ **Taproot Optimization:** Perfect use case for Taproot! David\'s normal spending (99.9% of transactions) uses key-path spending - just 64 bytes, maximum privacy, reveals nothing about heirs or inheritance structure. All keys are X-only format for optimal Taproot efficiency. **Switch to "Taproot (Key + script path)" to see how David\'s key becomes the internal key, with the complex inheritance logic hidden until needed.**',
+            security: '✅ **Long-term Security:** 26,280 blocks ≈ 26 weeks provides substantial buffer against attacks, accidents, or family conflicts. David cannot be locked out by heirs. Heirs cannot be disinherited by single key loss (2-of-3 redundancy with Uma, VaultXOnly1, VaultXOnly2). Time delay prevents emotional or fraudulent inheritance attempts.',
+            bestFor: '✅ **Best for:** Family wealth preservation with Taproot optimization, estate planning using X-only keys, long-term savings with inheritance provisions, business succession planning, any scenario where immediate control is desired but eventual family access is crucial, showcasing Taproot\'s privacy benefits with proper X-only key usage'
+        },
+        'atomic_swap': {
+            title: '📄 Atomic Swap Policy - Cross-Chain Trading with Hash Preimages',
+            conditions: '🔓 Alice: Must provide signature + wait for Bob or timeout\n🔓 Bob + Secret: Can spend by revealing SHA256 preimage\n🔓 Alice + Timeout: Can recover funds after 1 day if Bob doesn\'t claim',
+            useCase: '**Cross-Chain Atomic Swaps:** Alice wants to trade Bitcoin for another cryptocurrency with Bob. Alice locks Bitcoin requiring both her signature AND either: Bob provides the secret preimage (completing the swap), or Alice recovers after 1 day timeout. Bob creates a matching contract on the other chain with the same secret hash, enabling trustless cross-chain trading.',
+            examples: '💡 **Hash Time-Locked Contracts (HTLCs):** The SHA256 preimage acts as a cryptographic key that unlocks both sides of the trade. When Bob reveals the secret to claim Alice\'s Bitcoin, Alice can use that same secret to claim Bob\'s altcoins. If Bob doesn\'t participate, Alice gets her Bitcoin back after the timeout. No trusted third party needed!',
+            efficiency: '⚡ **Segwit Optimization:** This policy works best in Segwit contexts because the SHA256 preimage (32 bytes) goes in the witness data, benefiting from the witness discount. **Compile this in "Segwit v0 (p2WSH)" context for optimal efficiency - the hash preimage only costs 1 WU per byte instead of 4 WU in Legacy contexts.**',
+            security: '✅ **Trustless Security:** Alice cannot lose funds (timeout protection). Bob cannot claim without revealing the secret (which Alice can then use on other chains). The 144-block timeout (~1 day) provides sufficient window for Bob to act while preventing indefinite fund lockup. SHA256 ensures cryptographically secure secret revelation.',
+            bestFor: '✅ **Best for:** Cross-chain trading, atomic swaps between Bitcoin and altcoins, any protocol requiring cryptographic secret revelation, demonstrating hash-based contracts, trustless exchange mechanisms, showcasing Segwit witness discount benefits for preimage data'
         }
     };
     
