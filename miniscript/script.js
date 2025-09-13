@@ -7027,15 +7027,6 @@ window.showPolicyDescription = function(exampleId) {
             security: '✅ **Security benefits:** 6-month delay prevents premature inheritance claims, 2-of-3 consensus prevents single beneficiary compromise, David maintains full control while active, Taproot privacy.',
             bestFor: '✅ **Best for:** Estate planning, retirement accounts, high-value long-term storage, family wealth transfer, business succession planning, anyone wanting crypto inheritance without trusted third parties'
         },
-        'delayed': {
-            title: '📄 Taproot 2-of-2 OR Delayed - Cooperative + Emergency',
-            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending (cooperative path)\n⏰ David: After 144 blocks (~1 day) single-party emergency',
-            useCase: '**Joint Account with Emergency Access:** Julia and Karl must both agree for immediate spending, but David can spend alone after 1 day. Perfect for joint accounts where cooperation is preferred but emergency access is needed.',
-            examples: '💡 **Real-world examples:** Couple\'s shared savings with emergency contact, business partnership with mediator access, joint investment account with trusted third party override',
-            efficiency: '⚡ **Efficiency:** Cooperative path requires both signatures (~137 bytes), David\'s emergency path includes timelock verification (~105 bytes).',
-            security: '✅ **Security benefits:** Cooperative path prevents single-party spending, 24-hour delay gives Julia/Karl time to respond to unauthorized David access, balanced control between cooperation and emergency needs.',
-            bestFor: '✅ **Best for:** Joint accounts with trusted mediator, cooperative funds with emergency provisions, business partnerships with dispute resolution, any scenario balancing cooperation with emergency access'
-        },
         'hodl': {
             title: '📄 HODL Wallet Policy - Long-term Savings with Family Backup',
             conditions: '🔓 Alice: Immediate spending (9x probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
@@ -7212,13 +7203,6 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: '<David> CHECKSIGVERIFY DUP IF <Helen> CHECKSIG ELSE <Ivan> CHECKSIGVERIFY 52560 CHECKSEQUENCEVERIFY ENDIF',
             useCase: 'David must approve all spending. Helen can inherit immediately, or Ivan after 1 year. Why this structure? David maintains control while alive, Helen gets priority as primary beneficiary.',
             technical: '💡 Inheritance logic: and_v(v:pk(David),...) ensures David always required. or_d(pk(Helen),...) gives Helen immediate access without timelock evaluation. Ivan\'s path only evaluated if Helen unavailable. 52560 blocks ≈ 1 year provides sufficient time for Helen to claim.'
-        },
-        'delayed': {
-            title: '⚙️ Taproot Immediate OR Delayed: or_d for Cooling Period',
-            structure: 'or_d(pk(Julia),and_v(v:pk(Karl),older(144))) → Julia OR (Karl + delay)',
-            bitcoinScript: 'DUP IF <Julia> CHECKSIG ELSE <Karl> CHECKSIGVERIFY 144 CHECKSEQUENCEVERIFY ENDIF',
-            useCase: 'Julia can spend immediately, Karl must wait 1 day. Why or_d? Julia\'s immediate access shouldn\'t evaluate Karl\'s timelock - pure efficiency.',
-            technical: '💡 Cooling period pattern: or_d ensures Julia\'s path is completely independent of timelock logic. When Julia spends, script never touches the 144-block delay or Karl\'s signature verification. Only when Julia doesn\'t spend does Karl\'s delayed path activate.'
         },
         'htlc_time': {
             title: '⚙️ Time-based HTLC: or_d for Efficient Cooperation',
@@ -7507,15 +7491,6 @@ window.showPolicyDescription = function(exampleId) {
             security: '✅ **Security benefits:** 6-month delay prevents premature inheritance claims, 2-of-3 consensus prevents single beneficiary compromise, David maintains full control while active, Taproot privacy.',
             bestFor: '✅ **Best for:** Estate planning, retirement accounts, high-value long-term storage, family wealth transfer, business succession planning, anyone wanting crypto inheritance without trusted third parties'
         },
-        'delayed': {
-            title: '📄 Taproot 2-of-2 OR Delayed - Cooperative + Emergency',
-            conditions: '🔓 Julia + Karl: Immediate 2-of-2 spending (cooperative path)\n⏰ David: After 144 blocks (~1 day) single-party emergency',
-            useCase: '**Joint Account with Emergency Access:** Julia and Karl must both agree for immediate spending, but David can spend alone after 1 day. Perfect for joint accounts where cooperation is preferred but emergency access is needed.',
-            examples: '💡 **Real-world examples:** Couple\'s shared savings with emergency contact, business partnership with mediator access, joint investment account with trusted third party override',
-            efficiency: '⚡ **Efficiency:** Cooperative path requires both signatures (~137 bytes), David\'s emergency path includes timelock verification (~105 bytes).',
-            security: '✅ **Security benefits:** Cooperative path prevents single-party spending, 24-hour delay gives Julia/Karl time to respond to unauthorized David access, balanced control between cooperation and emergency needs.',
-            bestFor: '✅ **Best for:** Joint accounts with trusted mediator, cooperative funds with emergency provisions, business partnerships with dispute resolution, any scenario balancing cooperation with emergency access'
-        },
         'hodl': {
             title: '📄 HODL Wallet Policy - Long-term Savings with Family Backup',
             conditions: '🔓 Alice: Immediate spending (9x probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
@@ -7690,13 +7665,6 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: '<David> CHECKSIGVERIFY DUP IF <Helen> CHECKSIG ELSE <Ivan> CHECKSIGVERIFY 52560 CHECKSEQUENCEVERIFY ENDIF',
             useCase: 'David must approve all spending. Helen can inherit immediately, or Ivan after 1 year. Why this structure? David maintains control while alive, Helen gets priority as primary beneficiary.',
             technical: '💡 Inheritance logic: and_v(v:pk(David),...) ensures David always required. or_d(pk(Helen),...) gives Helen immediate access without timelock evaluation. Ivan\'s path only evaluated if Helen unavailable. 52560 blocks ≈ 1 year provides sufficient time for Helen to claim.'
-        },
-        'delayed': {
-            title: '⚙️ Taproot Immediate OR Delayed: or_d for Cooling Period',
-            structure: 'or_d(pk(Julia),and_v(v:pk(Karl),older(144))) → Julia OR (Karl + delay)',
-            bitcoinScript: 'DUP IF <Julia> CHECKSIG ELSE <Karl> CHECKSIGVERIFY 144 CHECKSEQUENCEVERIFY ENDIF',
-            useCase: 'Julia can spend immediately, Karl must wait 1 day. Why or_d? Julia\'s immediate access shouldn\'t evaluate Karl\'s timelock - pure efficiency.',
-            technical: '💡 Cooling period pattern: or_d ensures Julia\'s path is completely independent of timelock logic. When Julia spends, script never touches the 144-block delay or Karl\'s signature verification. Only when Julia doesn\'t spend does Karl\'s delayed path activate.'
         },
         'htlc_time': {
             title: '⚙️ Time-based HTLC: or_d for Efficient Cooperation',
@@ -8686,10 +8654,6 @@ window.addEventListener('DOMContentLoaded', function() {
                 'miniscript-inheritance': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('inheritance');
                     if (window.loadExample) window.loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance');
-                },
-                'miniscript-delayed': () => {
-                    if (window.showMiniscriptDescription) window.showMiniscriptDescription('delayed');
-                    if (window.loadExample) window.loadExample('or_d(pk(Julia),and_v(v:pk(Karl),older(144)))', 'delayed');
                 },
                 'miniscript-htlc_time': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('htlc_time');
