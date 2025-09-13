@@ -885,6 +885,10 @@ fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str) -> R
             let normalized_miniscript = ms.to_string();
             console_log!("Parsed miniscript: {}", normalized_miniscript);
             
+            // Transform top-level OR patterns to tree notation
+            let transformed_miniscript = transform_or_to_tree(&normalized_miniscript);
+            console_log!("After OR transformation: {}", transformed_miniscript);
+            
             // Calculate satisfaction weights 
             let max_satisfaction_size = ms.max_satisfaction_size().ok();
             let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
@@ -896,6 +900,63 @@ fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str) -> R
             };
             
             console_log!("DEBUG DESCRIPTOR: Using NUMS key: {}", nums_xonly_key);
+            
+            // If we transformed an OR pattern, create a new tr() descriptor with tree notation
+            if transformed_miniscript != normalized_miniscript {
+                console_log!("OR pattern detected! Creating tr() descriptor with tree notation");
+                
+                // Build the tr() descriptor string with tree notation
+                let tr_descriptor_str = format!("tr({},{})", nums_key, transformed_miniscript);
+                console_log!("Attempting to parse descriptor: {}", tr_descriptor_str);
+                
+                // Parse the descriptor with tree notation
+                match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
+                    Ok(descriptor) => {
+                        console_log!("Successfully parsed tr() descriptor with tree notation");
+                        let descriptor_str = descriptor.to_string();
+                        console_log!("DEBUG DESCRIPTOR: Successfully created descriptor: {}", descriptor_str);
+                        
+                        // Get the address from the descriptor
+                        let address = descriptor.address(network)
+                            .map_err(|e| format!("Failed to derive address: {}", e))?;
+                        console_log!("DEBUG DESCRIPTOR: Generated address: {}", address);
+                        
+                        // Get the script pubkey
+                        let script_pubkey = descriptor.script_pubkey();
+                        let script_hex = script_pubkey.to_hex_string();
+                        let script_asm = format!("{:?}", script_pubkey)
+                            .replace("Script(", "")
+                            .trim_end_matches(')')
+                            .to_string();
+                        
+                        console_log!("DEBUG DESCRIPTOR: Script hex: {}", script_hex);
+                        console_log!("DEBUG DESCRIPTOR: Script ASM: {}", script_asm);
+                        
+                        // Calculate script size
+                        let script_size = script_pubkey.len();
+                        
+                        return Ok((
+                            script_hex,
+                            script_asm,
+                            Some(address.to_string()),
+                            script_size,
+                            "Taproot".to_string(),
+                            max_satisfaction_size,
+                            max_weight_to_satisfy,
+                            Some(true), // sanity_check
+                            Some(true), // is_non_malleable
+                            Some(descriptor_str),
+                        ));
+                    }
+                    Err(e) => {
+                        console_log!("Failed to parse tr() descriptor with tree notation: {}", e);
+                        // Fall back to original single-leaf approach
+                    }
+                }
+            }
+            
+            // Original single-leaf approach (no OR transformation)
+            console_log!("Using single-leaf approach");
             
             // Create the tree with the miniscript (clone to avoid move)
             let tree = TapTree::Leaf(Arc::new(ms.clone()));
@@ -1560,6 +1621,116 @@ fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(Stri
 }
 
 /// Compile Taproot context miniscript
+/// Compile a parsed Taproot descriptor
+fn compile_parsed_descriptor(descriptor: Descriptor<XOnlyPublicKey>, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    console_log!("Compiling parsed descriptor");
+    
+    // Get the address from the descriptor
+    let address = descriptor.address(network)
+        .map_err(|e| format!("Failed to derive address: {}", e))?;
+    
+    // Get the script pubkey
+    let script_pubkey = descriptor.script_pubkey();
+    let script_hex = script_pubkey.to_hex_string();
+    let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
+    
+    // Calculate script size
+    let script_size = script_pubkey.len();
+    
+    // Get descriptor string
+    let descriptor_str = descriptor.to_string();
+    
+    // For Taproot, max satisfaction depends on the specific path
+    // This is a simplified estimate
+    let max_satisfaction_size = Some(200); // Estimated
+    let max_weight_to_satisfy = Some(script_size as u64 * 4 + 244); // Script weight + input weight
+    
+    Ok((
+        script_hex,
+        script_asm,
+        Some(address.to_string()),
+        script_size,
+        "Taproot".to_string(),
+        max_satisfaction_size,
+        max_weight_to_satisfy,
+        Some(true), // sanity_check
+        Some(true), // is_non_malleable
+        Some(descriptor_str),
+    ))
+}
+
+/// Transform top-level OR patterns to tree notation for Taproot
+fn transform_or_to_tree(miniscript: &str) -> String {
+    let trimmed = miniscript.trim();
+    
+    // Only transform if it starts with or_d, or_c, or or_i
+    if trimmed.starts_with("or_d(") || trimmed.starts_with("or_c(") || trimmed.starts_with("or_i(") {
+        console_log!("Transforming OR pattern to tree notation: {}", trimmed);
+        
+        // Find the opening parenthesis
+        if let Some(start_idx) = trimmed.find('(') {
+            let inner = &trimmed[start_idx + 1..];
+            
+            // Find the comma at the correct depth
+            let mut depth = 0;
+            let mut comma_pos = None;
+            
+            for (i, ch) in inner.chars().enumerate() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => {
+                        if depth == 0 {
+                            // Found the closing parenthesis of the OR
+                            if comma_pos.is_none() {
+                                console_log!("WARNING: No comma found in OR pattern");
+                                return miniscript.to_string();
+                            }
+                            break;
+                        }
+                        depth -= 1;
+                    },
+                    ',' if depth == 0 => {
+                        comma_pos = Some(i);
+                        // Continue to find the closing parenthesis
+                    },
+                    _ => {}
+                }
+            }
+            
+            if let Some(comma_idx) = comma_pos {
+                // Extract left and right branches
+                let left_branch = inner[..comma_idx].trim();
+                
+                // Find the end of the right branch
+                let mut depth = 0;
+                let mut right_end = inner.len();
+                for (i, ch) in inner[comma_idx + 1..].chars().enumerate() {
+                    match ch {
+                        '(' => depth += 1,
+                        ')' => {
+                            if depth == 0 {
+                                right_end = comma_idx + 1 + i;
+                                break;
+                            }
+                            depth -= 1;
+                        },
+                        _ => {}
+                    }
+                }
+                
+                let right_branch = inner[comma_idx + 1..right_end].trim();
+                
+                let result = format!("{{{},{}}}", left_branch, right_branch);
+                console_log!("Transformed to tree notation: {}", result);
+                return result;
+            }
+        }
+    }
+    
+    // No transformation needed
+    miniscript.to_string()
+}
+
 fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     // New approach: wrap miniscript in tr() descriptor with extracted internal key
     console_log!("Compiling Taproot miniscript using tr() descriptor approach");
@@ -1571,10 +1742,42 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
             let normalized_miniscript = ms.to_string();
             console_log!("Normalized miniscript: {}", normalized_miniscript);
             
+            // Transform top-level OR patterns to tree notation
+            let transformed_miniscript = transform_or_to_tree(&normalized_miniscript);
+            console_log!("After OR transformation: {}", transformed_miniscript);
+            
             // Extract internal key name and resolve to actual key
             let internal_key_name = extract_internal_key_from_expression(expression);
             console_log!("Extracted internal key name: {}", internal_key_name);
             
+            // If we transformed an OR pattern, create a new tr() descriptor with tree notation
+            // Otherwise use the original approach
+            console_log!("Comparing: transformed='{}' vs normalized='{}'", transformed_miniscript, normalized_miniscript);
+            if transformed_miniscript != normalized_miniscript {
+                // We transformed an OR to tree notation - create a tr() descriptor
+                console_log!("OR pattern detected and transformed! Creating tr() descriptor with tree notation");
+                
+                // Build the tr() descriptor string with tree notation
+                let tr_descriptor_str = format!("tr({},{})", internal_key_name, transformed_miniscript);
+                console_log!("Attempting to parse descriptor: {}", tr_descriptor_str);
+                
+                // Parse the descriptor with tree notation
+                match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
+                    Ok(descriptor) => {
+                        console_log!("Successfully parsed tr() descriptor with tree notation");
+                        return compile_parsed_descriptor(descriptor, network);
+                    }
+                    Err(e) => {
+                        console_log!("Failed to parse tr() descriptor with tree notation: {}", e);
+                        // Fall back to original single-leaf approach
+                    }
+                }
+            } else {
+                console_log!("No OR transformation applied, using original single-leaf approach");
+            }
+            
+            // Original single-leaf approach (no OR transformation)
+            console_log!("Falling back to single-leaf approach");
             // Parse the tree part as miniscript and create TapTree
             match expression.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
                 Ok(tree_ms) => {
