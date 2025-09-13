@@ -2674,7 +2674,7 @@ class MiniscriptCompiler {
             let match;
             while ((match = pattern.exec(expression)) !== null) {
                 if (pattern.source.includes('multi')) {
-                    // Special handling for multi() - split the variable list
+                    // Special handling for multi() and multi_a() - split the variable list
                     const variables = match[1].split(',').map(v => v.trim());
                     variables.forEach(variable => {
                         if (this.isValidVariableName(variable)) {
@@ -2787,8 +2787,8 @@ class MiniscriptCompiler {
         const variablePatterns = [
             // pk(VarName), pkh(VarName), pk_k(VarName), pk_h(VarName)
             /\b(?:pk|pkh|pk_k|pk_h)\(([A-Za-z_][A-Za-z0-9_]*)\)/g,
-            // multi(threshold,VarName1,VarName2,...)
-            /\bmulti\([0-9]+,([A-Za-z_][A-Za-z0-9_,\s]*)\)/g
+            // multi(threshold,VarName1,VarName2,...) and multi_a(threshold,VarName1,VarName2,...)
+            /\b(?:multi|multi_a)\([0-9]+,([A-Za-z_][A-Za-z0-9_,\s]*)\)/g
         ];
         
         const foundVariables = new Set();
@@ -2797,7 +2797,7 @@ class MiniscriptCompiler {
             let match;
             while ((match = pattern.exec(expression)) !== null) {
                 if (pattern.source.includes('multi')) {
-                    // Special handling for multi() - split the variable list
+                    // Special handling for multi() and multi_a() - split the variable list
                     const variables = match[1].split(',').map(v => v.trim());
                     variables.forEach(variable => {
                         if (this.isValidVariableName(variable)) {
@@ -2817,11 +2817,13 @@ class MiniscriptCompiler {
         for (const variable of foundVariables) {
             // Only add if it's not already defined and not a hex key
             if (!this.keyVariables.has(variable) && !this.isHexString(variable)) {
+                const suggestedType = this.suggestKeyTypeForContext();
+                console.log(`Adding variable ${variable} with suggested type: ${suggestedType}`);
                 keys.push({
                     value: variable,
                     type: 'variable',
                     isDefault: true, // Variables are selected by default
-                    keyType: this.suggestKeyTypeForContext() // Default key type based on current context
+                    suggestedType: suggestedType // Default key type based on current context
                 });
             }
         }
@@ -2842,19 +2844,26 @@ class MiniscriptCompiler {
     }
     
     suggestKeyTypeForContext() {
-        // Get current context from radio buttons
-        const contextRadio = document.querySelector('input[name="context"]:checked');
-        const context = contextRadio ? contextRadio.value : 'segwit';
+        // Get current context from radio buttons - check miniscript context first (for miniscript extraction)
+        const miniscriptContextRadio = document.querySelector('input[name="context"]:checked');
+        const policyContextRadio = document.querySelector('input[name="policy-context"]:checked');
+        
+        // Use miniscript context if available, otherwise policy context
+        const context = miniscriptContextRadio ? miniscriptContextRadio.value : 
+                       (policyContextRadio ? policyContextRadio.value : 'segwit');
+        
+        console.log('Detected context for key extraction:', context);
         
         // Suggest appropriate key type for context
-        switch (context) {
-            case 'taproot':
-                return 'x-only';
-            case 'legacy':
-            case 'segwit':
-            default:
-                return 'compressed';
+        // X-only keys for ANY taproot context
+        if (context.includes('taproot')) {
+            console.log('Suggesting x-only keys for taproot context');
+            return 'x-only';
         }
+        
+        // Compressed keys for legacy and segwit
+        console.log('Suggesting compressed keys for non-taproot context');
+        return 'compressed';
     }
 
     suggestKeyName(keyValue, existingNames = []) {
@@ -3173,7 +3182,9 @@ class MiniscriptCompiler {
                            placeholder="Enter variable name"
                            ${isExisting ? 'disabled' : ''}
                            style="flex: 1; padding: 6px; background: ${isExisting ? 'var(--disabled-bg)' : 'var(--bg-color)'}; border: 1px solid var(--border-color); border-radius: 4px; color: ${isExisting ? 'var(--text-muted)' : 'var(--text-primary)'};">
-                    ${keyObj.type === 'variable' && !isExisting ? `
+                    ${keyObj.type === 'variable' && !isExisting ? (() => {
+                        console.log(`Variable ${keyObj.value} has suggestedType: ${keyObj.suggestedType}`);
+                        return `
                     <label style="color: var(--text-secondary); min-width: 40px;">Type:</label>
                     <select id="extract-type-${index}" 
                             style="padding: 6px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
@@ -3181,7 +3192,8 @@ class MiniscriptCompiler {
                         <option value="x-only" ${keyObj.suggestedType === 'x-only' ? 'selected' : ''}>X-Only (64 chars)</option>
                         <option value="xpub" ${keyObj.suggestedType === 'xpub' ? 'selected' : ''}>xpub (mainnet)</option>
                         <option value="tpub" ${keyObj.suggestedType === 'tpub' ? 'selected' : ''}>tpub (testnet)</option>
-                    </select>` : ''}
+                    </select>`;
+                    })() : ''}
                 </div>
             `;
             
