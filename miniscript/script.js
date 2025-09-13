@@ -2534,6 +2534,20 @@ class MiniscriptCompiler {
         this.keyVariables.set('DavidTimeout', 'd392b6f1f367f211f42f9f78b70b3b0b396ceee8d7b271f098d253ead0991d23');
         this.keyVariables.set('HelenTimeout', '6807e6f3055807b9fac782114835be3627a6adbcf78624748eff45ab3ef05834');
         
+        // Federation keys for Liquid Federation example (x-only for Taproot)
+        this.keyVariables.set('Fed1', 'bc2ee26fb95878c997c000b2fefb9d46cc83abf904214396a7c2c1ced8e1cbe2');
+        this.keyVariables.set('Fed2', 'd5d3a9a02cf7362288af2c602be92d81ac058b2aefa7e067ef6bb824814460d8');
+        this.keyVariables.set('Fed3', '6973ee26249a5bf1477f16b16676e26bc65fdae799c50f6b69e7a78f817525da');
+        this.keyVariables.set('Fed4', '1ea6a146008c42b2489cb90c33eb2760fe3442a1e6a43782819ec14f10fe2eda');
+        this.keyVariables.set('Fed5', '54311aa0b1046a7992a08cf5fd798ff22b913081b120fb0a4adab87af276071c');
+        this.keyVariables.set('Fed6', '3a810842fba0133e13a903567dc2c02bfe2b1b95fecc54dda12a1c0905bfb260');
+        this.keyVariables.set('Fed7', 'faa19fc368d13652b6152a4a52caf8a5fa45d07420783a956ccc6cf0e62ef3c8');
+        
+        // Emergency keys for Liquid Federation example (x-only for Taproot)
+        this.keyVariables.set('Emergency1', '475f47a4cf3d7bdf9115e0c982c17cab2cfe05d5c7a7771d1923bb1a03600e2b');
+        this.keyVariables.set('Emergency2', '2ae7ed98011ea2d21f750b1e096aea8ad6e214599543b2e46b031aa179d7ec03');
+        this.keyVariables.set('Emergency3', 'b0f78c954e7ab83fb9f0c858eb9c7c2d80782671c33fc0556b7dc3ded16a72d4');
+        
         // Joint custody keys for 3-key joint custody example
         this.keyVariables.set('jcKey1', '03fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556');
         this.keyVariables.set('jcKey2', '025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357');
@@ -2560,7 +2574,7 @@ class MiniscriptCompiler {
     }
 
     restoreDefaultKeys() {
-        if (confirm('This will restore 60 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKey1-19), plus X-only vault keys (VaultXOnly1, VaultXOnly2), plus timeout keys (DavidTimeout, HelenTimeout), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
+        if (confirm('This will restore 70 default key variables: Alice, Bob, Charlie, Eva, Frank, Lara, Helen, Ivan, Julia, Karl, David, Mike, Nina, Oliver, Paul, Quinn, Rachel, Sam, Tina, Uma, plus joint custody keys (jcKey1, jcKey2, jcKey3, saKey, jcAg1, jcAg2, jcAg3, recKey1, recKey2, recKey3), plus descriptor keys (TestnetKey, MainnetKey, RangeKey, VaultKey1-19), plus X-only vault keys (VaultXOnly1, VaultXOnly2), plus timeout keys (DavidTimeout, HelenTimeout), plus federation keys (Fed1-7), plus emergency keys (Emergency1-3), plus Liana wallet keys (LianaDesc1-7). Continue?')) {
             this.addDefaultKeys();
         }
     }
@@ -7210,11 +7224,18 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Two-factor auth pattern: or_d ensures happy case (Alice+Bob) never touches hash computation or timelock. Only when Bob fails to cooperate does script evaluate the secret hash and time constraint. hash160 = RIPEMD160(SHA256(preimage))'
         },
         'inheritance': {
-            title: '⚙️ Taproot Inheritance: Nested or_d for Estate Planning',
+            title: '⚙️ Inheritance (Taproot): Nested or_d for Estate Planning',
             structure: 'and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))',
             bitcoinScript: '<David> CHECKSIGVERIFY DUP IF <Helen> CHECKSIG ELSE <Ivan> CHECKSIGVERIFY 52560 CHECKSEQUENCEVERIFY ENDIF',
             useCase: 'David must approve all spending. Helen can inherit immediately, or Ivan after 1 year. Why this structure? David maintains control while alive, Helen gets priority as primary beneficiary.',
             technical: '💡 Inheritance logic: and_v(v:pk(David),...) ensures David always required. or_d(pk(Helen),...) gives Helen immediate access without timelock evaluation. Ivan\'s path only evaluated if Helen unavailable. 52560 blocks ≈ 1 year provides sufficient time for Helen to claim.'
+        },
+        'liquid_federation': {
+            title: '⚙️ Liquid Federation (Taproot): Real-world Byzantine Fault Tolerance',
+            structure: 'or_d(multi_a(5,Fed1,...,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))',
+            bitcoinScript: 'DUP IF <Fed1> CHECKSIG <Fed2> CHECKSIGADD ... <5> NUMEQUAL ELSE <Emergency1> CHECKSIG <Emergency2> CHECKSIGADD <Emergency3> CHECKSIGADD <2> NUMEQUAL VERIFY 4032 CHECKSEQUENCEVERIFY ENDIF',
+            useCase: 'Based on Blockstream Liquid federation. 5-of-7 functionaries control funds normally, but 2-of-3 emergency keys can recover after 28 days if federation fails. Why multi_a? Taproot-specific multisig using CHECKSIGADD for batch validation.',
+            technical: '💡 Real production pattern: or_d ensures federation path (5-of-7) tried first - optimal for normal operation. Emergency recovery (2-of-3) only after 4032 blocks (28 days) prevents premature activation. multi_a uses Taproot\'s CHECKSIGADD for efficient signature aggregation. Byzantine fault tolerant: survives 2 federation key losses.'
         },
         'htlc_time': {
             title: '⚙️ Time-based HTLC: or_d for Efficient Cooperation',
@@ -7672,11 +7693,18 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Two-factor auth pattern: or_d ensures happy case (Alice+Bob) never touches hash computation or timelock. Only when Bob fails to cooperate does script evaluate the secret hash and time constraint. hash160 = RIPEMD160(SHA256(preimage))'
         },
         'inheritance': {
-            title: '⚙️ Taproot Inheritance: Nested or_d for Estate Planning',
+            title: '⚙️ Inheritance (Taproot): Nested or_d for Estate Planning',
             structure: 'and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))',
             bitcoinScript: '<David> CHECKSIGVERIFY DUP IF <Helen> CHECKSIG ELSE <Ivan> CHECKSIGVERIFY 52560 CHECKSEQUENCEVERIFY ENDIF',
             useCase: 'David must approve all spending. Helen can inherit immediately, or Ivan after 1 year. Why this structure? David maintains control while alive, Helen gets priority as primary beneficiary.',
             technical: '💡 Inheritance logic: and_v(v:pk(David),...) ensures David always required. or_d(pk(Helen),...) gives Helen immediate access without timelock evaluation. Ivan\'s path only evaluated if Helen unavailable. 52560 blocks ≈ 1 year provides sufficient time for Helen to claim.'
+        },
+        'liquid_federation': {
+            title: '⚙️ Liquid Federation (Taproot): Real-world Byzantine Fault Tolerance',
+            structure: 'or_d(multi_a(5,Fed1,...,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))',
+            bitcoinScript: 'DUP IF <Fed1> CHECKSIG <Fed2> CHECKSIGADD ... <5> NUMEQUAL ELSE <Emergency1> CHECKSIG <Emergency2> CHECKSIGADD <Emergency3> CHECKSIGADD <2> NUMEQUAL VERIFY 4032 CHECKSEQUENCEVERIFY ENDIF',
+            useCase: 'Based on Blockstream Liquid federation. 5-of-7 functionaries control funds normally, but 2-of-3 emergency keys can recover after 28 days if federation fails. Why multi_a? Taproot-specific multisig using CHECKSIGADD for batch validation.',
+            technical: '💡 Real production pattern: or_d ensures federation path (5-of-7) tried first - optimal for normal operation. Emergency recovery (2-of-3) only after 4032 blocks (28 days) prevents premature activation. multi_a uses Taproot\'s CHECKSIGADD for efficient signature aggregation. Byzantine fault tolerant: survives 2 federation key losses.'
         },
         'htlc_time': {
             title: '⚙️ Time-based HTLC: or_d for Efficient Cooperation',
