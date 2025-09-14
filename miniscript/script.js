@@ -1405,8 +1405,8 @@ class MiniscriptCompiler {
                     content += `
                     <div style="margin-bottom: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                         Branch ${index + 1}:<br>
-                        Miniscript: 
-                        <a href="#" onclick="window.loadBranchMiniscript('${branch.replace(/'/g, "\\'")}')" 
+                        Miniscript:
+                        <a href="#" onclick="window.loadBranchMiniscript('${displayMiniscript.replace(/'/g, "\\'")}')"
                            style="color: var(--accent-color); text-decoration: underline; font-family: monospace; font-size: 13px; word-break: break-all; overflow-wrap: anywhere; display: inline-block; max-width: 100%;">
                            ${displayMiniscript}
                         </a>
@@ -5691,16 +5691,22 @@ class MiniscriptCompiler {
             const expressionInput = document.getElementById('expression-input');
             if (expressionInput) {
                 expressionInput.textContent = miniscript;
-                
+
+                // Hide the miniscript description panel when loading a branch
+                const miniscriptDescPanel = document.getElementById('miniscript-description');
+                if (miniscriptDescPanel) {
+                    miniscriptDescPanel.style.display = 'none';
+                }
+
                 // Trigger syntax highlighting
                 this.highlightMiniscriptSyntax(true); // Skip cursor restore since we're loading new content
-                
+
                 // Position cursor at the end
                 this.positionCursorAtEnd(expressionInput);
-                
+
                 // Focus the input
                 expressionInput.focus();
-                
+
                 console.log('Loaded branch miniscript into editor:', miniscript);
             }
         } catch (error) {
@@ -7193,10 +7199,10 @@ window.showPolicyDescription = function(exampleId) {
     
     const descriptions = {
         'single': {
-            title: '📄 Single Key Policy NEW',
+            title: '📄 Single Key Policy - Direct Ownership',
             conditions: '🔓 Alice: Immediate spending (no restrictions)',
-            useCase: 'Personal wallet with single owner. Simple and efficient for individual use.',
-            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost'
+            useCase: 'Personal wallet with single owner. Simple and efficient for individual use. Compiles to basic pk(key) in miniscript.',
+            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost. Most efficient option: ~73 bytes witness data in Segwit, ~64 bytes in Taproot.'
         },
         'or': {
             title: '📄 OR Keys Policy - Either Party Access',
@@ -7234,6 +7240,15 @@ window.showPolicyDescription = function(exampleId) {
             security: '✅ **Security benefits:** Alice retains full control while providing recovery option. 24-hour delay gives Alice time to move funds if Bob\'s key is compromised. Prevents immediate theft through Bob\'s key.',
             bestFor: '✅ **Best for:** Personal wallets needing backup, elderly users with trusted family, business continuity planning, any scenario where primary user wants emergency recovery with built-in warning time'
         },
+        'alice_or_bob_timelock': {
+            title: '📄 Alice or (Bob + 1 Day) Policy - Simple Recovery Pattern',
+            conditions: '🔓 Alice: Immediate spending (instant access)\n⏰ Bob: Can spend after 144 blocks (~1 day) delay',
+            useCase: '**Basic Recovery Wallet:** Alice has normal control, Bob can recover funds after waiting 1 day. This or() pattern creates two independent spending paths. Compiles to or_d structure where Alice\'s path uses DUP-IF for efficiency.',
+            examples: '💡 **Real-world examples:** Personal wallet with trusted backup, spouse recovery access, business partner emergency key, parent-child shared wallet with safety delay',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is optimized (~73 bytes). Bob\'s path requires both signature and timelock verification (~105 bytes). The or_d pattern allows Alice\'s path to "consume" the condition immediately.',
+            security: '✅ **Security benefits:** Simple two-path design. Alice maintains full daily control. 24-hour delay prevents immediate compromise if Bob\'s key is stolen. Bob cannot spend without waiting the full delay period.',
+            bestFor: '✅ **Best for:** Beginners learning timelock concepts, simple backup scenarios, situations requiring straightforward recovery without complex multisig, demonstrating basic or() and older() usage'
+        },
         'xonly': {
             title: '📄 Taproot X-only Key - Next-Gen Single Key',
             conditions: '🔓 David: Immediate spending (Taproot/Schnorr context)',
@@ -7270,6 +7285,15 @@ window.showPolicyDescription = function(exampleId) {
             security: '✅ **Security benefits:** Alice retains full control, 1-week delay gives Alice time to respond to unauthorized recovery attempts, requires 2-of-3 consensus prevents single family member compromise.',
             bestFor: '✅ **Best for:** Individual wallets with trusted emergency contacts, estate planning, any scenario where primary user wants family backup without compromising daily control'
         },
+        'emergency_recovery': {
+            title: '📄 Emergency Recovery Policy - 95% Alice Priority',
+            conditions: '🔓 Alice: Immediate spending (95@ probability weight - highly optimized)\n⏰ Bob + Charlie + Eva: 2-of-3 consensus after 1008 blocks (~1 week)',
+            useCase: '**Weighted Recovery Wallet:** Alice has complete daily control with 95@ probability weighting for maximum efficiency. Family can recover funds through 2-of-3 consensus after 1 week delay. The high weight ratio (95@) tells the compiler Alice\'s path will be used 95% of the time.',
+            examples: '💡 **Real-world examples:** Solo trader with family emergency backup, individual crypto holder with trusted recovery network, business owner with partner emergency access, crypto enthusiast with friend circle recovery',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is extremely optimized (~64-73 bytes) due to 95@ weight. Recovery path is larger (~200+ bytes) with thresh(2,3) logic plus timelock. The @ syntax enables compiler optimization based on expected usage.',
+            security: '✅ **Security benefits:** Alice maintains full control with no restrictions. 1-week delay provides substantial protection against unauthorized recovery. Requires 2-of-3 family consensus prevents single compromised key from triggering recovery.',
+            bestFor: '✅ **Best for:** Advanced users understanding probability weights, scenarios with clear primary user (95% usage), situations requiring family backup without daily interference, demonstrating @ weight syntax optimization'
+        },
         'twofa': {
             title: '📄 2FA + Backup Policy - Multi-Factor Security',
             conditions: '🔓 Alice + (Bob + secret OR wait 1 year)',
@@ -7290,10 +7314,10 @@ window.showPolicyDescription = function(exampleId) {
         },
         'hodl': {
             title: '📄 HODL Wallet Policy - Long-term Savings with Family Backup',
-            conditions: '🔓 Alice: Immediate spending (9x probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
-            useCase: '**Long-term Savings with Deterrent:** Alice controls daily spending but faces family oversight for emergency recovery. The 9@ weight optimizes for Alice while the 1-year delay discourages frequent spending and provides substantial family intervention time.',
+            conditions: '🔓 Alice: Immediate spending (9@ probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
+            useCase: '**Long-term Savings with Deterrent:** Alice controls daily spending but faces family oversight for emergency recovery. The 9@ weight optimizes for Alice while the 1-year delay discourages frequent spending and provides substantial family intervention time. Compiles to or_d structure with Alice\'s path prioritized in the DUP-IF pattern.',
             examples: '💡 **Real-world examples:** Retirement savings account, long-term investment fund, addiction recovery wallet with family oversight, high-value HODL strategy with family safety net',
-            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized (~64 bytes) due to 9x weight, family recovery path is larger (~250+ bytes) but designed for rare use.',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized (~64 bytes) due to 9@ weight, family recovery path is larger (~250+ bytes) but designed for rare use. The @ syntax tells the compiler the probability ratio for optimization.',
             security: '✅ **Security benefits:** Alice maintains control, 1-year delay prevents impulsive family intervention, 3-of-4 consensus prevents single family member compromise, probability weight optimizes for expected usage.',
             bestFor: '✅ **Best for:** Long-term savings, retirement planning, addiction recovery scenarios, high-value HODL strategies, family wealth management, anyone wanting spending deterrents with family backup'
         },
@@ -7358,24 +7382,24 @@ window.showPolicyDescription = function(exampleId) {
             descContent.innerHTML = `
             <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
-                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); white-space: pre-line; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.conditions}</div>
+                <div style="margin-top: 3px; font-size: 12px; color: var(--secondary-text); white-space: pre-line; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.conditions}</div>
             </div>
             <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Use Case & Scenario:</strong>
-                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+                <div style="margin-top: 3px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
             </div>
             ${desc.examples ? `<div style="margin-bottom: 8px;">
-                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.examples}</div>
+                <div style="margin-top: 3px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.examples}</div>
             </div>` : ''}
             ${desc.efficiency ? `<div style="margin-bottom: 8px;">
-                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.efficiency}</div>
+                <div style="margin-top: 3px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.efficiency}</div>
             </div>` : ''}
             <div style="margin-bottom: 8px;">
                 <strong style="color: var(--text-color); font-size: 12px;">Security Analysis:</strong>
-                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
+                <div style="margin-top: 3px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
             </div>
             ${desc.bestFor ? `<div>
-                <div style="margin-top: 3px; font-size: 11px; color: var(--secondary-text); line-height: 1.4;">${desc.bestFor}</div>
+                <div style="margin-top: 3px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.bestFor}</div>
             </div>` : ''}
         `;
         }
@@ -7436,11 +7460,11 @@ window.showMiniscriptDescription = function(exampleId) {
             technical: '💡 Taproot uses Schnorr signatures with X-only keys'
         },
         'multisig': {
-            title: '⚙️ 1-of-3 Multisig Using or_d',
+            title: '⚙️ 1-of-3 Multisig Using or_d vs Traditional multi()',
             structure: 'or_d(pk(Alice),or_d(pk(Bob),pk(Charlie))) → Nested OR with DUP-IF pattern',
             bitcoinScript: 'DUP IF <Alice> CHECKSIG ELSE DUP IF <Bob> CHECKSIG ELSE <Charlie> CHECKSIG ENDIF ENDIF',
-            useCase: 'Any of three parties can spend. Why or_d? Because we want the first successful signature to consume the condition, not evaluate all possibilities.',
-            technical: '💡 or_d chosen over or_i/or_b because: 1) More efficient for multiple options (early exit), 2) DUP-IF pattern is cheaper than boolean operations for N>2 cases, 3) Left branch "consumes" the condition when satisfied'
+            useCase: 'Any of three parties can spend. Why or_d instead of multi(1,Alice,Bob,Charlie)? The or_d pattern allows different weight/probability per key and enables more complex nesting, while multi() treats all keys equally.',
+            technical: '💡 or_d vs multi() vs or_i: or_d = efficient early exit with DUP-IF pattern, best for unequal probability. multi(1,3) = uses OP_CHECKMULTISIG, equal treatment of keys, slightly larger. or_i = IF-ELSE requires witness to specify branch. For 1-of-N with equal probability, use multi(). For weighted/nested cases, use or_d.'
         },
         'recovery': {
             title: '⚙️ Recovery Wallet Using or_d Logic',
@@ -7468,7 +7492,7 @@ window.showMiniscriptDescription = function(exampleId) {
             structure: 'or_d(multi_a(5,Fed1,...,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))',
             bitcoinScript: 'DUP IF <Fed1> CHECKSIG <Fed2> CHECKSIGADD ... <5> NUMEQUAL ELSE <Emergency1> CHECKSIG <Emergency2> CHECKSIGADD <Emergency3> CHECKSIGADD <2> NUMEQUAL VERIFY 4032 CHECKSEQUENCEVERIFY ENDIF',
             useCase: 'Based on Blockstream Liquid federation. 5-of-7 functionaries control funds normally, but 2-of-3 emergency keys can recover after 28 days if federation fails. Why multi_a? Taproot-specific multisig using CHECKSIGADD for batch validation.',
-            technical: '💡 Real production pattern: or_d ensures federation path (5-of-7) tried first - optimal for normal operation. Emergency recovery (2-of-3) only after 4032 blocks (28 days) prevents premature activation. multi_a uses Taproot\'s CHECKSIGADD for efficient signature aggregation. Byzantine fault tolerant: survives 2 federation key losses.'
+            technical: '💡 Real production pattern: or_d ensures federation path (5-of-7) tried first - optimal for normal operation. Emergency recovery (2-of-3) only after 4032 blocks (28 days) prevents premature activation. multi_a uses Taproot\'s OP_CHECKSIGADD which accumulates signature validation results: each valid sig adds 1 to counter, then NUMEQUAL checks if threshold reached. This is more efficient than legacy OP_CHECKMULTISIG. Byzantine fault tolerant: survives 2 federation key losses.'
         },
         'htlc_time': {
             title: '⚙️ Time-based HTLC: or_d for Efficient Cooperation',
@@ -7489,14 +7513,14 @@ window.showMiniscriptDescription = function(exampleId) {
             structure: 'pk([fingerprint/derivation]xpub.../path/index) → Complete BIP32 descriptor',
             bitcoinScript: 'Derives specific public key from xpub using BIP32 hierarchical deterministic derivation',
             useCase: 'Production wallet descriptor with full metadata: master key fingerprint (C8FE8D4F), hardened derivation path (48h/1h/123h/2h), and specific address index (0/0). 💡 Use 🏷️ Hide key names to see the full raw descriptor.',
-            technical: '💡 Complete descriptor anatomy: [fingerprint/origin_path]xpub_key/final_path. Fingerprint identifies master key, origin shows derivation from master to xpub, final path derives specific key. Essential for wallet interoperability and backup recovery.'
+            technical: '💡 Complete descriptor anatomy: [fingerprint/origin_path]xpub_key/final_path. Fingerprint (8 hex chars) identifies master key. Origin path (48h/1h/123h/2h) shows BIP32 derivation from master to xpub, where h means hardened (BIP44/48/84). Final path (0/0) derives specific key from xpub. This metadata ensures wallet recovery even if software changes.'
         },
         'range_descriptor': {
             title: '⚙️ Multipath Range Descriptor (BIP389)',
             structure: 'pk([fingerprint/path]tpub.../<1;0>/*) → Multiple derivation paths in one descriptor',
             bitcoinScript: 'Single descriptor template that expands to multiple derived public keys for different address types',
             useCase: 'Advanced wallet pattern for generating both change (path 1) and receive (path 0) addresses from one descriptor. Why multipath? Eliminates need for separate descriptors. 💡 Use 🏷️ Hide key names to see the full raw descriptor with <1;0>/* syntax.',
-            technical: '💡 BIP389 multipath magic: <1;0>/* expands to TWO paths: .../1/* (change addresses) and .../0/* (receive addresses). Single descriptor = dual functionality. Reduces descriptor storage and simplifies wallet architecture. Testnet tpub ensures testnet address generation.'
+            technical: '💡 BIP389 multipath magic: <1;0>/* expands to TWO paths: .../1/* (change addresses) and .../0/* (receive addresses). The semicolon syntax allows multiple indices in one descriptor. When compiled, creates separate miniscript instances for each path. This reduces descriptor storage by 50% and simplifies HD wallet implementation. The /* wildcard enables infinite address generation from each path.'
         },
         'pkh': {
             title: '⚙️ Pay-to-pubkey-hash',
