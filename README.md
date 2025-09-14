@@ -1,4 +1,4 @@
-# Miniscript Compiler
+# Miniscript Studio
 
 A WebAssembly-powered miniscript compiler that runs in the browser. This tool allows you to compile Bitcoin policies and miniscripts to Bitcoin Script bytecode, supporting Legacy (P2SH), Segwit v0 (P2WSH), and Taproot contexts.
 
@@ -18,7 +18,7 @@ A WebAssembly-powered miniscript compiler that runs in the browser. This tool al
 
 ## Key Variables
 
-The compiler allows you to define reusable key variables instead of typing full public keys repeatedly:
+The studio allows you to define reusable key variables instead of typing full public keys repeatedly:
 
 ### How to Use Key Variables
 
