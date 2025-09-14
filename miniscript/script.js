@@ -873,11 +873,17 @@ class MiniscriptCompiler {
                 
                 if (!isPolicyResult) {
                     expressionInput.textContent = editorMiniscript;
+
+                    // Hide the miniscript description panel when loading compiled miniscript
+                    const miniscriptDescPanel = document.getElementById('miniscript-description');
+                    if (miniscriptDescPanel) {
+                        miniscriptDescPanel.style.display = 'none';
+                    }
                 } else {
                     console.log('Policy compilation returned multiple miniscripts, clearing miniscript editor:', editorMiniscript);
                     // Clear the miniscript editor
                     expressionInput.textContent = '';
-                    
+
                     // Clear hex and ASM fields
                     const scriptHexDisplay = document.getElementById('script-hex-display');
                     const scriptAsmDisplay = document.getElementById('script-asm-display');
@@ -3388,9 +3394,9 @@ class MiniscriptCompiler {
         // Show warning if some keys already exist
         if (existingKeys.length > 0) {
             errorDiv.style.display = 'block';
-            errorDiv.style.background = 'var(--warning-bg, #FEF3C7)';
-            errorDiv.style.borderColor = 'var(--warning-border, #F59E0B)';
-            errorDiv.style.color = 'var(--warning-text, #92400E)';
+            errorDiv.style.background = 'var(--error-bg, #FED7D7)';
+            errorDiv.style.borderColor = 'var(--error-border, #F87171)';
+            errorDiv.style.color = 'var(--error-text, #991B1B)';
             errorDiv.textContent = `⚠️ ${existingKeys.length} key${existingKeys.length > 1 ? 's' : ''} already exist${existingKeys.length > 1 ? '' : 's'} as variable${existingKeys.length > 1 ? 's' : ''}. They are unchecked by default.`;
         }
         
