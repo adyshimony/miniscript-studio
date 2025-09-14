@@ -5,6 +5,11 @@ class MiniscriptCompiler {
     constructor() {
         this.wasm = null;
         this.keyVariables = new Map();
+        this.DEFAULT_VARIABLES_VERSION = '1.1.0'; // Increment when adding new variables
+        
+        // Single shared map of default variables
+        this.defaultVariables = new Map();
+        this.initializeDefaultVariables();
         this.undoStacks = {
             policy: [],
             miniscript: []
@@ -2457,19 +2462,185 @@ class MiniscriptCompiler {
     loadKeyVariables() {
         try {
             const saved = localStorage.getItem('miniscript-key-variables');
+            const storedVersion = localStorage.getItem('defaultVariablesVersion');
+            
             if (saved) {
+                // Load existing variables
                 const keyVars = JSON.parse(saved);
                 this.keyVariables = new Map(Object.entries(keyVars));
+                
+                // Check if we need to add new defaults (only if version doesn't exist or is lower)
+                if (!storedVersion || this.compareVersions(storedVersion, this.DEFAULT_VARIABLES_VERSION) < 0) {
+                    console.log('Updating default variables from version', storedVersion || 'none', 'to', this.DEFAULT_VARIABLES_VERSION);
+                    const success = this.addMissingDefaults();
+                    if (success) {
+                        localStorage.setItem('defaultVariablesVersion', this.DEFAULT_VARIABLES_VERSION);
+                    }
+                }
             } else {
-                // Add default keys if none exist
+                // First time - add all defaults
+                console.log('First time setup - adding all default variables');
                 this.addDefaultKeys();
+                localStorage.setItem('defaultVariablesVersion', this.DEFAULT_VARIABLES_VERSION);
             }
+            
             this.displayKeyVariables();
         } catch (error) {
             console.error('Failed to load key variables:', error);
             this.keyVariables = new Map();
             this.addDefaultKeys();
+            localStorage.setItem('defaultVariablesVersion', this.DEFAULT_VARIABLES_VERSION);
         }
+    }
+
+    initializeDefaultVariables() {
+        // Initialize default keys map - single source of truth
+        
+        // Legacy/Segwit keys (compressed, 66-char, starting with 02/03) - for general examples
+        // Using user-provided keys from the list
+        this.defaultVariables.set('Alice', '033108da02281dbf63d0480e1e03c4a3c6c7393174b1576fe4178691fd48fb8b14');
+        this.defaultVariables.set('Bob', '027b9e2fc66d4739419e6a3ac53094c712e45c7487ffdaa5702db56ac776b9aa1a');
+        this.defaultVariables.set('Charlie', '03aad49a4e5797120937d12ecce2d9bb5d084f23328d8c087ee11c1ffb32dfb147');
+        this.defaultVariables.set('Eva', '02f40e525d4afb19a201a6a2c682ead78a6acc3e8c7a5cd62eed06aff293226344');
+        this.defaultVariables.set('Frank', '02a637b9be8d76a819335bd0b45003999536978458751116533d3509bca60a3644');
+        this.defaultVariables.set('Lara', '0351997c99a7a836f245f9dc41a6d69ce4e12a34a2a03426255459d6a687aea6fb');
+        this.defaultVariables.set('Mike', '039fb9fb76b517a4b4abf669753f8d15ea2662406f41d81cf653786d5e801669e6');
+        this.defaultVariables.set('Nina', '03bbcf8cec17f38805f85caebedadd11249288982116a36a04d0bde7536cb398ba');
+        this.defaultVariables.set('Oliver', '0268247923e4aa3ada325273da449120e4636cb2c93ecd3f1de19d06e21c1d791b');
+        this.defaultVariables.set('Paul', '03d880ecc7398be443de5a7a771b2abc1fad0e53019cb02ebe54b7023a92224602');
+        this.defaultVariables.set('Quinn', '02f64a9e5d4b016f7ffd399565ee9184b0ca9e6cd741729135dded51a30b32bac5');
+        this.defaultVariables.set('Rachel', '0341128d2ed2a33724fc5f414ac758208cb7ece905fc3b28c4ecb7c5ce03c63d42');
+        this.defaultVariables.set('Sam', '0324b5c4d0352cb6f81279cf997f20edfd1917933f3c90031b81438d72df339a77');
+        this.defaultVariables.set('Tina', '03f6f1ee1b5bdbbc025743f6949df194fb15553ee1ad9da0cb5ee7bf1bfac7d072');
+        this.defaultVariables.set('Uma', '02667d7fe14ee12bc1b2c648b76a1db859914a0f3c51cd893091b6f1eb71387708');
+        
+        // Taproot keys (x-only, 64-char) - for Taproot examples
+        // NUMS is always the standard "Nothing Up My Sleeve" point
+        this.defaultVariables.set('NUMS', '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0');
+        
+        // Using user-provided x-only keys
+        this.defaultVariables.set('David', '949d28ca35b73310be212fda35ce9a6e65cd7187113dfcc614f16288d184cc07');
+        this.defaultVariables.set('Helen', 'f5464d4ed9a15e1690c38101dd5a9338f61323e01afbedef0dce7ee899599d07');
+        this.defaultVariables.set('Ivan', 'aa93ec97d13000b361e4363f0e37699eecca9833d20fd238a1f1983f8b133c77');
+        this.defaultVariables.set('Julia', '12feef5cbd455473cd23d58a4e901149bcb5e2704ffbfb1833b4ba10ab622582');
+        this.defaultVariables.set('Karl', 'b909dbdd62c735681c7ee82df9096a3d5fcb9dfcf8f260f27c8029d4105916cf');
+        
+        // Complex descriptor keys
+        this.defaultVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/1');
+        this.defaultVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
+        this.defaultVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<1;0>/*');
+        
+        // Vault keys for complex vault examples with range descriptors
+        this.defaultVariables.set('VaultKey1', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<10;11>/*');
+        this.defaultVariables.set('VaultKey2', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<8;9>/*');
+        this.defaultVariables.set('VaultKey3', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<6;7>/*');
+        this.defaultVariables.set('VaultKey4', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<6;7>/*');
+        this.defaultVariables.set('VaultKey5', '[7FBA5C83/48h/1h/123h/2h]tpubDE5BZRXogAy3LHDKYhfuw2gCasYxsfKPLrfdsS9GxAV45v7u2DAcBGCVKPYjLgYeMMKq29aAHy2xovHL9KTd8VvpMHfPiDA9jzBwCg73N5H/<4;5>/*');
+        this.defaultVariables.set('VaultKey6', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<12;13>/*');
+        this.defaultVariables.set('VaultKey7', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<10;11>/*');
+        this.defaultVariables.set('VaultKey8', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<8;9>/*');
+        this.defaultVariables.set('VaultKey9', '[CB6FE460/48h/1h/123h/2h]tpubDFJbyzFGfyGhwjc2CP7YHjD3hK53AoQWU2Q5eABX2VXcnEBxWVVHjtZhzg9PQLnoHe6iKjR3TamW3N9RVAY5WBbK5DBAs1D86wi2DEgMwpN/<6;7>/*');
+        this.defaultVariables.set('VaultKey10', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<16;17>/*');
+        this.defaultVariables.set('VaultKey11', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<14;15>/*');
+        this.defaultVariables.set('VaultKey12', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<12;13>/*');
+        this.defaultVariables.set('VaultKey13', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<10;11>/*');
+        this.defaultVariables.set('VaultKey14', '[9F996716/48h/1h/0h/2h]tpubDFCY8Uy2eRq7meifV2Astvt8AsTLsrMX7vj7cLtZ6aPRcYGsAL4PXY1JZR2SfD3i2CRAwy9fm9Cq3xVeuWsvAcRnz9oc1umGL68Wn9QeT3q/<8;9>/*');
+        this.defaultVariables.set('VaultKey15', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<16;17>/*');
+        this.defaultVariables.set('VaultKey16', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<14;15>/*');
+        this.defaultVariables.set('VaultKey17', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<12;13>/*');
+        this.defaultVariables.set('VaultKey18', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHEc6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<10;11>/*');
+        this.defaultVariables.set('VaultKey19', '[0A4E923E/48h/1h/123h/2h]tpubDFNEWRT6uX3mjWE2c6CnbdQ7awvvnGub5s9ntaSyoQ4SSNmhHec6RJ4Exwd2aLfGppDhvvey7gvYc7jiYfDFWtYG2sKXjKthhSs1X9yBkSy/<8;9>/*');
+        
+        // X-only vault keys for Taproot inheritance scenarios
+        // Using user-provided x-only keys
+        this.defaultVariables.set('VaultXOnly1', '212072cffcfb16565a87e9155f0db052184310a3279d215fea838dd7eaf6d70e');
+        this.defaultVariables.set('VaultXOnly2', 'b935fb5e50e2e52248675298e33a1dd35df50f223a8039be628842dc489f3519');
+        
+        // Timeout keys for Lightning Channel scenarios (x-only keys)
+        this.defaultVariables.set('DavidTimeout', '5900cf902caf8f3a2ce4f7fed091078b4124ea59ade0af3b8e7c5cce596a83af');
+        this.defaultVariables.set('HelenTimeout', '041a8011e4f5c9e61f4baccdc3a6e7d0c3043e291885ed7d5a5661ae85112704');
+        
+        // Federation keys for Liquid Federation example (x-only for Taproot)
+        // Using user-provided x-only keys
+        this.defaultVariables.set('Fed1', 'ac84be904145f71bcf00316eb9883eb06b4f0de21ae8f85bc6d3a133203c2bfa');
+        this.defaultVariables.set('Fed2', 'eebc41183c92fafe6c5006fe0d4a9beff8c0da840cef3a8c90dad6d77bf8be6e');
+        this.defaultVariables.set('Fed3', 'ca3e617588daa3ebfcba2e55344dabe87940af10959e3f2bba8ab891ea1f26fe');
+        this.defaultVariables.set('Fed4', '714bab132ece7a2a53e7def19bbe2ec2f4bb21c2a19d6b94d3d49ae7084ceb0a');
+        this.defaultVariables.set('Fed5', 'b34dad68287687c6d412993f3ccac526deb46de31dac2784de29e9645ea2de65');
+        this.defaultVariables.set('Fed6', 'ca0cc998e3f786bca473eeee826c23fbcebd7f40523559420ccd6e9cd218f4eb');
+        this.defaultVariables.set('Fed7', '69606629f514473abc06360190f7ad4cfc5628553b0e22f3fbf47429f81aedd3');
+        
+        // Emergency keys for Liquid Federation example (x-only for Taproot)
+        this.defaultVariables.set('Emergency1', '2593cb7035c6a2b88fe44e95204abbac2b9aae52ed4867e9496b547c8040f125');
+        this.defaultVariables.set('Emergency2', '760637963d15b04f7163e010f8715f99d893c0534d9b0262b77f9169f5fb9c4d');
+        this.defaultVariables.set('Emergency3', '1b91b27aa57ac32a9b36c58bfd7dc7ff5a28a198e16f4c4df4778fd20cfe7fcb');
+        
+        // Joint custody keys for 3-key joint custody example (compressed keys)
+        // Using user-provided compressed keys
+        this.defaultVariables.set('jcKey1', '033041bd15eb4dbbd07c1c740451fc2eebbbc11286b1af1f402c8e580ceac25fd1');
+        this.defaultVariables.set('jcKey2', '03e9bb7e2d23b9478e13faef05418f7e09c86137c72f4e9bf61cd52e6a9e100647');
+        this.defaultVariables.set('jcKey3', '034adf56653cd9bdef9cb4eaa81223ea98a27209e6da87ee8ece3a4b562fa4924b');
+        this.defaultVariables.set('saKey', '0245a02e01f1040ee34d1f58251bc23de26b7aaf79b6b38133a5b98f6cad43380a');
+        this.defaultVariables.set('jcAg1', '024f5870935b3c8991e48c2f135f4f85d9d421417aae20acf2835b6e69fc0128af');
+        this.defaultVariables.set('jcAg2', '03c073d7a1c4cc21f9013fc83d6321450b7cc9070c661e903cc3ea369cb523b6ff');
+        this.defaultVariables.set('jcAg3', '03925530b4936876374f70134fb2bdeef911c37949a87d26f70ff477c22a9aad15');
+        this.defaultVariables.set('recKey1', '03e6e4229201dd72ed13d92fb966cd155bea34d2b866ca98159eec1688a7f8b03b');
+        this.defaultVariables.set('recKey2', '0349ab1d8965e88bbed5ab193463ec0abd7d9cf8958f15d1c074e474ee1e25d11b');
+        this.defaultVariables.set('recKey3', '021c46ba9e321cba31ef09b4c8bd996b31306c904f748aae96a5bb22150e54ff00');
+        
+        // Liana wallet descriptor keys for multi-tier recovery vault example
+        this.defaultVariables.set('LianaDesc1', '[b883f127/48\'/1\'/2\'/2\']tpubDEP7MLK6TGe1EWhKGpMWdQQCvMmS6pRjCyN7PW24afniPJYdfeMMUb2fau3xTku6EPgA68oGuR4hSCTUpu2bqaoYrLn2UmhkytXXSzxcaqt/0/0');
+        this.defaultVariables.set('LianaDesc2', '[636adf3f/48\'/1\'/2\'/2\']tpubDFnPUtXZhnftEFD5vg4LfVoApf5ZVB8Nkrf8CNe9pT9j1EEPXssJnMgAjmvbTChHugnkfVfsmGafFnE6gwoifJNybSasAJ316dRpsP86EFb/0/0');
+        this.defaultVariables.set('LianaDesc3', '[b883f127/48\'/1\'/3\'/2\']tpubDFPMBua4idthySDayX1GxgXgPbpaEVfU7GwMc1HAfneknhqov5syrNuq4NVdSVWa2mPVP3BD6f2pGB98pMsbnVvWqrxcLgwv9PbEWyLJ6cW/0/0');
+        this.defaultVariables.set('LianaDesc4', '[636adf3f/48\'/1\'/1\'/2\']tpubDDvF2khuoBBj8vcSjQfa7iKaxsQZE7YjJ7cJL8A8eaneadMPKbHSpoSr4JD1F5LUvWD82HCxdtSppGfrMUmiNbFxrA2EHEVLnrdCFNFe75D/0/0');
+        this.defaultVariables.set('LianaDesc5', '[636adf3f/48\'/1\'/0\'/2\']tpubDEE9FvWbG4kg4gxDNrALgrWLiHwNMXNs8hk6nXNPw4VHKot16xd2251vwi2M6nsyQTkak5FJNHVHkCcuzmvpSbWHdumX3DxpDm89iTfSBaL/0/0');
+        this.defaultVariables.set('LianaDesc6', '[b883f127/48\'/1\'/0\'/2\']tpubDET11c81MZjJvsqBikGXfn1YUzXofoYQ4HkueCrH7kE94MYkdyBvGzyikBd2KrcBAFZWDB6nLmTa8sJ381rWSQj8qFvqiidxqn6aQv1wrJw/0/0');
+        this.defaultVariables.set('LianaDesc7', '[b883f127/48\'/1\'/1\'/2\']tpubDEA6SKh5epTZXebgZtcNxpLj6CeZ9UhgHGoGArACFE7QHCgx76vwkzJMP5wQ9yYEc6g9qSGW8EVzn4PhRxiFz1RUvAXBg7txFnvZFv62uFL/0/0');
+    }
+
+    addMissingDefaults() {
+        // Use the shared defaultVariables map instead of calling getDefaultKeys()
+        const existingValues = new Set([...this.keyVariables.values()]); // Get all current values
+        let addedCount = 0;
+        let skippedConflicts = 0;
+        
+        this.defaultVariables.forEach((defaultValue, keyName) => {
+            // Only add if key name doesn't exist
+            if (!this.keyVariables.has(keyName)) {
+                // Check if the value conflicts with existing values
+                if (existingValues.has(defaultValue)) {
+                    console.log(`Skipping ${keyName}: value already exists for another key`);
+                    skippedConflicts++;
+                } else {
+                    this.keyVariables.set(keyName, defaultValue);
+                    existingValues.add(defaultValue); // Track the new value
+                    addedCount++;
+                    console.log(`Added missing default: ${keyName}`);
+                }
+            }
+        });
+        
+        if (addedCount > 0 || skippedConflicts > 0) {
+            console.log(`Smart merge completed: Added ${addedCount} new variables, skipped ${skippedConflicts} conflicts`);
+            this.saveKeyVariables();
+        }
+        
+        return addedCount > 0; // Return success if any were added
+    }
+
+    compareVersions(v1, v2) {
+        // Compare version strings like "1.1.0" vs "1.2.0"
+        // Returns: -1 if v1 < v2, 0 if equal, 1 if v1 > v2
+        const parts1 = v1.split('.').map(Number);
+        const parts2 = v2.split('.').map(Number);
+        
+        for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+            const part1 = parts1[i] || 0;
+            const part2 = parts2[i] || 0;
+            if (part1 < part2) return -1;
+            if (part1 > part2) return 1;
+        }
+        return 0;
     }
 
     addDefaultKeys() {
