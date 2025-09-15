@@ -755,6 +755,7 @@ class MiniscriptCompiler {
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
                 // Display results (without the info box since we show it in the success message)
+                console.log('🚀 About to call displayResults with result:', result);
                 this.displayResults(result);
             } else {
                 this.showMiniscriptError(result.error);
@@ -953,7 +954,8 @@ class MiniscriptCompiler {
                     // For descriptor validation from policy, build the message using compiled miniscript from editor
                     successMsg = `Valid descriptor: wsh(${displayMiniscript})`;
                     // Fix the script field for results display - should show "No single script..." not validation message
-                    result.script = "No single script - this descriptor defines multiple paths";
+                    result.script = "No single script - this descriptor defines multiple paths. Choose derivation index below to derive";
+                    result.script_asm = "No single script - this descriptor defines multiple paths. Choose derivation index below to derive";
                 } else {
                     // Show normal compilation success message with spending cost analysis format
                     successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
@@ -4389,7 +4391,7 @@ class MiniscriptCompiler {
             copyHexButton.addEventListener('click', () => {
                 this.copyHexScript(hexDisplay);
             });
-            
+
             resultsDiv.appendChild(scriptDiv);
         }
 
@@ -4579,7 +4581,8 @@ class MiniscriptCompiler {
             networkToggleBtn.addEventListener('click', () => {
                 this.toggleAddressNetwork(networkToggleBtn, addressDisplay);
             });
-            
+
+
             resultsDiv.appendChild(addressDiv);
         } else {
             const noAddressDiv = document.createElement('div');
@@ -4592,7 +4595,10 @@ class MiniscriptCompiler {
             `;
             resultsDiv.appendChild(noAddressDiv);
         }
-        
+
+        // Add derivation index field if needed
+        this.addDerivationIndexField();
+
         // Apply light theme styling to newly created script elements
         if (document.documentElement.getAttribute('data-theme') === 'light') {
             const scriptHex = document.getElementById('script-hex-display');
@@ -4601,6 +4607,182 @@ class MiniscriptCompiler {
             if (scriptHex) this.enforceElementStyling(scriptHex);
             if (scriptAsm) this.enforceElementStyling(scriptAsm);
             if (addressDisplay) this.enforceElementStyling(addressDisplay);
+        }
+    }
+
+    addDerivationIndexField() {
+        console.log('🔍 addDerivationIndexField() CALLED');
+
+        // Check if the miniscript expression has wildcards (ends with *)
+        const expressionInput = document.getElementById('expression-input');
+        const currentExpression = expressionInput ? expressionInput.textContent.trim() : '';
+
+        console.log('=== DERIVATION INDEX DETECTION ===');
+        console.log('Current expression:', currentExpression);
+        console.log('Expression length:', currentExpression.length);
+
+        // Check for wildcards in multiple formats:
+        // 1. In show key names mode: pk(VaultKey1) where VaultKey1 contains /*
+        // 2. In hide key names mode: pk([fingerprint/path]xpub.../*)
+        // 3. Any wildcard pattern: /*), /*)), /*),), etc.
+        let hasWildcardDescriptor = false;
+
+        // Only show derivation index for simple wildcards like:
+        // - /* (single level wildcard)
+        // - /1/* (path followed by wildcard)
+        // - /*/*/* (multiple level wildcards)
+        // Exclude multipath descriptors like <1;0>/*, <10;11>/*, <16;17>/*, etc. because they represent branch choices, not derivation indices
+        if (/\/\*[),]*/.test(currentExpression) && !/<\d+;\d+>/.test(currentExpression)) {
+            hasWildcardDescriptor = true;
+        }
+
+        console.log('Has wildcard descriptor:', hasWildcardDescriptor);
+
+        // Check if any key variables contain wildcards (for show key names mode)
+        if (!hasWildcardDescriptor && this.keyVariables) {
+            // Extract key names from expressions like pk(VaultKey1)
+            const keyNameMatches = currentExpression.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/g);
+            if (keyNameMatches) {
+                for (const match of keyNameMatches) {
+                    const keyName = match.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/)[1] || match.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/)[2];
+                    if (keyName && this.keyVariables.has(keyName)) {
+                        const keyValue = this.keyVariables.get(keyName);
+                        // Only show for simple wildcards, exclude multipath patterns like <10;11>/*
+                        if (keyValue && keyValue.includes('/*') && !/<\d+;\d+>/.test(keyValue)) {
+                            hasWildcardDescriptor = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (hasWildcardDescriptor) {
+            const resultsDiv = document.getElementById('results');
+            const derivationDiv = document.createElement('div');
+            derivationDiv.className = 'result-box info';
+            derivationDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0; font-size: 12px; letter-spacing: 0.5px;">🗝️ Derivation index</h4>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="text"
+                           id="derivation-index"
+                           placeholder="*"
+                           value="*"
+                           pattern="[0-9]*|\\*"
+                           style="width: 32px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center;">
+                    <span style="color: var(--text-secondary); font-size: 12px;">
+                        Enter a specific index to generate address and compile
+                    </span>
+                    <button id="apply-derivation-btn"
+                            title="Compile with derivation index to see specific address"
+                            class="primary-btn"
+                            style="padding: 6px 10px; font-size: 12px; transform: scale(0.85); transition: all 0.2s ease;"
+                            onmouseover="this.style.transform='scale(0.85) translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(61, 69, 83, 0.3)'"
+                            onmouseout="this.style.transform='scale(0.85) translateY(0px)'; this.style.boxShadow=''">
+                        🔨 Compile
+                    </button>
+                </div>
+            `;
+
+            // Add event listeners for derivation index
+            const derivationInput = derivationDiv.querySelector('#derivation-index');
+            const applyButton = derivationDiv.querySelector('#apply-derivation-btn');
+
+            // Validation for derivation input
+            const validateDerivationInput = () => {
+                const value = derivationInput.value.trim();
+                const isValid = value === '*' || (value !== '' && !isNaN(value) && parseInt(value) >= 0 && parseInt(value) <= 2147483647);
+
+                applyButton.disabled = !isValid;
+
+                if (isValid) {
+                    derivationInput.style.borderColor = 'var(--success-border)';
+                } else if (value !== '') {
+                    derivationInput.style.borderColor = 'var(--error-border)';
+                } else {
+                    derivationInput.style.borderColor = 'var(--border-color)';
+                }
+            };
+
+            derivationInput.addEventListener('input', validateDerivationInput);
+
+            applyButton.addEventListener('click', () => {
+                const expressionInput = document.getElementById('expression-input');
+                const originalExpression = expressionInput.textContent.trim();
+                const index = derivationInput.value.trim();
+
+                if (index === '*') return; // Don't compile if it's still *
+
+                if (!index || isNaN(index)) return;
+
+                // Simple approach: replace ALL * with the index
+                let modifiedExpression = originalExpression.replace(/\*/g, index);
+
+                console.log('Derivation compilation:', {
+                    original: originalExpression,
+                    modified: modifiedExpression,
+                    index: index
+                });
+
+                // Store current input value before compilation
+                const currentInputValue = derivationInput.value;
+
+                // Compile directly with the modified expression
+                this.compileMiniscriptExpression(modifiedExpression, originalExpression);
+
+                // Restore the input value
+                setTimeout(() => {
+                    const newDerivationInput = document.getElementById('derivation-index');
+                    if (newDerivationInput) {
+                        newDerivationInput.value = currentInputValue;
+                    }
+                }, 100);
+
+                // Show brief feedback
+                applyButton.textContent = `✓ Compiled`;
+                setTimeout(() => {
+                    const newApplyButton = document.getElementById('apply-derivation-btn');
+                    if (newApplyButton) {
+                        newApplyButton.textContent = '🔨 Compile';
+                    }
+                }, 1000);
+            });
+
+            // Initial validation
+            validateDerivationInput();
+
+            resultsDiv.appendChild(derivationDiv);
+        }
+    }
+
+    compileMiniscriptExpression(modifiedExpression, originalExpression) {
+        // Compile the modified expression without touching the editor
+        const context = document.querySelector('input[name="context"]:checked').value;
+
+        const result = compile_miniscript(modifiedExpression, context);
+
+        // Store the original expression for restoration
+        this.originalExpression = originalExpression;
+
+        // Display results with custom success message for derivation index
+        if (result.success) {
+            // For derivation index compilation, show the modified expression in success message
+            // Build appropriate success message based on result type
+            let successMsg = '';
+            if (result.miniscript_type === 'Descriptor' && result.compiled_miniscript) {
+                successMsg = `Valid descriptor: wsh(${modifiedExpression})`;
+            } else {
+                // For Segwit v0 and other types, show that it was derived from the modified expression
+                successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
+                successMsg += `Derived from: ${modifiedExpression}`;
+            }
+
+            this.showMiniscriptSuccess(successMsg, modifiedExpression);
+            this.displayResults(result);
+        } else {
+            this.showError(result.error);
         }
     }
 
@@ -6849,6 +7031,123 @@ class MiniscriptCompiler {
             alert('Failed to save policy. Local storage might be full.');
         }
     }
+
+    // Derivation index functionality for xpub/tpub descriptors
+    initDerivationIndex() {
+        const derivationContainer = document.getElementById('derivation-index-container');
+        const derivationInput = document.getElementById('derivation-index');
+        const applyButton = document.getElementById('apply-derivation-btn');
+        const expressionInput = document.getElementById('expression-input');
+
+        // Check for range descriptors when expression changes
+        const checkForRangeDescriptor = () => {
+            const expression = expressionInput.textContent.trim();
+            const hasWildcard = /[xt]pub[A-Za-z0-9]+[^)]*\/\*/.test(expression);
+
+            // Show always for now (for testing)
+            derivationContainer.style.display = 'flex';
+
+            // Show * in input field if it's a range descriptor
+            if (hasWildcard) {
+                derivationInput.value = '*';
+                derivationInput.placeholder = '*';
+            } else {
+                if (derivationInput.value === '*') {
+                    derivationInput.value = '';
+                }
+                derivationInput.placeholder = '0';
+                applyButton.disabled = true;
+                applyButton.textContent = 'Apply';
+            }
+        };
+
+        // Validate derivation input
+        const validateInput = () => {
+            const value = derivationInput.value.trim();
+            const isValid = value === '*' || (value !== '' && !isNaN(value) && parseInt(value) >= 0 && parseInt(value) <= 2147483647);
+
+            applyButton.disabled = !isValid;
+
+            if (isValid) {
+                derivationInput.style.borderColor = 'var(--success-border)';
+            } else if (value !== '') {
+                derivationInput.style.borderColor = 'var(--error-border)';
+            } else {
+                derivationInput.style.borderColor = 'var(--border-color)';
+            }
+        };
+
+        // Apply derivation index
+        const applyDerivation = () => {
+            const expression = expressionInput.textContent.trim();
+            const index = derivationInput.value.trim();
+
+            if (!index || isNaN(index)) return;
+
+            // Replace wildcard with specific index
+            const modifiedExpression = expression.replace(/\/\*/g, `/${index}`);
+
+            // Update button state
+            applyButton.disabled = true;
+            applyButton.textContent = 'Applying...';
+
+            // Set the modified expression temporarily for compilation
+            const originalExpression = expression;
+            expressionInput.textContent = modifiedExpression;
+
+            // Trigger compilation
+            this.compileExpression();
+
+            // Set a small delay to allow compilation to complete, then restore original expression
+            setTimeout(() => {
+                // Restore original expression but keep the UI showing it's applied
+                expressionInput.textContent = originalExpression;
+                applyButton.textContent = `✓ Applied ${index}`;
+                applyButton.style.backgroundColor = 'var(--success-bg)';
+                applyButton.style.borderColor = 'var(--success-border)';
+                applyButton.style.color = 'var(--success-text)';
+            }, 100);
+        };
+
+        // Reset applied state when input changes
+        const resetAppliedState = () => {
+            applyButton.textContent = 'Apply';
+            applyButton.style.backgroundColor = 'var(--button-secondary-bg)';
+            applyButton.style.borderColor = 'var(--border-color)';
+            applyButton.style.color = 'var(--text-color)';
+            validateInput();
+        };
+
+        // Event listeners
+        if (expressionInput) {
+            // Use MutationObserver to watch for content changes
+            const observer = new MutationObserver(checkForRangeDescriptor);
+            observer.observe(expressionInput, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+
+            // Also check on input events
+            expressionInput.addEventListener('input', checkForRangeDescriptor);
+        }
+
+        if (derivationInput) {
+            derivationInput.addEventListener('input', resetAppliedState);
+            derivationInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !applyButton.disabled) {
+                    applyDerivation();
+                }
+            });
+        }
+
+        if (applyButton) {
+            applyButton.addEventListener('click', applyDerivation);
+        }
+
+        // Initial check
+        checkForRangeDescriptor();
+    }
 }
 
 // Initialize the compiler
@@ -8222,18 +8521,24 @@ window.addEventListener('DOMContentLoaded', function() {
     // Initialize key names toggle to show names by default
     const keyNamesToggle = document.getElementById('key-names-toggle');
     const policyKeyNamesToggle = document.getElementById('policy-key-names-toggle');
-    
+
     if (keyNamesToggle && !keyNamesToggle.dataset.active) {
         keyNamesToggle.dataset.active = 'true';
         keyNamesToggle.style.color = 'var(--success-border)';
         keyNamesToggle.title = 'Hide key names';
     }
-    
+
     if (policyKeyNamesToggle && !policyKeyNamesToggle.dataset.active) {
         policyKeyNamesToggle.dataset.active = 'true';
         policyKeyNamesToggle.style.color = 'var(--success-border)';
         policyKeyNamesToggle.title = 'Hide key names';
     }
+
+    // Initialize derivation index functionality
+    // Disabled old derivation index - now using addDerivationIndexField() in displayResults()
+    // if (window.compiler && typeof window.compiler.initDerivationIndex === 'function') {
+    //     window.compiler.initDerivationIndex();
+    // }
     
     // Handle mobile vs desktop tree display settings
     const isMobile = window.innerWidth <= 768 || 

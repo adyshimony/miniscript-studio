@@ -272,10 +272,7 @@ fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescripto
     let patterns = create_descriptor_regex_patterns()?;
     
     // Process each pattern type
-    process_full_descriptors(expression, &patterns.full_descriptor, &mut descriptors)?;
-    process_bare_extended_keys(expression, &patterns.bare_extended, &mut descriptors)?;
-    process_single_derivation_keys(expression, &patterns.single_deriv, &mut descriptors)?;
-    process_fixed_double_derivation(expression, &patterns.full_fixed_double, &patterns.fixed_double, &mut descriptors)?;
+    process_comprehensive_descriptors(expression, &patterns, &mut descriptors)?;
     
     console_log!("Found {} descriptors total", descriptors.len());
     Ok(descriptors)
@@ -283,30 +280,300 @@ fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescripto
 
 /// Container for descriptor regex patterns
 struct DescriptorPatterns {
-    full_descriptor: Regex,
-    bare_extended: Regex,
-    single_deriv: Regex,
-    full_fixed_double: Regex,
-    fixed_double: Regex,
+    // Full descriptors with fingerprint
+    full_multipath: Regex,           // [fp/path]xpub/<0;1>/*
+    full_wildcard_single: Regex,     // [fp/path]xpub/*
+    full_wildcard_double: Regex,     // [fp/path]xpub/*/*
+    full_fixed_wildcard: Regex,      // [fp/path]xpub/0/*
+    full_wildcard_fixed: Regex,      // [fp/path]xpub/*/0
+    full_fixed_single: Regex,        // [fp/path]xpub/0
+    full_fixed_double: Regex,        // [fp/path]xpub/0/0
+
+    // Bare extended keys
+    bare_multipath: Regex,           // xpub/<0;1>/*
+    bare_wildcard_single: Regex,     // xpub/*
+    bare_wildcard_double: Regex,     // xpub/*/*
+    bare_fixed_wildcard: Regex,      // xpub/0/*
+    bare_wildcard_fixed: Regex,      // xpub/*/0
+    bare_fixed_single: Regex,        // xpub/0
+    bare_fixed_double: Regex,        // xpub/0/0
 }
 
 /// Create regex patterns for descriptor parsing
 fn create_descriptor_regex_patterns() -> Result<DescriptorPatterns, String> {
     Ok(DescriptorPatterns {
-        full_descriptor: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/(?:\*|[0-9]+)")
-            .map_err(|e| format!("Full descriptor regex error: {}", e))?,
-        bare_extended: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/(?:\*|[0-9]+)")
-            .map_err(|e| format!("Bare extended regex error: {}", e))?,
-        single_deriv: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
-            .map_err(|e| format!("Single derivation regex error: {}", e))?,
+        // Full descriptors with fingerprint
+        full_multipath: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+            .map_err(|e| format!("Full multipath regex error: {}", e))?,
+        full_wildcard_single: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/\*")
+            .map_err(|e| format!("Full wildcard single regex error: {}", e))?,
+        full_wildcard_double: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/\*/\*")
+            .map_err(|e| format!("Full wildcard double regex error: {}", e))?,
+        full_fixed_wildcard: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
+            .map_err(|e| format!("Full fixed wildcard regex error: {}", e))?,
+        full_wildcard_fixed: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/\*/([0-9]+)")
+            .map_err(|e| format!("Full wildcard fixed regex error: {}", e))?,
+        full_fixed_single: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/([0-9]+)")
+            .map_err(|e| format!("Full fixed single regex error: {}", e))?,
         full_fixed_double: Regex::new(r"\[([A-Fa-f0-9]{8})/([0-9h'/]+)\]([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
-            .map_err(|e| format!("Full fixed double derivation regex error: {}", e))?,
-        fixed_double: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
-            .map_err(|e| format!("Fixed double derivation regex error: {}", e))?,
+            .map_err(|e| format!("Full fixed double regex error: {}", e))?,
+
+        // Bare extended keys
+        bare_multipath: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/<([0-9;]+)>/\*")
+            .map_err(|e| format!("Bare multipath regex error: {}", e))?,
+        bare_wildcard_single: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/\*")
+            .map_err(|e| format!("Bare wildcard single regex error: {}", e))?,
+        bare_wildcard_double: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/\*/\*")
+            .map_err(|e| format!("Bare wildcard double regex error: {}", e))?,
+        bare_fixed_wildcard: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/\*")
+            .map_err(|e| format!("Bare fixed wildcard regex error: {}", e))?,
+        bare_wildcard_fixed: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/\*/([0-9]+)")
+            .map_err(|e| format!("Bare wildcard fixed regex error: {}", e))?,
+        bare_fixed_single: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)")
+            .map_err(|e| format!("Bare fixed single regex error: {}", e))?,
+        bare_fixed_double: Regex::new(r"([xyzt]pub[A-Za-z0-9]+)/([0-9]+)/([0-9]+)")
+            .map_err(|e| format!("Bare fixed double regex error: {}", e))?,
     })
 }
 
-/// Process full descriptors with fingerprint and path
+/// Comprehensive descriptor processing for all patterns
+fn process_comprehensive_descriptors(
+    expression: &str,
+    patterns: &DescriptorPatterns,
+    descriptors: &mut HashMap<String, ParsedDescriptor>
+) -> Result<(), String> {
+    // Process all pattern types systematically
+
+    // 1. Multipath patterns (highest priority - most specific)
+    process_pattern(expression, &patterns.full_multipath, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let child_paths = parse_child_paths(Some(caps.get(4).unwrap().as_str()))?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths,
+            is_wildcard: true,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_multipath, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let child_paths = parse_child_paths(Some(caps.get(2).unwrap().as_str()))?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths,
+            is_wildcard: true,
+        })
+    })?;
+
+    // 2. Double wildcard patterns
+    process_pattern(expression, &patterns.full_wildcard_double, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![], // Double wildcard
+            is_wildcard: true,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_wildcard_double, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![], // Double wildcard
+            is_wildcard: true,
+        })
+    })?;
+
+    // 3. Fixed + wildcard patterns (/0/*)
+    process_pattern(expression, &patterns.full_fixed_wildcard, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let first_deriv = caps.get(4).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![first_deriv],
+            is_wildcard: true,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_fixed_wildcard, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let first_deriv = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![first_deriv],
+            is_wildcard: true,
+        })
+    })?;
+
+    // 4. Wildcard + fixed patterns (/*/0)
+    process_pattern(expression, &patterns.full_wildcard_fixed, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let second_deriv = caps.get(4).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![u32::MAX, second_deriv], // Use MAX to indicate wildcard in first position
+            is_wildcard: true,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_wildcard_fixed, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let second_deriv = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![u32::MAX, second_deriv], // Use MAX to indicate wildcard
+            is_wildcard: true,
+        })
+    })?;
+
+    // 5. Single wildcard patterns (/*)
+    process_pattern(expression, &patterns.full_wildcard_single, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![],
+            is_wildcard: true,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_wildcard_single, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![],
+            is_wildcard: true,
+        })
+    })?;
+
+    // 6. Fixed patterns (lowest priority - most general)
+    process_pattern(expression, &patterns.full_fixed_double, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let first_deriv = caps.get(4).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid first derivation index")?;
+        let second_deriv = caps.get(5).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid second derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![first_deriv, second_deriv],
+            is_wildcard: false,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_fixed_double, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let first_deriv = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid first derivation index")?;
+        let second_deriv = caps.get(3).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid second derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![first_deriv, second_deriv],
+            is_wildcard: false,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.full_fixed_single, descriptors, |caps| {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let first_deriv = caps.get(4).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![first_deriv],
+            is_wildcard: false,
+        })
+    })?;
+
+    process_pattern(expression, &patterns.bare_fixed_single, descriptors, |caps| {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let first_deriv = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+        Ok(DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![first_deriv],
+            is_wildcard: false,
+        })
+    })?;
+
+    Ok(())
+}
+
+/// Helper function to process a single pattern type
+fn process_pattern<F>(
+    expression: &str,
+    pattern: &Regex,
+    descriptors: &mut HashMap<String, ParsedDescriptor>,
+    info_creator: F
+) -> Result<(), String>
+where
+    F: Fn(&regex::Captures) -> Result<DescriptorInfo, String>
+{
+    for caps in pattern.captures_iter(expression) {
+        let descriptor_str = caps.get(0).unwrap().as_str();
+
+        // Skip if already processed by a higher priority pattern
+        if descriptors.contains_key(descriptor_str) {
+            continue;
+        }
+
+        let info = info_creator(&caps)?;
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+    Ok(())
+}
+
+/// LEGACY - Process full descriptors with fingerprint and path
 fn process_full_descriptors(
     expression: &str,
     pattern: &Regex,
@@ -466,6 +733,66 @@ fn process_fixed_double_derivation(
     Ok(())
 }
 
+/// Process fixed single derivation descriptors
+fn process_fixed_single_derivation(
+    expression: &str,
+    full_pattern: &Regex,
+    bare_pattern: &Regex,
+    descriptors: &mut HashMap<String, ParsedDescriptor>
+) -> Result<(), String> {
+    // Process full descriptors with fixed single derivation
+    for caps in full_pattern.captures_iter(expression) {
+        let fingerprint = parse_fingerprint(caps.get(1).unwrap().as_str())?;
+        let derivation_path = parse_derivation_path(caps.get(2).unwrap().as_str())?;
+        let xpub = parse_xpub(caps.get(3).unwrap().as_str())?;
+        let first_deriv = caps.get(4).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint,
+            derivation_path,
+            xpub,
+            child_paths: vec![first_deriv],
+            is_wildcard: false,
+        };
+
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+
+    // Process bare extended keys with fixed single derivation
+    for caps in bare_pattern.captures_iter(expression) {
+        let xpub = parse_xpub(caps.get(1).unwrap().as_str())?;
+        let first_deriv = caps.get(2).unwrap().as_str().parse::<u32>()
+            .map_err(|_| "Invalid derivation index")?;
+
+        let descriptor_str = caps.get(0).unwrap().as_str();
+        let info = DescriptorInfo {
+            fingerprint: Fingerprint::from([0, 0, 0, 0]),
+            derivation_path: DerivationPath::from_str("m").unwrap(),
+            xpub,
+            child_paths: vec![first_deriv],
+            is_wildcard: false,
+        };
+
+        descriptors.insert(
+            descriptor_str.to_string(),
+            ParsedDescriptor {
+                original: descriptor_str.to_string(),
+                info,
+            }
+        );
+    }
+
+    Ok(())
+}
+
 /// Parse fingerprint from hex string
 fn parse_fingerprint(hex_str: &str) -> Result<Fingerprint, String> {
     let bytes = hex::decode(hex_str)
@@ -522,45 +849,116 @@ fn expand_descriptor(descriptor: &ParsedDescriptor, child_index: u32) -> Result<
     console_log!("Child paths: {:?}", descriptor.info.child_paths);
     console_log!("Is wildcard: {}", descriptor.info.is_wildcard);
     
-    // Handle different derivation patterns
-    let final_key = if descriptor.info.child_paths.len() >= 2 && !descriptor.info.is_wildcard {
-        // Double derivation case: xpub/0/0
-        let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-            .map_err(|e| format!("Invalid first child number: {}", e))?;
-        let second_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[1])
-            .map_err(|e| format!("Invalid second child number: {}", e))?;
-        
-        console_log!("Double derivation: {}/{}", descriptor.info.child_paths[0], descriptor.info.child_paths[1]);
-        descriptor.info.xpub
-            .derive_pub(&secp, &[first_child, second_child])
-            .map_err(|e| format!("Double key derivation failed: {}", e))?
-    } else if descriptor.info.child_paths.len() == 1 && !descriptor.info.is_wildcard {
-        // Single derivation case: xpub/0
-        let child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-            .map_err(|e| format!("Invalid child number: {}", e))?;
-        
-        console_log!("Single derivation: {}", descriptor.info.child_paths[0]);
-        descriptor.info.xpub
-            .derive_pub(&secp, &[child])
-            .map_err(|e| format!("Single key derivation failed: {}", e))?
-    } else if descriptor.info.is_wildcard {
-        // Wildcard case: use provided child_index
-        let child = ChildNumber::from_normal_idx(child_index)
-            .map_err(|e| format!("Invalid child index: {}", e))?;
-        
-        console_log!("Wildcard derivation: {}", child_index);
-        descriptor.info.xpub
-            .derive_pub(&secp, &[child])
-            .map_err(|e| format!("Wildcard key derivation failed: {}", e))?
+    // Handle different derivation patterns comprehensively
+    let final_xpub = if !descriptor.info.is_wildcard {
+        // Fixed patterns - no wildcards
+        match descriptor.info.child_paths.len() {
+            0 => {
+                // No derivation: xpub
+                console_log!("No additional derivation");
+                descriptor.info.xpub.clone()
+            },
+            1 => {
+                // Single fixed derivation: xpub/0
+                let child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
+                    .map_err(|e| format!("Invalid child number: {}", e))?;
+
+                console_log!("Single derivation: {}", descriptor.info.child_paths[0]);
+                descriptor.info.xpub
+                    .derive_pub(&secp, &[child])
+                    .map_err(|e| format!("Single key derivation failed: {}", e))?
+            },
+            2 => {
+                // Double fixed derivation: xpub/0/1
+                let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
+                    .map_err(|e| format!("Invalid first child number: {}", e))?;
+                let second_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[1])
+                    .map_err(|e| format!("Invalid second child number: {}", e))?;
+
+                console_log!("Double derivation: {}/{}", descriptor.info.child_paths[0], descriptor.info.child_paths[1]);
+                descriptor.info.xpub
+                    .derive_pub(&secp, &[first_child, second_child])
+                    .map_err(|e| format!("Double key derivation failed: {}", e))?
+            },
+            _ => return Err("Unsupported fixed derivation path length".to_string()),
+        }
     } else {
-        // No additional derivation needed
-        console_log!("No additional derivation");
-        descriptor.info.xpub.clone()
+        // Wildcard patterns - need to substitute wildcards with child_index
+        match descriptor.info.child_paths.len() {
+            0 => {
+                // Single wildcard: xpub/* or xpub/*/*
+                let child = ChildNumber::from_normal_idx(child_index)
+                    .map_err(|e| format!("Invalid child index: {}", e))?;
+
+                console_log!("Single wildcard derivation: {}", child_index);
+                descriptor.info.xpub
+                    .derive_pub(&secp, &[child])
+                    .map_err(|e| format!("Wildcard key derivation failed: {}", e))?
+            },
+            1 => {
+                // Fixed + wildcard: xpub/0/*
+                let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
+                    .map_err(|e| format!("Invalid first child number: {}", e))?;
+                let second_child = ChildNumber::from_normal_idx(child_index)
+                    .map_err(|e| format!("Invalid child index: {}", e))?;
+
+                console_log!("Fixed + wildcard derivation: {}/{}", descriptor.info.child_paths[0], child_index);
+                descriptor.info.xpub
+                    .derive_pub(&secp, &[first_child, second_child])
+                    .map_err(|e| format!("Fixed+wildcard key derivation failed: {}", e))?
+            },
+            2 => {
+                // Handle wildcard + fixed pattern: xpub/*/1
+                let first_child = if descriptor.info.child_paths[0] == u32::MAX {
+                    // First position is wildcard
+                    ChildNumber::from_normal_idx(child_index)
+                        .map_err(|e| format!("Invalid child index: {}", e))?
+                } else {
+                    // First position is fixed
+                    ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
+                        .map_err(|e| format!("Invalid first child number: {}", e))?
+                };
+
+                let second_child = if descriptor.info.child_paths[1] == u32::MAX {
+                    // Second position is wildcard
+                    ChildNumber::from_normal_idx(child_index)
+                        .map_err(|e| format!("Invalid child index: {}", e))?
+                } else {
+                    // Second position is fixed
+                    ChildNumber::from_normal_idx(descriptor.info.child_paths[1])
+                        .map_err(|e| format!("Invalid second child number: {}", e))?
+                };
+
+                console_log!("Wildcard + fixed derivation: {}/{}",
+                    if descriptor.info.child_paths[0] == u32::MAX { child_index } else { descriptor.info.child_paths[0] },
+                    if descriptor.info.child_paths[1] == u32::MAX { child_index } else { descriptor.info.child_paths[1] }
+                );
+                descriptor.info.xpub
+                    .derive_pub(&secp, &[first_child, second_child])
+                    .map_err(|e| format!("Wildcard+fixed key derivation failed: {}", e))?
+            },
+            _ => {
+                // Multipath pattern: use first path with child_index
+                if !descriptor.info.child_paths.is_empty() {
+                    let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
+                        .map_err(|e| format!("Invalid first child number: {}", e))?;
+                    let second_child = ChildNumber::from_normal_idx(child_index)
+                        .map_err(|e| format!("Invalid child index: {}", e))?;
+
+                    console_log!("Multipath derivation: {}/{}", descriptor.info.child_paths[0], child_index);
+                    descriptor.info.xpub
+                        .derive_pub(&secp, &[first_child, second_child])
+                        .map_err(|e| format!("Multipath key derivation failed: {}", e))?
+                } else {
+                    return Err("Invalid multipath descriptor".to_string());
+                }
+            }
+        }
     };
-    
+
     // Get the public key and return as hex string
-    let pubkey = final_key.to_pub();
-    let hex_key = hex::encode(pubkey.0.serialize());
+    let pubkey = final_xpub.public_key;
+    let hex_key = hex::encode(pubkey.serialize());
     console_log!("Derived key for descriptor: {}", hex_key);
     Ok(hex_key)
 }
