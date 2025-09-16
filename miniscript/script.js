@@ -4669,9 +4669,9 @@ class MiniscriptCompiler {
                     <input type="text"
                            id="derivation-index"
                            placeholder="*"
-                           value="*"
-                           pattern="[0-9]*|\\*"
-                           style="width: 32px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center;">
+                           value=""
+                           pattern="[0-9]*"
+                           style="width: 90px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center;">
                     <span style="color: var(--text-secondary); font-size: 12px;">
                         Enter a specific index to generate address and compile
                     </span>
@@ -7876,6 +7876,13 @@ window.showMiniscriptDescription = function(exampleId) {
             bitcoinScript: 'Taproot Single-leaf: DUP IF <Julia> CHECKSIG ELSE <Karl> CHECKSIGVERIFY 144 CHECKSEQUENCEVERIFY ENDIF<br>Taproot Multi-leaf: Julia gets key-path OR script-leaf, Karl gets separate timelock script-leaf',
             useCase: 'Perfect example of Taproot\'s smart optimization for OR conditions with different complexities. Julia (simple pk) vs Karl (complex pk + timelock). In single-leaf mode, creates traditional or_d logic. In multi-leaf mode, Taproot optimizes by giving Julia both key-path AND script-path options while Karl gets his own timelock script.',
             technical: '💡 Why or_d + Taproot brilliance: or_d uses DUP-IF pattern perfect for unequal branch complexity. Julia\'s simple pk() is optimal for either key-path or script-leaf spending. Karl\'s complex and_v(v:pk,older(144)) requires script revelation anyway. Taproot multi-leaf mode creates: 1) Julia as internal key (key-path spending), 2) Julia pk() as script-leaf, 3) Karl\'s timelock script as separate leaf. Result: Julia gets 2 spending methods (most efficient key-path + backup script-path), Karl gets timelock protection. This demonstrates Taproot\'s ability to optimize mixed complexity conditions.'
+        },
+        'hd_derivation': {
+            title: '🗝️ HD Wallet Derivation: BIP32 Wildcard Patterns',
+            structure: 'pk([C8FE8D4F/48h/1h/123h/2h]tpub.../1/*) → HD descriptor with derivable wildcard',
+            bitcoinScript: 'The 🗝️ Derivation index field automatically appears below the compile button when simple wildcard patterns are detected in the expression',
+            useCase: 'Demonstrates HD wallet derivation with BIP32 wildcards. When you load this example, the derivation index field appears automatically below the address field. Change the index number (0-2147483647) and click "🔨 Compile" to see how the same expression generates different addresses. The success message will show the derived path with your chosen index replacing the wildcard.',
+            technical: '💡 Interactive derivation field: The editor expression remains constant as a template, but the success message shows the derived descriptor and address for your chosen index. The derivation field appears for single-wildcard patterns: /* (wildcard index), /n/* (fixed branch + wildcard index), /n (fixed single level), /n/n (fixed double level). Multipath patterns like <0;1>/* are valid BIP32 descriptors but excluded from the derivation editor because they represent branch choices, not single index derivation. Invalid patterns like */* or */n are completely unsupported. The WASM backend uses comprehensive regex pattern matching to detect supported patterns while preserving BIP32 compliance.'
         }
     };
     
