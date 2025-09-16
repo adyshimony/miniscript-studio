@@ -5,7 +5,7 @@ class MiniscriptCompiler {
     constructor() {
         this.wasm = null;
         this.keyVariables = new Map();
-        this.DEFAULT_VARIABLES_VERSION = '1.1.0'; // Increment when adding new variables
+        this.DEFAULT_VARIABLES_VERSION = '1.2.0'; // Increment when adding new variables
         
         // Single shared map of default variables
         this.defaultVariables = new Map();
@@ -2536,7 +2536,7 @@ class MiniscriptCompiler {
         // Complex descriptor keys
         this.defaultVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/1');
         this.defaultVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
-        this.defaultVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<1;0>/*');
+        this.defaultVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<0;1>/*');
         
         // Vault keys for complex vault examples with range descriptors
         this.defaultVariables.set('VaultKey1', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<10;11>/*');
@@ -2682,7 +2682,7 @@ class MiniscriptCompiler {
         // Complex descriptor keys
         this.keyVariables.set('TestnetKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/1');
         this.keyVariables.set('MainnetKey', '[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0');
-        this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<1;0>/*');
+        this.keyVariables.set('RangeKey', '[C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/<0;1>/*');
         
         // Vault keys for complex vault examples with range descriptors
         this.keyVariables.set('VaultKey1', '[C8FE8D4F/48h/1h/123h/2h]tpubDET9Lf3UsPRZP7TVNV8w91Kz8g29sVihfr96asYsJqUsx5pM7cDvSCDAsidkQY9bgfPyB28bCA4afiJcJp6bxZhrzmjFYDUm92LG3s3tmP7/<10;11>/*');
@@ -4350,7 +4350,30 @@ class MiniscriptCompiler {
 
     displayResults(result) {
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '';
+
+        // Remove all children except derivation field (to preserve event listeners)
+        const existingDerivationField = resultsDiv.querySelector('.derivation-container');
+
+        // Remove all children first
+        while (resultsDiv.firstChild) {
+            if (resultsDiv.firstChild === existingDerivationField) {
+                // Skip the derivation field, don't remove it
+                break;
+            }
+            resultsDiv.removeChild(resultsDiv.firstChild);
+        }
+
+        // Remove remaining non-derivation children after the derivation field
+        const children = Array.from(resultsDiv.children);
+        children.forEach(child => {
+            if (!child.classList.contains('derivation-container')) {
+                resultsDiv.removeChild(child);
+            }
+        });
+
+        if (existingDerivationField) {
+            console.log('💾 Preserved derivation field with event listeners intact');
+        }
 
         if (!result.success) {
             return;
@@ -4391,6 +4414,15 @@ class MiniscriptCompiler {
             copyHexButton.addEventListener('click', () => {
                 this.copyHexScript(hexDisplay);
             });
+
+            // Insert derivation field before hex field if it exists but isn't already positioned
+            const existingDerivationField = resultsDiv.querySelector('.derivation-container');
+            if (existingDerivationField && !this.isDerivationFieldBeforeHex(resultsDiv)) {
+                console.log('📍 Moving derivation field before hex field');
+                // Remove from current position and insert before hex
+                existingDerivationField.remove();
+                resultsDiv.appendChild(existingDerivationField);
+            }
 
             resultsDiv.appendChild(scriptDiv);
         }
@@ -4627,12 +4659,10 @@ class MiniscriptCompiler {
         // 3. Any wildcard pattern: /*), /*)), /*),), etc.
         let hasWildcardDescriptor = false;
 
-        // Only show derivation index for simple wildcards like:
-        // - /* (single level wildcard)
-        // - /1/* (path followed by wildcard)
-        // - /*/*/* (multiple level wildcards)
-        // Exclude multipath descriptors like <1;0>/*, <10;11>/*, <16;17>/*, etc. because they represent branch choices, not derivation indices
-        if (/\/\*[),]*/.test(currentExpression) && !/<\d+;\d+>/.test(currentExpression)) {
+        // Show derivation index for:
+        // - Simple wildcards: /* (single level wildcard), /1/* (path followed by wildcard)
+        // - Multipath descriptors: <0;1>/*, <12;13>/*, etc. with external/change selection
+        if (/\/\*[),]*/.test(currentExpression) || /<\d+;\d+>\/\*/.test(currentExpression)) {
             hasWildcardDescriptor = true;
         }
 
@@ -4647,8 +4677,8 @@ class MiniscriptCompiler {
                     const keyName = match.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/)[1] || match.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/)[2];
                     if (keyName && this.keyVariables.has(keyName)) {
                         const keyValue = this.keyVariables.get(keyName);
-                        // Only show for simple wildcards, exclude multipath patterns like <10;11>/*
-                        if (keyValue && keyValue.includes('/*') && !/<\d+;\d+>/.test(keyValue)) {
+                        // Show for wildcards including multipath patterns
+                        if (keyValue && (keyValue.includes('/*') || /<\d+;\d+>\/\*/.test(keyValue))) {
                             hasWildcardDescriptor = true;
                             break;
                         }
@@ -4659,22 +4689,92 @@ class MiniscriptCompiler {
 
         if (hasWildcardDescriptor) {
             const resultsDiv = document.getElementById('results');
-            const derivationDiv = document.createElement('div');
-            derivationDiv.className = 'result-box info';
+
+            // Check if current expression has multipath patterns (do this first)
+            const hasMultipath = /<\d+;\d+>\/\*[),]*/.test(currentExpression);
+            let hasMultipathInKeyVars = false;
+            if (!hasMultipath && this.keyVariables) {
+                const keyNameMatches = currentExpression.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/g);
+                if (keyNameMatches) {
+                    for (const match of keyNameMatches) {
+                        const keyName = match.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/)[1] || match.match(/pk\(([^)]+)\)|pkh\(([^)]+)\)/)[2];
+                        if (keyName && this.keyVariables.has(keyName)) {
+                            const keyValue = this.keyVariables.get(keyName);
+                            if (keyValue && /<\d+;\d+>\/\*/.test(keyValue)) {
+                                hasMultipathInKeyVars = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            const showPathSelection = hasMultipath || hasMultipathInKeyVars;
+
+            // Check if derivation field container already exists
+            let existingDerivationDiv = resultsDiv.querySelector('.derivation-container');
+            let derivationDiv;
+
+            // Store current user values before updating
+            let currentIndex = '';
+            let currentPathType = 'external';
+
+            if (existingDerivationDiv) {
+                console.log('Derivation field exists, checking if update needed');
+                console.log('Current expression:', currentExpression);
+                console.log('hasMultipath:', hasMultipath);
+                console.log('hasMultipathInKeyVars:', hasMultipathInKeyVars);
+                console.log('showPathSelection:', showPathSelection);
+
+                const indexInput = existingDerivationDiv.querySelector('#derivation-index');
+                const pathSelect = existingDerivationDiv.querySelector('#derivation-path-type');
+
+                if (indexInput) currentIndex = indexInput.value;
+                if (pathSelect) currentPathType = pathSelect.value;
+
+                console.log('Current values - index:', currentIndex, 'pathType:', currentPathType);
+
+                derivationDiv = existingDerivationDiv;
+
+                // Check if field configuration needs to change
+                const currentlyHasPathSelect = !!pathSelect;
+                const nowNeedsPathSelect = showPathSelection;
+
+                console.log('Field config check - currentlyHas:', currentlyHasPathSelect, 'nowNeeds:', nowNeedsPathSelect);
+
+                if (currentlyHasPathSelect === nowNeedsPathSelect) {
+                    console.log('🎯 Field configuration unchanged, skipping HTML recreation');
+                    return; // Skip the rest of the function - field is already correct
+                } else {
+                    console.log('🔄 Field configuration changed, updating HTML');
+                }
+            } else {
+                console.log('Creating new derivation field');
+                derivationDiv = document.createElement('div');
+                derivationDiv.className = 'result-box info derivation-container';
+            }
+
             derivationDiv.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                     <h4 style="margin: 0; font-size: 12px; letter-spacing: 0.5px;">🗝️ Derivation index</h4>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="margin-bottom: 10px;">
+                    <p style="margin: 0; font-size: 11px; color: var(--text-secondary); line-height: 1.3;">For range descriptors with wildcard patterns (/*) ${showPathSelection ? 'and multipath patterns (<0;1>/*)' : ''}, ${showPathSelection ? 'choose path type and ' : ''}enter a specific index to derive keys and generate addresses${showPathSelection ? '. External uses the lower value, change uses the higher value from the multipath range' : ''}</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <input type="text"
                            id="derivation-index"
                            placeholder="*"
-                           value=""
+                           value="${currentIndex}"
                            pattern="[0-9]*"
                            style="width: 90px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center; filter: brightness(1.3);">
-                    <span style="color: var(--text-secondary); font-size: 12px;">
-                        Enter a specific index to generate address and compile
-                    </span>
+                    ${showPathSelection ? `
+                        <select id="derivation-path-type"
+                                style="padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); filter: brightness(1.3); cursor: pointer;">
+                            <option value="external" ${currentPathType === 'external' ? 'selected' : ''}>External (lower value)</option>
+                            <option value="change" ${currentPathType === 'change' ? 'selected' : ''}>Change (higher value)</option>
+                        </select>
+                    ` : ''}
                     <button id="apply-derivation-btn"
                             title="Compile with derivation index to see specific address"
                             class="primary-btn"
@@ -4695,7 +4795,7 @@ class MiniscriptCompiler {
                 const value = derivationInput.value.trim();
                 const isValid = value === '*' || (value !== '' && !isNaN(value) && parseInt(value) >= 0 && parseInt(value) <= 2147483647);
 
-                applyButton.disabled = !isValid;
+                // Don't disable the button - let user always compile
 
                 if (isValid) {
                     derivationInput.style.borderColor = 'var(--success-border)';
@@ -4717,8 +4817,55 @@ class MiniscriptCompiler {
 
                 if (!index || isNaN(index)) return;
 
-                // Simple approach: replace ALL * with the index
-                let modifiedExpression = originalExpression.replace(/\*/g, index);
+                // Check for multipath patterns and handle path selection
+                let modifiedExpression = originalExpression;
+
+                // Get selected path type (external/change) if combo box exists
+                const pathTypeSelect = derivationDiv.querySelector('#derivation-path-type');
+                const selectedPathType = pathTypeSelect?.value || 'external';
+                console.log('Selected path type:', selectedPathType, 'pathTypeSelect:', pathTypeSelect);
+
+                // Handle multipath patterns like <0;1>/*, <12;13>/*
+                modifiedExpression = modifiedExpression.replace(/<(\d+);(\d+)>\/\*/g, (match, lower, higher) => {
+                    const lowerNum = parseInt(lower);
+                    const higherNum = parseInt(higher);
+                    const selectedPath = selectedPathType === 'external' ? Math.min(lowerNum, higherNum) : Math.max(lowerNum, higherNum);
+                    console.log('Multipath replacement:', {
+                        match,
+                        lower: lowerNum,
+                        higher: higherNum,
+                        selectedPathType,
+                        selectedPath,
+                        index,
+                        'Math.min(lowerNum, higherNum)': Math.min(lowerNum, higherNum),
+                        'Math.max(lowerNum, higherNum)': Math.max(lowerNum, higherNum),
+                        'selectedPathType === "external"': selectedPathType === 'external'
+                    });
+                    return `${selectedPath}/${index}`;
+                });
+
+                // Handle simple wildcards (/* patterns)
+                modifiedExpression = modifiedExpression.replace(/\/\*/g, `/${index}`);
+
+                // Handle key variables that might contain multipath patterns
+                if (compiler.keyVariables) {
+                    compiler.keyVariables.forEach((keyValue, keyName) => {
+                        if (keyValue && /<\d+;\d+>\/\*/.test(keyValue)) {
+                            const updatedKeyValue = keyValue.replace(/<(\d+);(\d+)>\/\*/g, (match, lower, higher) => {
+                                const lowerNum = parseInt(lower);
+                                const higherNum = parseInt(higher);
+                                const selectedPath = selectedPathType === 'external' ? Math.min(lowerNum, higherNum) : Math.max(lowerNum, higherNum);
+                                return `${selectedPath}/${index}`;
+                            });
+                            // Temporarily replace key variables in the expression for compilation
+                            const keyPattern = new RegExp(`\\b${keyName}\\b`, 'g');
+                            if (modifiedExpression.match(keyPattern)) {
+                                modifiedExpression = modifiedExpression.replace(keyPattern, `[TEMP_KEY_${keyName}]`);
+                                modifiedExpression = modifiedExpression.replace(new RegExp(`\\[TEMP_KEY_${keyName}\\]`, 'g'), updatedKeyValue);
+                            }
+                        }
+                    });
+                }
 
                 console.log('Derivation compilation:', {
                     original: originalExpression,
@@ -4753,8 +4900,43 @@ class MiniscriptCompiler {
             // Initial validation
             validateDerivationInput();
 
-            resultsDiv.appendChild(derivationDiv);
+            // Only append if it's a new element, position it correctly from the start
+            if (!existingDerivationDiv) {
+                this.insertDerivationFieldAtCorrectPosition(resultsDiv, derivationDiv);
+            }
         }
+    }
+
+    // Helper function to check if derivation field is positioned before hex field
+    isDerivationFieldBeforeHex(resultsDiv) {
+        const derivationField = resultsDiv.querySelector('.derivation-container');
+        const hexField = resultsDiv.querySelector('#script-hex-display');
+
+        if (!derivationField || !hexField) {
+            return true; // If either doesn't exist, consider it "correctly positioned"
+        }
+
+        // Compare position in DOM - derivation should come before hex
+        return derivationField.compareDocumentPosition(hexField) & Node.DOCUMENT_POSITION_FOLLOWING;
+    }
+
+    // Helper function to insert derivation field at the correct position (before hex field)
+    insertDerivationFieldAtCorrectPosition(resultsDiv, derivationDiv) {
+        const hexField = resultsDiv.querySelector('#script-hex-display');
+
+        if (hexField) {
+            // If hex field exists, insert derivation field before its parent container
+            const hexContainer = hexField.closest('.result-box');
+            if (hexContainer) {
+                console.log('📍 Inserting derivation field before hex field');
+                resultsDiv.insertBefore(derivationDiv, hexContainer);
+                return;
+            }
+        }
+
+        // Fallback: append at the end if no hex field found
+        console.log('📍 Appending derivation field at end (no hex field found)');
+        resultsDiv.appendChild(derivationDiv);
     }
 
     compileMiniscriptExpression(modifiedExpression, originalExpression) {
@@ -7816,10 +7998,10 @@ window.showMiniscriptDescription = function(exampleId) {
         },
         'range_descriptor': {
             title: '⚙️ Multipath Range Descriptor (BIP389)',
-            structure: 'pk([fingerprint/path]tpub.../<1;0>/*) → Multiple derivation paths in one descriptor',
+            structure: 'pk([fingerprint/path]tpub.../<0;1>/*) → Multiple derivation paths in one descriptor',
             bitcoinScript: 'Single descriptor template that expands to multiple derived public keys for different address types',
-            useCase: 'Advanced wallet pattern for generating both change (path 1) and receive (path 0) addresses from one descriptor. Why multipath? Eliminates need for separate descriptors. 💡 Use 🏷️ Hide key names to see the full raw descriptor with <1;0>/* syntax.',
-            technical: '💡 BIP389 multipath magic: <1;0>/* expands to TWO paths: .../1/* (change addresses) and .../0/* (receive addresses). The semicolon syntax allows multiple indices in one descriptor. When compiled, creates separate miniscript instances for each path. This reduces descriptor storage by 50% and simplifies HD wallet implementation. The /* wildcard enables infinite address generation from each path.'
+            useCase: 'Advanced wallet pattern for generating both change (path 1) and receive (path 0) addresses from one descriptor. Why multipath? Eliminates need for separate descriptors. 💡 Use 🏷️ Hide key names to see the full raw descriptor with <0;1>/* syntax. Interactive derivation: When you load this example, use the derivation index field to select External (uses lower value: 0) or Change (uses higher value: 1) and enter a specific index to generate addresses from either path.',
+            technical: '💡 BIP389 multipath magic: <0;1>/* expands to TWO paths: .../1/* (change addresses) and .../0/* (receive addresses). The semicolon syntax allows multiple indices in one descriptor. When compiled, creates separate miniscript instances for each path. This reduces descriptor storage by 50% and simplifies HD wallet implementation. The /* wildcard enables infinite address generation from each path. You can learn more from here: https://bips.dev/389/'
         },
         'pkh': {
             title: '⚙️ Pay-to-pubkey-hash',
