@@ -7903,7 +7903,7 @@ window.showMiniscriptDescription = function(exampleId) {
                 <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
             </div>
             <div style="margin-bottom: 10px;">
-                <strong style="color: var(--text-color); font-size: 12px;">Bitcoin Script:</strong>
+                <strong style="color: var(--text-color); font-size: 12px;">${['hd_derivation', 'full_descriptor', 'range_descriptor'].includes(exampleId) ? 'Editor feature:' : 'Bitcoin Script:'}</strong>
                 <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.bitcoinScript}</div>
             </div>
             <div style="margin-bottom: 10px;">
