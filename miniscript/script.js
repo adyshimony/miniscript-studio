@@ -4671,7 +4671,7 @@ class MiniscriptCompiler {
                            placeholder="*"
                            value=""
                            pattern="[0-9]*"
-                           style="width: 90px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center;">
+                           style="width: 90px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center; filter: brightness(1.3);">
                     <span style="color: var(--text-secondary); font-size: 12px;">
                         Enter a specific index to generate address and compile
                     </span>
