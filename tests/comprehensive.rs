@@ -10,7 +10,6 @@ use std::str::FromStr;
 // Test data constants
 const COMPRESSED_KEY: &str = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
 const XONLY_KEY: &str = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
-const NUMS_KEY: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
 
 // Test basic miniscript compilation for all contexts
 #[test]
