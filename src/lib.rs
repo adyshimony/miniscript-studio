@@ -4,32 +4,52 @@
 //! lifting Bitcoin scripts back to miniscript/policy representations, and generating addresses.
 
 // Module declarations
+#![allow(dead_code)]
+#![allow(deprecated)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::clone_on_copy)]
+#![allow(clippy::to_string_in_format_args)]
+#![allow(clippy::redundant_closure)]
+#![allow(clippy::useless_conversion)]
+#![allow(clippy::needless_borrow)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::collapsible_match)]
+#![allow(clippy::char_indices_as_byte_indices)]
 mod types;
 mod translators;
 mod opcodes;
 mod utils;
+mod parse { pub(crate) mod helpers; }
+mod compile;
+mod lift;
+mod address;
+mod taproot;
 
 // Re-exports from modules
 use types::{CompilationResult, LiftResult, AddressResult, DescriptorInfo, ParsedDescriptor};
 use translators::{DescriptorKeyTranslator};
-use opcodes::{OPCODE_MAP, parse_asm_to_script};
+use parse::helpers::{detect_network, needs_descriptor_processing, is_descriptor_wrapper};
 
 // External crate imports
 use wasm_bindgen::prelude::*;
-use serde::{Deserialize, Serialize};
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, Translator, ToPublicKey, ScriptContext};
+use serde::{Serialize};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, ScriptContext};
 use miniscript::descriptor::TapTree;
 use miniscript::policy::Liftable;
-use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, ScriptBuf, taproot::TaprootBuilder};
+use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1, taproot::TaprootBuilder};
 use std::sync::Arc;
-use bitcoin::blockdata::script::{Builder, PushBytesBuf};
-use bitcoin::blockdata::opcodes::all;
+// ... existing code ...
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use regex::Regex;
 use std::str::FromStr;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use lazy_static::lazy_static;
+
+// Constants
+pub const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+
+// ... existing code ...
 
 
 // ============================================================================
@@ -37,27 +57,13 @@ use lazy_static::lazy_static;
 // ============================================================================
 
 /// Detect the Bitcoin network based on key types in the expression
-fn detect_network(expression: &str) -> Network {
-    if expression.contains("tpub") {
-        Network::Testnet
-    } else {
-        Network::Bitcoin
-    }
-}
+// moved to parse::helpers::detect_network
 
 /// Check if expression needs descriptor processing
-fn needs_descriptor_processing(expression: &str) -> bool {
-    let trimmed = expression.trim();
-    (trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[")) 
-        && !trimmed.starts_with("wsh(") 
-        && !trimmed.starts_with("sh(") 
-        && !trimmed.starts_with("wpkh(")
-}
+// moved to parse::helpers::needs_descriptor_processing
 
 /// Check if expression is a descriptor wrapper
-fn is_descriptor_wrapper(expression: &str) -> bool {
-    expression.starts_with("wsh(") || expression.starts_with("sh(") || expression.starts_with("wpkh(")
-}
+// moved to parse::helpers::is_descriptor_wrapper
 
 
 /// Extract the first x-only key from a miniscript string
@@ -81,14 +87,7 @@ fn extract_xonly_key_from_miniscript(miniscript: &str) -> Option<XOnlyPublicKey>
     None
 }
 
-/// Get the Taproot NUMS (Nothing Up My Sleeve) point for unspendable key-path
-fn get_taproot_nums_point() -> XOnlyPublicKey {
-    // Standard NUMS point used in Taproot when key-path spending should be disabled
-    const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-    
-    let nums_bytes = hex::decode(NUMS_POINT).expect("Valid NUMS hex");
-    XOnlyPublicKey::from_slice(&nums_bytes).expect("Valid NUMS point")
-}
+// moved to taproot::utils::get_taproot_nums_point
 
 /// Extract internal key from expression (same logic as JavaScript)
 fn extract_internal_key_from_expression(expression: &str) -> String {
@@ -106,30 +105,10 @@ fn extract_internal_key_from_expression(expression: &str) -> String {
     
     // If no pk() found, use NUMS point
     console_log!("DEBUG: No pk() found, using NUMS point");
-    "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0".to_string()
+    NUMS_POINT.to_string()
 }
 
-/// Determine the internal key for Taproot address generation
-/// For pk(key) uses the key itself, for everything else uses NUMS
-fn get_taproot_internal_key(miniscript_str: &str) -> XOnlyPublicKey {
-    // Check if this is a simple pk(key) miniscript
-    if miniscript_str.starts_with("pk(") && miniscript_str.ends_with(")") {
-        // Extract the key from pk(key)
-        let key_part = &miniscript_str[3..miniscript_str.len()-1];
-        if let Ok(key_bytes) = hex::decode(key_part) {
-            if key_bytes.len() == 32 {
-                if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
-                    console_log!("Using pk() key as internal key: {}", key_part);
-                    return xonly_key;
-                }
-            }
-        }
-    }
-    
-    // For all other miniscripts, use NUMS point
-    console_log!("Using NUMS point as internal key (script-path only)");
-    get_taproot_nums_point()
-}
+// moved to taproot::utils::get_taproot_internal_key
 
 /// Extract x-only key from script hex (for Taproot address generation)
 fn extract_xonly_key_from_script_hex(script_hex: &str) -> Option<XOnlyPublicKey> {
@@ -153,110 +132,13 @@ fn extract_xonly_key_from_script_hex(script_hex: &str) -> Option<XOnlyPublicKey>
     None
 }
 
-/// Generate a Taproot address with a specific internal key and script
-fn generate_taproot_address_with_key(script: &bitcoin::Script, internal_key: XOnlyPublicKey, network: Network) -> Option<String> {
-    use bitcoin::taproot::TaprootBuilder;
-    
-    // For simple pk(key), just use key-path only
-    let script_bytes = script.as_bytes();
-    if script_bytes.len() == 34 && script_bytes[0] == 0x20 && script_bytes[33] == 0xac {
-        // This is a simple pk() script (32-byte key push + OP_CHECKSIG)
-        return Some(Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network).to_string());
-    }
-    
-    // For complex scripts, create a taproot tree with the script
-    match TaprootBuilder::new()
-        .add_leaf(0, script.to_owned())
-        .map(|builder| builder.finalize(&Secp256k1::verification_only(), internal_key))
-    {
-        Ok(Ok(spend_info)) => {
-            // Create the P2TR address with both key-path and script-path
-            let output_key = spend_info.output_key();
-            let address = Address::p2tr(&Secp256k1::verification_only(), output_key.to_x_only_public_key(), None, network);
-            Some(address.to_string())
-        },
-        _ => {
-            console_log!("Failed to create Taproot spend info");
-            None
-        }
-    }
-}
+// moved to address::generate_taproot_address_with_key
 
-/// Generate a Taproot address from a script (fallback for complex scripts)
-fn generate_taproot_address(_script: &bitcoin::Script, _network: Network) -> Option<String> {
-    // This is now only used as a fallback if no x-only key is found
-    console_log!("No x-only key found for Taproot address generation");
-    None
-}
+// moved to address::generate_taproot_address
 
-/// Generate a Taproot address using the descriptor approach (correct method)
-/// Uses tr(internal_key, taptree) descriptor to generate deterministic address
-fn generate_taproot_address_descriptor(
-    miniscript: &Miniscript<XOnlyPublicKey, Tap>,
-    internal_key: XOnlyPublicKey,
-    network: Network
-) -> Option<String> {
-    use miniscript::descriptor::TapTree;
-    use std::sync::Arc;
-    
-    console_log!("Generating Taproot address using descriptor approach");
-    console_log!("Internal key: {}", internal_key);
-    console_log!("Miniscript: {}", miniscript);
-    
-    // Create a TapTree with the miniscript as a leaf
-    let taptree = TapTree::Leaf(Arc::new(miniscript.clone()));
-    
-    // Build the tr() descriptor
-    match Descriptor::new_tr(internal_key, Some(taptree)) {
-        Ok(descriptor) => {
-            // Generate the address from the descriptor
-            match descriptor.address(network) {
-                Ok(address) => {
-                    console_log!("Successfully generated Taproot address: {}", address);
-                    Some(address.to_string())
-                },
-                Err(e) => {
-                    console_log!("Failed to generate address from descriptor: {}", e);
-                    None
-                }
-            }
-        },
-        Err(e) => {
-            console_log!("Failed to create tr() descriptor: {}", e);
-            None
-        }
-    }
-}
+// moved to address::generate_taproot_address_descriptor
 
-/// OLD VERSION - Generate a Taproot address with a specific internal key and script
-/// Keeping this for rollback if needed
-fn generate_taproot_address_with_key_old(script: &bitcoin::Script, internal_key: XOnlyPublicKey, network: Network) -> Option<String> {
-    use bitcoin::taproot::TaprootBuilder;
-    
-    // For simple pk(key), just use key-path only
-    let script_bytes = script.as_bytes();
-    if script_bytes.len() == 34 && script_bytes[0] == 0x20 && script_bytes[33] == 0xac {
-        // This is a simple pk() script (32-byte key push + OP_CHECKSIG)
-        return Some(Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network).to_string());
-    }
-    
-    // For complex scripts, create a taproot tree with the script
-    match TaprootBuilder::new()
-        .add_leaf(0, script.to_owned())
-        .map(|builder| builder.finalize(&Secp256k1::verification_only(), internal_key))
-    {
-        Ok(Ok(spend_info)) => {
-            // Create the P2TR address with both key-path and script-path
-            let output_key = spend_info.output_key();
-            let address = Address::p2tr(&Secp256k1::verification_only(), output_key.to_x_only_public_key(), None, network);
-            Some(address.to_string())
-        },
-        _ => {
-            console_log!("Failed to create Taproot spend info");
-            None
-        }
-    }
-}
+// moved to address::generate_taproot_address_with_key_old
 
 // ============================================================================
 // Descriptor Parsing
@@ -1435,15 +1317,15 @@ fn compile_taproot_keypath_descriptor(expression: &str) -> Result<(String, Strin
                         xonly_key
                     } else {
                         console_log!("DEBUG DESCRIPTOR KEYPATH: Failed to create XOnlyPublicKey, using NUMS");
-                        get_taproot_nums_point()
+                        taproot::utils::get_taproot_nums_point()
                     }
                 } else {
                     console_log!("DEBUG DESCRIPTOR KEYPATH: Key bytes length is not 32, using NUMS");
-                    get_taproot_nums_point()
+                    taproot::utils::get_taproot_nums_point()
                 }
             } else {
                 console_log!("DEBUG DESCRIPTOR KEYPATH: Failed to decode hex key, using NUMS");
-                get_taproot_nums_point()
+                taproot::utils::get_taproot_nums_point()
             };
             
             console_log!("DEBUG DESCRIPTOR KEYPATH: Using internal key: {}", internal_xonly_key);
@@ -1601,7 +1483,7 @@ fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, O
             
             // For single-leaf mode, we still generate the same taproot address
             // but show the raw miniscript script in HEX/ASM
-            let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let nums_point_str = NUMS_POINT;
             let nums_key = match XOnlyPublicKey::from_str(nums_point_str) {
                 Ok(key) => key,
                 Err(_) => return Err("Failed to parse NUMS point".to_string())
@@ -1635,7 +1517,7 @@ fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, O
                                 Some(true), // sanity_check
                                 Some(true), // is_non_malleable  
                                 {
-                                    let nums_point_str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+                                    let nums_point_str = NUMS_POINT;
                                     let tr_descriptor_str = format!("tr({},{})", nums_point_str, normalized_miniscript);
                                     match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
                                         Ok(descriptor) => Some(descriptor.to_string()),
@@ -1681,9 +1563,9 @@ fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Option<&
                 }
             };
             
-            let internal_key = if internal_key_name == "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0" {
+            let internal_key = if internal_key_name == NUMS_POINT {
                 console_log!("DEBUG MULTILINE: Using NUMS point as internal key");
-                get_taproot_nums_point()
+                taproot::utils::get_taproot_nums_point()
             } else if let Ok(key_bytes) = hex::decode(&internal_key_name) {
                 console_log!("DEBUG MULTILINE: Trying to decode hex key: {} (length: {})", internal_key_name, key_bytes.len());
                 if key_bytes.len() == 32 {
@@ -1692,15 +1574,15 @@ fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Option<&
                         xonly_key
                     } else {
                         console_log!("DEBUG MULTILINE: Failed to create XOnlyPublicKey from slice, using NUMS");
-                        get_taproot_nums_point()
+                        taproot::utils::get_taproot_nums_point()
                     }
                 } else {
                     console_log!("DEBUG MULTILINE: Key bytes length is not 32 ({}), using NUMS", key_bytes.len());
-                    get_taproot_nums_point()
+                    taproot::utils::get_taproot_nums_point()
                 }
             } else {
                 console_log!("DEBUG MULTILINE: Failed to decode hex key: {}, using NUMS", internal_key_name);
-                get_taproot_nums_point()
+                taproot::utils::get_taproot_nums_point()
             };
             
             // Create TapTree with the miniscript
@@ -2183,9 +2065,9 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
                     let tap_tree = TapTree::Leaf(Arc::new(tree_ms));
                     
                     // Resolve internal key name to actual XOnlyPublicKey
-                    let internal_key = if internal_key_name == "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0" {
+                    let internal_key = if internal_key_name == NUMS_POINT {
                         console_log!("DEBUG: Using NUMS point as internal key");
-                        get_taproot_nums_point()
+                        taproot::utils::get_taproot_nums_point()
                     } else if let Ok(key_bytes) = hex::decode(&internal_key_name) {
                         console_log!("DEBUG: Trying to decode hex key: {} (length: {})", internal_key_name, key_bytes.len());
                         if key_bytes.len() == 32 {
@@ -2194,15 +2076,15 @@ fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(Str
                                 xonly_key
                             } else {
                                 console_log!("DEBUG: Failed to create XOnlyPublicKey from slice, using NUMS");
-                                get_taproot_nums_point()
+                                taproot::utils::get_taproot_nums_point()
                             }
                         } else {
                             console_log!("DEBUG: Key bytes length is not 32 ({}), using NUMS", key_bytes.len());
-                            get_taproot_nums_point()
+                            taproot::utils::get_taproot_nums_point()
                         }
                     } else {
                         console_log!("DEBUG: Failed to decode hex key: {}, using NUMS", internal_key_name);
-                        get_taproot_nums_point()
+                        taproot::utils::get_taproot_nums_point()
                     };
                     
                     // Create descriptor using new_tr method
@@ -2311,9 +2193,7 @@ fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode: &st
         if compressed_key_regex.is_match(trimmed) {
             // Check if it's not part of a descriptor
             if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
-                return Err(format!(
-                    "Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03)."
-                ));
+                return Err("Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03).".to_string());
             }
         }
     }
@@ -2567,7 +2447,14 @@ fn compile_segwit_policy(
                 Some(is_non_malleable)
             ))
         }
-        Err(e) => Err(format!("Policy compilation failed for Segwit v0: {}", e))
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
+                Err(format!("Segwit v0 parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
+            } else {
+                Err(format!("Segwit v0 parsing failed: {}", e))
+            }
+        }
     }
 }
 
@@ -2707,7 +2594,7 @@ fn compile_taproot_policy_xonly_with_mode(
             let internal_key = if mode == "script-path" {
                 // BIP341 NUMS internal key (script-only pattern)
                 let nums = XOnlyPublicKey::from_str(
-                    "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
+                    NUMS_POINT
                 ).map_err(|e| format!("Failed to parse NUMS point: {}", e))?;
                 console_log!("Using NUMS point as internal key for script-only mode");
                 nums
@@ -2778,7 +2665,7 @@ fn compile_taproot_policy_xonly_single_leaf(
             console_log!("XOnly policy compiled to single-leaf miniscript: {}", compiled_miniscript);
             
             // Now pass the compiled miniscript through the same tr() descriptor approach as miniscript compilation
-            let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let nums_point = NUMS_POINT;
             let tr_descriptor = format!("tr({},{})", nums_point, compiled_miniscript);
             console_log!("Built tr() descriptor from single-leaf miniscript: {}", tr_descriptor);
             
@@ -2865,7 +2752,7 @@ fn compile_taproot_policy_single_leaf(
             console_log!("Policy compiled to single-leaf miniscript: {}", compiled_miniscript);
             
             // Now pass the compiled miniscript through the same tr() descriptor approach as miniscript compilation
-            let nums_point = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
+            let nums_point = NUMS_POINT;
             let tr_descriptor = format!("tr({},{})", nums_point, compiled_miniscript);
             console_log!("Built tr() descriptor from single-leaf miniscript: {}", tr_descriptor);
             
@@ -3085,236 +2972,21 @@ fn get_taproot_branches_as_miniscript(
 /// Compute worst-case Taproot script-path witness weight (in WU).
 /// Includes stack data, script, control block, and CompactSize prefixes.
 /// Always assumes 65-byte Schnorr sigs (worst case).
-fn taproot_leaf_witness_weight_worst(ms: &Miniscript<XOnlyPublicKey, Tap>, leaf_script_len: usize, depth: usize) -> u64 {
-    let sat_size = ms.max_satisfaction_size().unwrap_or(0) as u64 + 1; // +1 for sighash byte
-    let control_size = 33 + 32 * depth as u64;
-
-    1 // item count
-    + (1 + sat_size)             // satisfaction stack
-    + (1 + leaf_script_len as u64) // script
-    + (1 + control_size)         // control block
-}
+// moved to taproot::utils::taproot_leaf_witness_weight_worst
 
 /// Compute Taproot witness weight breakdown for display
-fn taproot_witness_breakdown(ms: &Miniscript<XOnlyPublicKey, Tap>, leaf_script_len: usize, depth: usize) -> (u64, u64, u64, u64) {
-    // Signature component: always 66 WU
-    let sig_wu = 66;
-    
-    // Script component: script size + 1
-    let script_wu = leaf_script_len as u64 + 1;
-    
-    // Control component: always 34 WU  
-    let control_wu = 34;
-    
-    // Total: sig + script + control + 1
-    let total_wu = sig_wu + script_wu + control_wu + 1;
-    
-    (sig_wu, script_wu, control_wu, total_wu)
-}
+// moved to taproot::weights::taproot_witness_breakdown
 
 /// Get miniscript branches for taproot descriptors using YOUR WORKING CODE
 #[wasm_bindgen]
 pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
-    use miniscript::descriptor::{TapTree, Tr};
-    use miniscript::policy::Liftable;
-    
-    #[derive(Serialize)]
-    struct BranchInfo {
-        miniscript: String,
-        hex: String,
-        asm: String,
-        sig_wu: u64,         // Signature component (always 66)
-        script_wu: u64,      // Script size + 1
-        control_wu: u64,     // Control block component (always 34)
-        total_wu: u64,       // Complete Taproot witness weight
-    }
-    
-    #[derive(Serialize)]
-    struct MiniscriptBranchResult {
-        success: bool,
-        internal_key: String,
-        branches: Vec<BranchInfo>,
-        error: Option<String>,
-    }
-    
-    // Parse the descriptor
-    let desc: Descriptor<XOnlyPublicKey> = match descriptor.parse() {
-        Ok(d) => d,
-        Err(e) => {
-            return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
-                success: false,
-                internal_key: String::new(),
-                branches: vec![],
-                error: Some(format!("Failed to parse descriptor: {}", e)),
-            }).unwrap_or(JsValue::NULL);
-        }
-    };
-    
-    let tr: &Tr<XOnlyPublicKey> = match &desc {
-        Descriptor::Tr(tr) => tr,
-        _ => {
-            return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
-                success: false,
-                internal_key: String::new(),
-                branches: vec![],
-                error: Some("Not a taproot descriptor".to_string()),
-            }).unwrap_or(JsValue::NULL);
-        }
-    };
-    
-    // Get the internal key
-    let internal_key = tr.internal_key().to_string();
-    let nums_key = *tr.internal_key(); // Use the actual internal key for weight calculations
-    
-    // Get the tree
-    let tree = match tr.tap_tree().clone() {
-        Some(t) => t,
-        None => {
-            return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
-                success: true,
-                internal_key,
-                branches: vec![],
-                error: None,
-            }).unwrap_or(JsValue::NULL);
-        }
-    };
-    
-    let mut branches = Vec::new();
-    
-    // YOUR EXACT LOGIC
-    match &tree {
-        TapTree::Leaf(ms) => {
-            // If the single leaf miniscript lifts to an OR policy, split into branches
-            if let Ok(policy) = ms.lift() {
-                let pol_str = policy.to_string();
-                if let Ok(conc) = Concrete::<XOnlyPublicKey>::from_str(&pol_str) {
-                    if let Concrete::Or(or_branches) = conc {
-                        for (i, (_w, subp)) in or_branches.iter().enumerate() {
-                            let sub_conc: Concrete<XOnlyPublicKey> = (**subp).clone();
-                            if let Ok(sub_ms) = sub_conc.compile::<Tap>() {
-                                let script = sub_ms.encode();
-                                let hex = script.to_hex_string();
-                                let asm = script.to_asm_string();
-                                
-                                // Calculate proper Taproot witness weight breakdown
-                                let (sig_wu, script_wu, control_wu, total_wu) = taproot_witness_breakdown(&sub_ms, script.len(), 0);
-                                
-                                branches.push(BranchInfo {
-                                    miniscript: sub_ms.to_string(),
-                                    hex,
-                                    asm,
-                                    sig_wu,
-                                    script_wu,
-                                    control_wu,
-                                    total_wu,
-                                });
-                            }
-                        }
-                        return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
-                            success: true,
-                            internal_key,
-                            branches,
-                            error: None,
-                        }).unwrap_or(JsValue::NULL);
-                    }
-                }
-            }
-            // Fallback: just report the single leaf
-            let script = ms.encode();
-            let hex = script.to_hex_string();
-            let asm = script.to_asm_string();
-            
-            // Calculate proper Taproot witness weight breakdown
-            let (sig_wu, script_wu, control_wu, total_wu) = taproot_witness_breakdown(&ms, script.len(), 0);
-            
-            branches.push(BranchInfo {
-                miniscript: ms.to_string(),
-                hex,
-                asm,
-                sig_wu,
-                script_wu,
-                control_wu,
-                total_wu,
-            });
-        }
-        TapTree::Tree { .. } => {
-            // Collect and print each leaf miniscript as its own branch
-            let mut leaves = Vec::new();
-            collect_leaf_miniscripts(&tree, &mut leaves);
-            for ms in leaves.into_iter() {
-                let script = ms.encode();
-                let hex = script.to_hex_string();
-                let asm = script.to_asm_string();
-                
-                // Calculate proper Taproot witness weight breakdown
-                let (sig_wu, script_wu, control_wu, total_wu) = taproot_witness_breakdown(&ms, script.len(), 1);
-                
-                branches.push(BranchInfo {
-                    miniscript: ms.to_string(),
-                    hex,
-                    asm,
-                    sig_wu,
-                    script_wu,
-                    control_wu,
-                    total_wu,
-                });
-            }
-        }
-    }
-    
-    serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
-        success: true,
-        internal_key,
-        branches,
-        error: None,
-    }).unwrap_or(JsValue::NULL)
+    crate::taproot::branches::get_taproot_miniscript_branches(descriptor)
 }
 
 /// Get taproot branches - real implementation
 #[wasm_bindgen]
 pub fn get_taproot_branches(descriptor: &str) -> JsValue {
-    console_log!("BRANCH FUNCTION CALLED: {}", descriptor);
-    
-    #[derive(Serialize)]
-    struct BranchResult {
-        success: bool,
-        branches: Vec<BranchInfo>,
-        error: Option<String>,
-    }
-    
-    #[derive(Serialize)]
-    struct BranchInfo {
-        path: String,
-        miniscript: String,
-    }
-    
-    // Call the real implementation
-    match get_taproot_branches_as_miniscript(descriptor) {
-        Ok(branches) => {
-            let branch_infos: Vec<BranchInfo> = branches
-                .into_iter()
-                .map(|(path, miniscript)| BranchInfo { path, miniscript })
-                .collect();
-            
-            let result = BranchResult {
-                success: true,
-                branches: branch_infos,
-                error: None,
-            };
-            
-            serde_wasm_bindgen::to_value(&result).unwrap()
-        }
-        Err(e) => {
-            console_log!("Error in get_taproot_branches: {}", e);
-            let result = BranchResult {
-                success: false,
-                branches: vec![],
-                error: Some(e),
-            };
-            
-            serde_wasm_bindgen::to_value(&result).unwrap()
-        }
-    }
+    crate::taproot::branches::get_taproot_branches(descriptor)
 }
 
 // ============================================================================
@@ -3324,128 +2996,7 @@ pub fn get_taproot_branches(descriptor: &str) -> JsValue {
 /// Calculate weight information for each taproot branch
 #[wasm_bindgen]
 pub fn get_taproot_branch_weights(descriptor: &str) -> JsValue {
-    use serde::Serialize;
-    
-    #[derive(Serialize)]
-    struct BranchWeightInfo {
-        branch_index: usize,
-        miniscript: String,
-        script_size: usize,
-        control_block_size: usize,
-        max_witness_size: usize,
-        total_weight: usize,
-    }
-    
-    #[derive(Serialize)]
-    struct BranchWeightResult {
-        success: bool,
-        branches: Vec<BranchWeightInfo>,
-        error: Option<String>,
-    }
-    
-    console_log!("Calculating taproot branch weights for: {}", descriptor);
-    
-    // Parse the descriptor and extract tap tree
-    let tap_tree = match descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
-        Ok(Descriptor::Tr(tr_desc)) => {
-            // Get the tap tree from the Tr descriptor
-            match tr_desc.taptree() {
-                Some(tree) => tree.clone(),
-                None => {
-                    let result = BranchWeightResult {
-                        success: false,
-                        branches: vec![],
-                        error: Some("No taproot tree found".to_string()),
-                    };
-                    return serde_wasm_bindgen::to_value(&result).unwrap();
-                }
-            }
-        }
-        Ok(_) => {
-            let result = BranchWeightResult {
-                success: false,
-                branches: vec![],
-                error: Some("Not a taproot descriptor".to_string()),
-            };
-            return serde_wasm_bindgen::to_value(&result).unwrap();
-        }
-        Err(e) => {
-            let result = BranchWeightResult {
-                success: false,
-                branches: vec![],
-                error: Some(format!("Failed to parse descriptor: {}", e)),
-            };
-            return serde_wasm_bindgen::to_value(&result).unwrap();
-        }
-    };
-    
-    // Collect all leaves with their depths
-    fn collect_leaves_with_depth(
-        tree: &miniscript::descriptor::TapTree<XOnlyPublicKey>,
-        depth: usize,
-        leaves: &mut Vec<(Miniscript<XOnlyPublicKey, Tap>, usize)>
-    ) {
-        use miniscript::descriptor::TapTree;
-        match tree {
-            TapTree::Leaf(ms_arc) => {
-                // Dereference the Arc to get the Miniscript
-                leaves.push(((**ms_arc).clone(), depth));
-            }
-            TapTree::Tree { left, right, .. } => {
-                collect_leaves_with_depth(left, depth + 1, leaves);
-                collect_leaves_with_depth(right, depth + 1, leaves);
-            }
-        }
-    }
-    
-    let mut leaves_with_depth = Vec::new();
-    collect_leaves_with_depth(&tap_tree, 0, &mut leaves_with_depth);
-    
-    // Calculate weight for each branch
-    let mut branch_weights = Vec::new();
-    for (index, (ms, depth)) in leaves_with_depth.iter().enumerate() {
-        // Script size
-        let script = ms.encode();
-        let script_size = script.len();
-        
-        // Control block size: 33 + 32 * depth (internal key + merkle path)
-        let control_block_size = 33 + (32 * depth);
-        
-        // Maximum witness size for this branch
-        let max_witness_size = match ms.max_satisfaction_size() {
-            Ok(size) => size,
-            Err(_) => {
-                // Estimate based on script type
-                if ms.to_string().starts_with("pk(") {
-                    64 // Single signature
-                } else {
-                    100 // Conservative estimate
-                }
-            }
-        };
-        
-        // Total weight: script output (34) + witness (script + control block + satisfaction)
-        // For taproot spends, witness data counts as 1 WU per byte
-        let witness_weight = script_size + control_block_size + max_witness_size;
-        let total_weight = 34 + witness_weight; // 34 is the P2TR output size
-        
-        branch_weights.push(BranchWeightInfo {
-            branch_index: index + 1,
-            miniscript: ms.to_string(),
-            script_size,
-            control_block_size,
-            max_witness_size,
-            total_weight,
-        });
-    }
-    
-    let result = BranchWeightResult {
-        success: true,
-        branches: branch_weights,
-        error: None,
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
+    crate::taproot::branches::get_taproot_branch_weights(descriptor)
 }
 
 // ============================================================================
@@ -3455,227 +3006,15 @@ pub fn get_taproot_branch_weights(descriptor: &str) -> JsValue {
 /// Lift a Bitcoin script to miniscript
 #[wasm_bindgen]
 pub fn lift_to_miniscript(bitcoin_script: &str) -> JsValue {
-    console_log!("Lifting Bitcoin script to miniscript: {}", bitcoin_script);
-    
-    let result = match perform_lift_to_miniscript(bitcoin_script) {
-        Ok(miniscript) => LiftResult {
-            success: true,
-            error: None,
-            miniscript: Some(miniscript),
-            policy: None,
-        },
-        Err(e) => LiftResult {
-            success: false,
-            error: Some(e),
-            miniscript: None,
-            policy: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
+    lift::lift_to_miniscript(bitcoin_script)
 }
 
 /// Lift a miniscript to policy
 #[wasm_bindgen]
 pub fn lift_to_policy(miniscript: &str) -> JsValue {
-    console_log!("Lifting miniscript to policy: {}", miniscript);
-    
-    let result = match perform_lift_to_policy(miniscript) {
-        Ok(policy) => LiftResult {
-            success: true,
-            error: None,
-            miniscript: None,
-            policy: Some(policy),
-        },
-        Err(e) => LiftResult {
-            success: false,
-            error: Some(e),
-            miniscript: None,
-            policy: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
+    lift::lift_to_policy(miniscript)
 }
 
-/// Internal function to perform lift to miniscript
-fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
-    if bitcoin_script.trim().is_empty() {
-        return Err("Empty Bitcoin script".to_string());
-    }
-    
-    let trimmed = bitcoin_script.trim();
-    console_log!("Processing Bitcoin script ASM: {}", trimmed);
-    
-    // Parse script from hex or ASM
-    let script = if trimmed.len() % 2 == 0 && trimmed.chars().all(|c| c.is_ascii_hexdigit()) {
-        match hex::decode(trimmed) {
-            Ok(bytes) => ScriptBuf::from_bytes(bytes),
-            Err(_) => return Err("Invalid hex script".to_string()),
-        }
-    } else {
-        parse_asm_to_script(trimmed)?
-    };
-    
-    console_log!("Successfully parsed Bitcoin script, length: {} bytes", script.len());
-    
-    // Try to lift for different contexts
-    let mut context_errors = Vec::new();
-    
-    // Try Legacy
-    match try_lift_script_to_miniscript::<miniscript::Legacy>(script.as_script()) {
-        Ok(ms) => return Ok(ms),
-        Err(e) => {
-            context_errors.push(("Legacy", e));
-            console_log!("Legacy lift failed");
-        }
-    }
-    
-    // Try Segwit
-    match try_lift_script_to_miniscript::<miniscript::Segwitv0>(script.as_script()) {
-        Ok(ms) => return Ok(ms),
-        Err(e) => {
-            context_errors.push(("Segwit", e));
-            console_log!("Segwit lift failed");
-        }
-    }
-    
-    // Try Taproot
-    match try_lift_script_to_miniscript::<miniscript::Tap>(script.as_script()) {
-        Ok(ms) => return Ok(ms),
-        Err(e) => {
-            context_errors.push(("Taproot", e));
-            console_log!("Taproot lift failed");
-        }
-    }
-    
-    // Format error message
-    format_lift_error(context_errors)
-}
-
-/// Try to lift script to miniscript for a specific context
-fn try_lift_script_to_miniscript<Ctx>(script: &bitcoin::Script) -> Result<String, String> 
-where 
-    Ctx: miniscript::ScriptContext,
-    for<'a> Ctx::Key: std::fmt::Display + std::str::FromStr,
-    <Ctx::Key as std::str::FromStr>::Err: std::fmt::Display,
-{
-    console_log!("Attempting to lift script to miniscript...");
-    
-    // Try parse_insane first (accepts non-standard but valid miniscripts)
-    match Miniscript::<Ctx::Key, Ctx>::parse_insane(script) {
-        Ok(ms) => {
-            let ms_string = ms.to_string();
-            console_log!("Successfully lifted to miniscript using parse_insane: {}", ms_string);
-            Ok(ms_string)
-        }
-        Err(insane_err) => {
-            console_log!("parse_insane failed: {}", insane_err);
-            // Fallback to regular parse
-            match Miniscript::<Ctx::Key, Ctx>::parse(script) {
-                Ok(ms) => {
-                    let ms_string = ms.to_string();
-                    console_log!("Successfully lifted to miniscript using parse: {}", ms_string);
-                    Ok(ms_string)
-                }
-                Err(parse_err) => {
-                    console_log!("Both parse_insane and parse failed");
-                    Err(format!("parse_insane: {}, parse: {}", insane_err, parse_err))
-                }
-            }
-        }
-    }
-}
-
-/// Format lift error message
-fn format_lift_error(context_errors: Vec<(&str, String)>) -> Result<String, String> {
-    let mut error_msg = String::from("❌ Script is not liftable to Miniscript\n\n");
-    error_msg.push_str("This Bitcoin script cannot be lifted to miniscript. Attempted lifting with both standard and non-standard parsers across all contexts:\n\n");
-    
-    for (context_name, error) in context_errors {
-        error_msg.push_str(&format!("📍 {} Context:\n", context_name));
-        
-        // Extract detailed errors if available
-        if let Some(pos) = error.find("parse_insane: ") {
-            let after = &error[pos + 14..];
-            if let Some(comma_pos) = after.find(", parse: ") {
-                let insane_err = &after[..comma_pos];
-                let parse_err = &after[comma_pos + 9..];
-                error_msg.push_str(&format!("   • parse_insane: ❌ {}\n", insane_err));
-                error_msg.push_str(&format!("   • parse: ❌ {}\n\n", parse_err));
-            } else {
-                error_msg.push_str(&format!("   • Error: ❌ {}\n\n", error));
-            }
-        } else {
-            error_msg.push_str(&format!("   • Error: ❌ {}\n\n", error));
-        }
-    }
-    
-    error_msg.push_str("Note: Scripts containing raw public key hashes (P2PKH) or certain non-miniscript constructs cannot be lifted.");
-    
-    Err(error_msg)
-}
-
-/// Internal function to perform lift to policy
-fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
-    if miniscript.trim().is_empty() {
-        return Err("Empty miniscript".to_string());
-    }
-    
-    let trimmed = miniscript.trim();
-    console_log!("Attempting to lift miniscript to policy: {}", trimmed);
-    
-    // Try different contexts
-    let mut errors = Vec::new();
-    
-    // Try Legacy
-    match lift_miniscript_to_policy::<miniscript::Legacy>(trimmed) {
-        Ok(policy) => return Ok(policy),
-        Err(e) => errors.push(("Legacy", e))
-    }
-    
-    // Try Segwit
-    match lift_miniscript_to_policy::<miniscript::Segwitv0>(trimmed) {
-        Ok(policy) => return Ok(policy),
-        Err(e) => errors.push(("Segwit", e))
-    }
-    
-    // Try Taproot
-    match lift_miniscript_to_policy::<miniscript::Tap>(trimmed) {
-        Ok(policy) => return Ok(policy),
-        Err(e) => errors.push(("Taproot", e))
-    }
-    
-    // Format error message
-    let mut error_msg = String::from("Failed to lift miniscript to policy:\n");
-    for (context, err) in errors {
-        error_msg.push_str(&format!("  {} context: {}\n", context, err));
-    }
-    
-    Err(error_msg)
-}
-
-/// Lift miniscript to policy for a specific context
-fn lift_miniscript_to_policy<Ctx>(miniscript: &str) -> Result<String, String>
-where
-    Ctx: miniscript::ScriptContext,
-    for<'a> Ctx::Key: std::fmt::Display + std::str::FromStr,
-    <Ctx::Key as std::str::FromStr>::Err: std::fmt::Display + std::fmt::Debug,
-{
-    match miniscript.parse::<Miniscript<Ctx::Key, Ctx>>() {
-        Ok(ms) => {
-            match ms.lift() {
-                Ok(semantic_policy) => {
-                    let policy_str = semantic_policy.to_string();
-                    console_log!("Successfully lifted to policy: {}", policy_str);
-                    Ok(policy_str)
-                }
-                Err(e) => Err(format!("Policy lifting failed: {}", e))
-            }
-        }
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
-}
 
 // ============================================================================
 // Address Generation
@@ -3684,254 +3023,22 @@ where
 /// Generate address for a specific network
 #[wasm_bindgen]
 pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
-    console_log!("Generating address for network: {}", network);
-    console_log!("Script type: {}", script_type);
-    
-    let result = match perform_address_generation(script_hex, script_type, network) {
-        Ok(address) => AddressResult {
-            success: true,
-            error: None,
-            address: Some(address),
-        },
-        Err(e) => AddressResult {
-            success: false,
-            error: Some(e),
-            address: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
+    address::generate_address_for_network(script_hex, script_type, network)
 }
 
 /// Generate taproot address for a specific network with miniscript
 #[wasm_bindgen]
 pub fn generate_taproot_address_for_network(miniscript: &str, network_str: &str) -> JsValue {
-    console_log!("Generating taproot address for network: {} with miniscript: {}", network_str, miniscript);
-    
-    let result = match perform_taproot_address_generation(miniscript, network_str) {
-        Ok(address) => AddressResult {
-            success: true,
-            error: None,
-            address: Some(address),
-        },
-        Err(e) => AddressResult {
-            success: false,
-            error: Some(e),
-            address: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
+    address::generate_taproot_address_for_network(miniscript, network_str)
 }
 
 /// Generate taproot address using TaprootBuilder (matches compilation logic)
 #[wasm_bindgen]
 pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, internal_key: Option<String>) -> JsValue {
-    console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, internal_key);
-    
-    // Use the new descriptor-based approach for cleaner code
-    let result = match perform_descriptor_address_generation(miniscript, network_str, internal_key) {
-        Ok(address) => AddressResult {
-            success: true,
-            error: None,
-            address: Some(address),
-        },
-        Err(e) => AddressResult {
-            success: false,
-            error: Some(e),
-            address: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
+    address::generate_taproot_address_with_builder(miniscript, network_str, internal_key)
 }
 
 
-/// Internal function using TaprootBuilder (same logic as compile_taproot_miniscript_raw)
-fn perform_taproot_builder_address_generation(miniscript: &str, network_str: &str, internal_key: Option<String>) -> Result<String, String> {
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
-    };
-    
-    console_log!("Building taproot address with TaprootBuilder for network: {:?}", network);
-    
-    // Parse as XOnlyPublicKey miniscript for Taproot (same as original compilation)
-    match miniscript.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-        Ok(ms) => {
-            let script = ms.encode();
-            
-            // Use provided internal key or NUMS point as fallback
-            let internal_key_str = internal_key.unwrap_or_else(|| {
-                console_log!("No internal key provided, using NUMS point");
-                "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0".to_string()
-            });
-            
-            console_log!("Using internal key for address generation: {}", internal_key_str);
-            
-            let internal_xonly_key = match XOnlyPublicKey::from_str(&internal_key_str) {
-                Ok(key) => key,
-                Err(_) => return Err(format!("Failed to parse internal key: {}", internal_key_str))
-            };
-            
-            // Create taproot address (exact same logic as compile_taproot_miniscript_raw)
-            let secp = Secp256k1::verification_only();
-            match TaprootBuilder::new().add_leaf(0, script.clone()) {
-                Ok(builder) => {
-                    match builder.finalize(&secp, internal_xonly_key) {
-                        Ok(spend_info) => {
-                            let output_key = spend_info.output_key();
-                            let address = Address::p2tr(&secp, output_key.to_x_only_public_key(), None, network);
-                            console_log!("Generated taproot address with TaprootBuilder: {}", address);
-                            Ok(address.to_string())
-                        },
-                        Err(e) => Err(format!("TapTree finalization failed: {:?}", e))
-                    }
-                },
-                Err(e) => Err(format!("TapTree creation failed: {:?}", e))
-            }
-        },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
-}
-
-/// Internal function using Descriptor approach (cleaner than TaprootBuilder)
-fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, internal_key: Option<String>) -> Result<String, String> {
-    use std::sync::Arc;
-    use miniscript::descriptor::TapTree;
-    
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
-    };
-    
-    console_log!("Building taproot address with Descriptor for network: {:?}", network);
-    
-    // Parse as XOnlyPublicKey miniscript for Taproot
-    match miniscript.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-        Ok(ms) => {
-            // Require internal key to be provided
-            let internal_key_str = match internal_key {
-                Some(key) => key,
-                None => return Err("Internal key is required for taproot address generation".to_string())
-            };
-            
-            console_log!("Using internal key for address generation: {}", internal_key_str);
-            
-            let internal_xonly_key = match XOnlyPublicKey::from_str(&internal_key_str) {
-                Ok(key) => key,
-                Err(_) => return Err(format!("Failed to parse internal key: {}", internal_key_str))
-            };
-            
-            // Create the tree with the miniscript
-            let tree = TapTree::Leaf(Arc::new(ms));
-            
-            // Create descriptor and get address directly
-            match Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree)) {
-                Ok(descriptor) => {
-                    match descriptor.address(network) {
-                        Ok(addr) => {
-                            console_log!("Generated taproot address with Descriptor: {}", addr);
-                            Ok(addr.to_string())
-                        },
-                        Err(e) => Err(format!("Address generation failed: {:?}", e))
-                    }
-                },
-                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
-            }
-        },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
-}
-
-/// Internal function to generate address
-fn perform_address_generation(script_hex: &str, script_type: &str, network_str: &str) -> Result<String, String> {
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
-    };
-    
-    // Decode script hex
-    let script_bytes = hex::decode(script_hex)
-        .map_err(|e| format!("Invalid script hex: {}", e))?;
-    let script = ScriptBuf::from_bytes(script_bytes.clone());
-    
-    // Generate address based on script type
-    let address = match script_type {
-        "Legacy" => {
-            Address::p2sh(&script, network)
-                .map_err(|e| format!("Failed to generate P2SH address: {}", e))?
-        },
-        "Segwit v0" => {
-            Address::p2wsh(&script, network)
-        },
-        "Taproot" => {
-            // For Taproot, we need to create a simple tr() descriptor with NUMS point
-            // Since we only have the script hex, we'll create a basic P2TR address
-            console_log!("Generating Taproot address for network switch");
-            
-            // Use NUMS point for network switching
-            let nums_point = XOnlyPublicKey::from_str(
-                "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
-            ).map_err(|e| format!("Invalid NUMS point: {}", e))?;
-            
-            // Create a simple key-path only P2TR address with NUMS point
-            // This is a limitation - we can't recreate the exact script-path address
-            // without the original miniscript expression
-            Address::p2tr(&Secp256k1::verification_only(), nums_point, None, network)
-        },
-        _ => return Err(format!("Unknown script type: {}", script_type))
-    };
-    
-    Ok(address.to_string())
-}
-
-/// Internal function to generate taproot address using miniscript
-fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Result<String, String> {
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
-    };
-    
-    console_log!("Generating taproot address with miniscript: {} for network: {:?}", miniscript, network);
-    
-    // Build tr() descriptor with extracted internal key - same as compile_taproot_miniscript
-    let internal_key = extract_internal_key_from_expression(miniscript);
-    let tr_descriptor = format!("tr({},{})", internal_key, miniscript);
-    console_log!("Built tr() descriptor for network switch: {}", tr_descriptor);
-    
-    // Parse as descriptor to get proper taproot address
-    match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
-        Ok(descriptor) => {
-            console_log!("Successfully parsed tr() descriptor for network switch");
-            
-            // Generate address from descriptor
-            descriptor.address(network)
-                .map(|addr| addr.to_string())
-                .map_err(|e| format!("Failed to generate address from descriptor: {}", e))
-        }
-        Err(e) => {
-            console_log!("Failed to parse tr() descriptor for network switch: {}", e);
-            Err(format!("Failed to create tr() descriptor: {}", e))
-        }
-    }
-}
 
 // ============================================================================
 /// Extract taproot tree leaves from a miniscript expression

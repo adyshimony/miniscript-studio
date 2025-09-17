@@ -1,7 +1,6 @@
 //! Key translators for converting between different key types
 
 use miniscript::{Translator, DescriptorPublicKey, MiniscriptKey, ToPublicKey};
-use miniscript::descriptor::ConversionError;
 use bitcoin::{PublicKey, XOnlyPublicKey};
 
 // ============================================================================
