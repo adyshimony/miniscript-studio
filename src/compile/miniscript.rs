@@ -327,8 +327,8 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
                         console_log!("Successfully parsed tr() descriptor with tree notation");
                         return crate::compile_parsed_descriptor(descriptor, network);
                     }
-                    Err(e) => {
-                        console_log!("Failed to parse tr() descriptor with tree notation: {}", e);
+                    Err(_e) => {
+                        console_log!("Failed to parse tr() descriptor with tree notation: {}", _e);
                         // Fall back to original single-leaf approach
                     }
                 }
@@ -379,8 +379,8 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
                     
                     // Log the taproot output key from the script for debugging
                     if script.len() == 34 && script.as_bytes()[0] == 0x51 {
-                        let taproot_key = &script.as_bytes()[2..34];
-                        console_log!("Taproot output key from script: {}", hex::encode(taproot_key));
+                        let _taproot_key = &script.as_bytes()[2..34];
+                        console_log!("Taproot output key from script: {}", hex::encode(_taproot_key));
                     }
                     
                     let script_hex = hex::encode(script.as_bytes());

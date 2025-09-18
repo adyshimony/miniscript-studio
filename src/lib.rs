@@ -21,13 +21,17 @@ mod translators;
 mod opcodes;
 mod utils;
 mod parse { pub(crate) mod helpers; }
-mod compile;
 mod lift;
 mod address;
 mod taproot;
-mod descriptors;
-mod keys;
-mod validation;
+
+// Export modules for integration tests
+pub mod compile;
+pub mod descriptors;
+pub mod keys;
+pub mod validation;
+
+// Module functions are accessible via the pub mod declarations above
 
 // Re-exports from modules
 use types::{CompilationResult, LiftResult, AddressResult, ParsedDescriptor};
@@ -562,8 +566,8 @@ fn compile_taproot_keypath_descriptor(expression: &str) -> Result<(String, Strin
     // Parse as XOnlyPublicKey miniscript for Taproot
     match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         Ok(ms) => {
-            let normalized_miniscript = ms.to_string();
-            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            let _normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", _normalized_miniscript);
             
             // Calculate satisfaction weights 
             let max_satisfaction_size = ms.max_satisfaction_size().ok();
@@ -655,8 +659,8 @@ fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str) -> Re
     // Parse as XOnlyPublicKey miniscript for Taproot
     match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         Ok(ms) => {
-            let normalized_miniscript = ms.to_string();
-            console_log!("Parsed miniscript: {}", normalized_miniscript);
+            let _normalized_miniscript = ms.to_string();
+            console_log!("Parsed miniscript: {}", _normalized_miniscript);
             
             // Calculate satisfaction weights 
             let max_satisfaction_size = ms.max_satisfaction_size().ok();
@@ -672,9 +676,9 @@ fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str) -> Re
             
             // Get the leaf script (raw miniscript script)
             let leaf_script = ms.encode();
-            let leaf_script_hex = leaf_script.to_hex_string();
+            let _leaf_script_hex = leaf_script.to_hex_string();
             let leaf_script_asm = format!("{:?}", leaf_script).replace("Script(", "").trim_end_matches(')').to_string();
-            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script hex: {}", leaf_script_hex);
+            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script hex: {}", _leaf_script_hex);
             console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script ASM: {}", leaf_script_asm);
             
             // Create the tree with the miniscript (clone to avoid move)
@@ -2229,8 +2233,8 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
     }
     
     console_log!("Total leaves extracted: {}", leaves.len());
-    for leaf in &leaves {
-        console_log!("Leaf {}: {}", leaf.leaf_index, leaf.miniscript);
+    for _leaf in &leaves {
+        console_log!("Leaf {}: {}", _leaf.leaf_index, _leaf.miniscript);
     }
     
     serde_wasm_bindgen::to_value(&leaves).unwrap_or(JsValue::NULL)

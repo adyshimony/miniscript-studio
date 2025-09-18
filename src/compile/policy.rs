@@ -360,8 +360,8 @@ pub fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str) 
                             Some(descriptor_str),
                         ));
                     }
-                    Err(e) => {
-                        console_log!("Failed to parse tr() descriptor with tree notation: {}", e);
+                    Err(_e) => {
+                        console_log!("Failed to parse tr() descriptor with tree notation: {}", _e);
                         // Fall back to original single-leaf approach
                     }
                 }
