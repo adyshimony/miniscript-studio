@@ -4687,9 +4687,9 @@ class MiniscriptCompiler {
             }
         }
 
-        if (hasWildcardDescriptor) {
-            const resultsDiv = document.getElementById('results');
+        const resultsDiv = document.getElementById('results');
 
+        if (hasWildcardDescriptor) {
             // Check if current expression has multipath patterns (do this first)
             const hasMultipath = /<\d+;\d+>\/\*[),]*/.test(currentExpression);
             let hasMultipathInKeyVars = false;
@@ -4770,7 +4770,7 @@ class MiniscriptCompiler {
                            style="width: 90px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center; filter: brightness(1.3);">
                     ${showPathSelection ? `
                         <select id="derivation-path-type"
-                                style="padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); filter: brightness(1.3); cursor: pointer;">
+                                style="padding: 4px 8px; font-size: 12px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); filter: brightness(1.3); cursor: pointer;">
                             <option value="external" ${currentPathType === 'external' ? 'selected' : ''}>External (lower value)</option>
                             <option value="change" ${currentPathType === 'change' ? 'selected' : ''}>Change (higher value)</option>
                         </select>
@@ -4778,9 +4778,9 @@ class MiniscriptCompiler {
                     <button id="apply-derivation-btn"
                             title="Compile with derivation index to see specific address"
                             class="primary-btn"
-                            style="padding: 6px 10px; font-size: 12px; transform: scale(0.85); transition: all 0.2s ease;"
-                            onmouseover="this.style.transform='scale(0.85) translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(61, 69, 83, 0.3)'"
-                            onmouseout="this.style.transform='scale(0.85) translateY(0px)'; this.style.boxShadow=''">
+                            style="padding: 6px 11px; font-size: 13px; transform: scale(0.893); transition: all 0.2s ease;"
+                            onmouseover="this.style.transform='scale(0.893) translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(61, 69, 83, 0.3)'"
+                            onmouseout="this.style.transform='scale(0.893) translateY(0px)'; this.style.boxShadow=''">
                         🔨 Compile
                     </button>
                 </div>
@@ -4903,6 +4903,13 @@ class MiniscriptCompiler {
             // Only append if it's a new element, position it correctly from the start
             if (!existingDerivationDiv) {
                 this.insertDerivationFieldAtCorrectPosition(resultsDiv, derivationDiv);
+            }
+        } else {
+            // No wildcard descriptor - remove the derivation field if it exists
+            const existingDerivationDiv = resultsDiv.querySelector('.derivation-container');
+            if (existingDerivationDiv) {
+                console.log('🗑️ Removing derivation field - no wildcards in expression');
+                existingDerivationDiv.remove();
             }
         }
     }
