@@ -532,10 +532,10 @@ fn compile_expression_with_mode_network(
                             result.2 = Some(address.to_string()); // Update the address field
                             console_log!("DEBUG: Updated address to: {:?}", result.2);
                         },
-                        Err(e) => console_log!("DEBUG: Failed to generate address for network: {:?}", e)
+                        Err(_e) => console_log!("DEBUG: Failed to generate address for network: {:?}", _e)
                     }
                 },
-                Err(e) => console_log!("DEBUG: Failed to parse compiled descriptor: {:?}", e)
+                Err(_e) => console_log!("DEBUG: Failed to parse compiled descriptor: {:?}", _e)
             }
         }
     }
@@ -1878,8 +1878,8 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
             console_log!("DEBUG: Processed expression descriptors: {} -> {}", expression, processed);
             processed
         },
-        Err(e) => {
-            console_log!("DEBUG: Failed to process descriptors: {:?}, using original", e);
+        Err(_e) => {
+            console_log!("DEBUG: Failed to process descriptors: {:?}, using original", _e);
             expression.to_string()
         },
     };
@@ -1973,8 +1973,8 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                 
                 *index_counter += 1;
             }
-            Err(e) => {
-                console_log!("Failed to parse leaf as miniscript: {} - {}", trimmed, e);
+            Err(_e) => {
+                console_log!("Failed to parse leaf as miniscript: {} - {}", trimmed, _e);
                 
                 // Try with PublicKey - for taproot, we need x-only keys
                 // For now, just log that it needs conversion - the main compilation will handle this
@@ -1991,8 +1991,8 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                         });
                         *index_counter += 1;
                     }
-                    Err(e2) => {
-                        console_log!("Failed to parse leaf with both XOnly and PublicKey: {} - {}", trimmed, e2);
+                    Err(_e2) => {
+                        console_log!("Failed to parse leaf with both XOnly and PublicKey: {} - {}", trimmed, _e2);
                     }
                 }
             }
@@ -2108,8 +2108,8 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                     console_log!("No tree part found in descriptor");
                 }
             }
-            Err(e) => {
-                console_log!("Failed to parse tr() descriptor: {}, falling back to string parsing", e);
+            Err(_e) => {
+                console_log!("Failed to parse tr() descriptor: {}, falling back to string parsing", _e);
                 
                 // Fall back to extracting from string
                 if let Some(tree_start) = processed_expr.find(',') {
@@ -2212,8 +2212,8 @@ pub fn get_taproot_leaves(expression: &str) -> JsValue {
                 
                 *leaf_index += 1;
             }
-            Err(e) => {
-                console_log!("Failed to parse leaf as miniscript: {} - {}", trimmed, e);
+            Err(_e) => {
+                console_log!("Failed to parse leaf as miniscript: {} - {}", trimmed, _e);
                 
                 // Try to handle as placeholder
                 leaves.push(TaprootLeaf {

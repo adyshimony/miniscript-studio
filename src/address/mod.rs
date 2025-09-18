@@ -266,14 +266,14 @@ pub fn generate_taproot_address_descriptor(
                     console_log!("Successfully generated Taproot address: {}", address);
                     Some(address.to_string())
                 },
-                Err(e) => {
-                    console_log!("Failed to generate address from descriptor: {}", e);
+                Err(_e) => {
+                    console_log!("Failed to generate address from descriptor: {}", _e);
                     None
                 }
             }
         },
-        Err(e) => {
-            console_log!("Failed to create tr() descriptor: {}", e);
+        Err(_e) => {
+            console_log!("Failed to create tr() descriptor: {}", _e);
             None
         }
     }

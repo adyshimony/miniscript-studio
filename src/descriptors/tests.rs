@@ -5,152 +5,377 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::descriptors::parser::create_descriptor_regex_patterns;
+    use crate::descriptors::parser::parse_descriptors;
+    use crate::descriptors::processor::process_expression_descriptors;
+    use crate::descriptors::utils::{expand_descriptor, replace_descriptors_with_keys};
+    use crate::keys::{extract_xonly_key_from_miniscript, extract_internal_key_from_expression, extract_xonly_key_from_script_hex};
+    use crate::validation::validate_inner_miniscript;
 
     // Real Bitcoin descriptors for testing - these are the exact descriptors the user mentioned
     const COMPLEX_DESCRIPTOR_FIXED: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0)";
     const COMPLEX_DESCRIPTOR_WILDCARD: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/*)";
     const COMPLEX_DESCRIPTOR_MULTIPATH: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/0)";
 
-    #[test]
-    fn test_create_descriptor_regex_patterns() {
-        // Test that our create_descriptor_regex_patterns function works
-        let patterns = create_descriptor_regex_patterns().unwrap();
-        
-        // All patterns should be valid regex
-        assert!(patterns.full_multipath.is_match("[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/*"));
-        assert!(patterns.full_wildcard_single.is_match("[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/*"));
-        assert!(patterns.full_fixed_double.is_match("[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0"));
-        
-        // Test bare patterns
-        assert!(patterns.bare_multipath.is_match("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/*"));
-        assert!(patterns.bare_wildcard_single.is_match("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/*"));
-        assert!(patterns.bare_fixed_double.is_match("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0"));
-    }
+    // ============================================================================
+    // DESCRIPTOR PARSING TESTS
+    // ============================================================================
 
     #[test]
-    fn test_regex_patterns_match_user_descriptors() {
-        // Test that our regex patterns match the exact descriptors the user provided
-        let patterns = create_descriptor_regex_patterns().unwrap();
+    fn test_parse_descriptors_fixed() {
+        // Test parsing a fixed descriptor
+        let descriptors = parse_descriptors(COMPLEX_DESCRIPTOR_FIXED).unwrap();
         
-        // Extract the descriptor part from the user's examples (remove pk() wrapper)
-        let fixed_descriptor_part = "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0";
-        let wildcard_descriptor_part = "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/*";
-        let multipath_descriptor_part = "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/0";
-        
-        // Test that our patterns match the user's descriptors
-        assert!(patterns.full_fixed_double.is_match(fixed_descriptor_part), "Fixed descriptor should match full_fixed_double pattern");
-        assert!(patterns.full_fixed_wildcard.is_match(wildcard_descriptor_part), "Wildcard descriptor should match full_fixed_wildcard pattern");
-        
-        // The multipath descriptor <0;1>/0 doesn't match any of our current patterns
-        // This reveals a gap in our regex patterns - we don't support multipath with fixed child
-        // For now, we'll test that it doesn't match any pattern (which is the current behavior)
-        assert!(!patterns.full_fixed_single.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_fixed_single pattern");
-        assert!(!patterns.full_multipath.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_multipath pattern");
-        assert!(!patterns.full_wildcard_single.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_wildcard_single pattern");
-        assert!(!patterns.full_wildcard_double.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_wildcard_double pattern");
-        assert!(!patterns.full_fixed_wildcard.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_fixed_wildcard pattern");
-        assert!(!patterns.full_wildcard_fixed.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_wildcard_fixed pattern");
-        assert!(!patterns.full_fixed_double.is_match(multipath_descriptor_part), "Multipath descriptor should NOT match full_fixed_double pattern");
-        
-        // Test a proper multipath descriptor that ends with /*
-        let proper_multipath_descriptor = "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/*";
-        assert!(patterns.full_multipath.is_match(proper_multipath_descriptor), "Proper multipath descriptor should match full_multipath pattern");
-    }
-
-    #[test]
-    fn test_regex_patterns_capture_groups() {
-        // Test that our regex patterns capture the expected groups
-        let patterns = create_descriptor_regex_patterns().unwrap();
-        
-        let test_descriptor = "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0";
-        
-        if let Some(captures) = patterns.full_fixed_double.captures(test_descriptor) {
-            assert_eq!(captures.get(1).unwrap().as_str(), "C8FE8D4F", "Should capture fingerprint");
-            assert_eq!(captures.get(2).unwrap().as_str(), "48h/1h/123h/2h", "Should capture derivation path");
-            assert!(captures.get(3).unwrap().as_str().contains("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda"), "Should capture xpub");
-            assert_eq!(captures.get(4).unwrap().as_str(), "0", "Should capture first child");
-            assert_eq!(captures.get(5).unwrap().as_str(), "0", "Should capture second child");
-        } else {
-            panic!("Pattern should match the test descriptor");
-        }
-    }
-
-    #[test]
-    fn test_regex_patterns_edge_cases() {
-        // Test edge cases for our regex patterns
-        let patterns = create_descriptor_regex_patterns().unwrap();
-        
-        // Test different fingerprint formats
-        let test_cases = vec![
-            "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-            "[deadbeef/48'/1'/123'/2']xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-            "[12345678/44h/0h/0h/0h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-        ];
-        
-        for test_case in test_cases {
-            assert!(patterns.full_fixed_double.is_match(test_case), "Pattern should match: {}", test_case);
+        // Debug: print what we actually found
+        println!("Found {} descriptors:", descriptors.len());
+        for (i, (desc_str, parsed_desc)) in descriptors.iter().enumerate() {
+            println!("  {}: '{}' -> fingerprint: {}, wildcard: {}, paths: {:?}", 
+                i, desc_str, parsed_desc.info.fingerprint, parsed_desc.info.is_wildcard, parsed_desc.info.child_paths);
         }
         
-        // Test different xpub formats
-        let xpub_cases = vec![
-            "[C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-            "[C8FE8D4F/48h/1h/123h/2h]ypub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-            "[C8FE8D4F/48h/1h/123h/2h]zpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-            "[C8FE8D4F/48h/1h/123h/2h]tpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0",
-        ];
+        // Find the main descriptor (should be the full one with fingerprint and double path)
+        let main_descriptor = descriptors.iter()
+            .find(|(desc_str, parsed_desc)| 
+                desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+                desc_str.contains("/0/0") &&
+                parsed_desc.info.child_paths == vec![0, 0]);
         
-        for test_case in xpub_cases {
-            assert!(patterns.full_fixed_double.is_match(test_case), "Pattern should match xpub format: {}", test_case);
-        }
+        assert!(main_descriptor.is_some(), "Should find the main descriptor with fingerprint and double path");
+        let (descriptor_str, parsed_descriptor) = main_descriptor.unwrap();
+        assert!(descriptor_str.contains("[C8FE8D4F/48h/1h/123h/2h]"), "Should contain fingerprint and derivation path");
+        assert!(descriptor_str.contains("/0/0"), "Should contain double child path");
+        assert!(!parsed_descriptor.info.is_wildcard, "Fixed descriptor should not be wildcard");
+        assert_eq!(parsed_descriptor.info.child_paths, vec![0, 0], "Should have fixed child paths [0, 0]");
+        assert_eq!(parsed_descriptor.info.fingerprint.to_string().to_uppercase(), "C8FE8D4F", "Should extract correct fingerprint");
+        assert_eq!(parsed_descriptor.info.derivation_path.to_string(), "48'/1'/123'/2'", "Should extract correct derivation path");
     }
 
     #[test]
-    fn test_regex_patterns_invalid_cases() {
-        // Test that our regex patterns reject invalid cases
-        let patterns = create_descriptor_regex_patterns().unwrap();
+    fn test_parse_descriptors_wildcard() {
+        // Test parsing a wildcard descriptor
+        let descriptors = parse_descriptors(COMPLEX_DESCRIPTOR_WILDCARD).unwrap();
         
-        let invalid_cases = vec![
-            "invalid_descriptor",
-            "pk(invalid_key)",
-            "[invalid_fingerprint]xpub/*",
-            "[C8FE8D4F/invalid_path]xpub/0/0",
-            "[C8FE8D4F/48h/1h/123h/2h]invalid_xpub/0/0",
-            "",
-        ];
+        // Find the main wildcard descriptor (should be the full one with fingerprint and wildcard)
+        let main_descriptor = descriptors.iter()
+            .find(|(desc_str, parsed_desc)| 
+                desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+                desc_str.contains("/*") &&
+                parsed_desc.info.is_wildcard);
         
-        for invalid_case in invalid_cases {
-            // None of our patterns should match invalid cases
-            assert!(!patterns.full_multipath.is_match(invalid_case), "Should not match invalid case: {}", invalid_case);
-            assert!(!patterns.full_wildcard_single.is_match(invalid_case), "Should not match invalid case: {}", invalid_case);
-            assert!(!patterns.full_fixed_double.is_match(invalid_case), "Should not match invalid case: {}", invalid_case);
-            assert!(!patterns.bare_multipath.is_match(invalid_case), "Should not match invalid case: {}", invalid_case);
-            assert!(!patterns.bare_wildcard_single.is_match(invalid_case), "Should not match invalid case: {}", invalid_case);
-            assert!(!patterns.bare_fixed_double.is_match(invalid_case), "Should not match invalid case: {}", invalid_case);
-        }
+        assert!(main_descriptor.is_some(), "Should find the main wildcard descriptor");
+        let (descriptor_str, parsed_descriptor) = main_descriptor.unwrap();
+        assert!(descriptor_str.contains("[C8FE8D4F/48h/1h/123h/2h]"), "Should contain fingerprint and derivation path");
+        assert!(descriptor_str.contains("/*"), "Should contain wildcard");
+        assert!(parsed_descriptor.info.is_wildcard, "Wildcard descriptor should be wildcard");
+        assert_eq!(parsed_descriptor.info.child_paths, vec![0], "Should have child path [0]");
+        assert_eq!(parsed_descriptor.info.fingerprint.to_string().to_uppercase(), "C8FE8D4F", "Should extract correct fingerprint");
     }
 
     #[test]
-    fn test_descriptor_patterns_structure() {
-        // Test that our DescriptorPatterns struct has all expected fields
-        let patterns = create_descriptor_regex_patterns().unwrap();
+    fn test_parse_descriptors_multiple() {
+        // Test parsing multiple descriptors in one expression
+        let expression = format!("{} + {}", COMPLEX_DESCRIPTOR_FIXED, COMPLEX_DESCRIPTOR_WILDCARD);
+        let descriptors = parse_descriptors(&expression).unwrap();
         
-        // Verify all full patterns contain expected regex elements
-        assert!(patterns.full_multipath.as_str().contains("<"), "Full multipath should contain <");
-        assert!(patterns.full_wildcard_single.as_str().contains("\\*"), "Full wildcard single should contain \\*");
-        assert!(patterns.full_wildcard_double.as_str().contains("\\*/\\*"), "Full wildcard double should contain \\*/\\*");
-        assert!(patterns.full_fixed_wildcard.as_str().contains("([0-9]+)/\\*"), "Full fixed wildcard should contain ([0-9]+)/\\*");
-        assert!(patterns.full_wildcard_fixed.as_str().contains("\\*/([0-9]+)"), "Full wildcard fixed should contain \\*/([0-9]+)");
-        assert!(patterns.full_fixed_single.as_str().contains("([0-9]+)"), "Full fixed single should contain ([0-9]+)");
-        assert!(patterns.full_fixed_double.as_str().contains("([0-9]+)/([0-9]+)"), "Full fixed double should contain ([0-9]+)/([0-9]+)");
+        // Should find multiple descriptors (both fixed and wildcard, plus their sub-components)
+        assert!(descriptors.len() >= 2, "Should find at least two main descriptors");
         
-        // Verify all bare patterns contain expected regex elements
-        assert!(patterns.bare_multipath.as_str().contains("<"), "Bare multipath should contain <");
-        assert!(patterns.bare_wildcard_single.as_str().contains("\\*"), "Bare wildcard single should contain \\*");
-        assert!(patterns.bare_wildcard_double.as_str().contains("\\*/\\*"), "Bare wildcard double should contain \\*/\\*");
-        assert!(patterns.bare_fixed_wildcard.as_str().contains("([0-9]+)/\\*"), "Bare fixed wildcard should contain ([0-9]+)/\\*");
-        assert!(patterns.bare_wildcard_fixed.as_str().contains("\\*/([0-9]+)"), "Bare wildcard fixed should contain \\*/([0-9]+)");
-        assert!(patterns.bare_fixed_single.as_str().contains("([0-9]+)"), "Bare fixed single should contain ([0-9]+)");
-        assert!(patterns.bare_fixed_double.as_str().contains("([0-9]+)/([0-9]+)"), "Bare fixed double should contain ([0-9]+)/([0-9]+)");
+        // Check that both main descriptor types are found
+        let has_fixed_descriptor = descriptors.iter().any(|(desc_str, parsed_desc)| 
+            desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+            desc_str.contains("/0/0") &&
+            !parsed_desc.info.is_wildcard);
+        
+        let has_wildcard_descriptor = descriptors.iter().any(|(desc_str, parsed_desc)| 
+            desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+            desc_str.contains("/*") &&
+            parsed_desc.info.is_wildcard);
+        
+        assert!(has_fixed_descriptor, "Should find fixed descriptor");
+        assert!(has_wildcard_descriptor, "Should find wildcard descriptor");
+    }
+
+    #[test]
+    fn test_parse_descriptors_invalid() {
+        // Test parsing invalid descriptor - function is resilient and parses what it can
+        let invalid_descriptor = "pk([INVALID_FINGERPRINT/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0)";
+        let result = parse_descriptors(invalid_descriptor);
+        println!("Result for invalid descriptor: {:?}", result);
+        
+        // Function should succeed and parse the valid parts (bare xpub)
+        assert!(result.is_ok(), "Should parse valid parts even from invalid descriptor");
+        let descriptors = result.unwrap();
+        
+        // Should find the bare xpub parts (without fingerprint)
+        let has_bare_xpub = descriptors.iter().any(|(desc_str, parsed_desc)| 
+            desc_str.contains("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda") &&
+            parsed_desc.info.fingerprint.to_string() == "00000000");
+        assert!(has_bare_xpub, "Should find bare xpub parts");
+    }
+
+    // ============================================================================
+    // DESCRIPTOR PROCESSING TESTS
+    // ============================================================================
+
+    #[test]
+    fn test_process_expression_descriptors_fixed_only() {
+        // Test processing expression with only fixed descriptors
+        let expression = format!("{} + {}", COMPLEX_DESCRIPTOR_FIXED, COMPLEX_DESCRIPTOR_FIXED);
+        let result = process_expression_descriptors(&expression).unwrap();
+        println!("Processed fixed-only expression: {}", result);
+        
+        // Should replace descriptors with derived public keys (not xpub keys)
+        assert!(!result.contains("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda"), "Should not contain xpub keys");
+        assert!(!result.starts_with("wsh("), "Should not wrap in wsh for fixed descriptors");
+        
+        // Should contain derived public keys (66-character hex strings)
+        let key_regex = regex::Regex::new(r"\b[0-9a-fA-F]{66}\b").unwrap();
+        let keys: Vec<&str> = key_regex.find_iter(&result).map(|m| m.as_str()).collect();
+        assert!(!keys.is_empty(), "Should contain derived public keys");
+    }
+
+    #[test]
+    fn test_process_expression_descriptors_with_wildcards() {
+        // Test processing expression with wildcard descriptors
+        let expression = format!("{} + {}", COMPLEX_DESCRIPTOR_FIXED, COMPLEX_DESCRIPTOR_WILDCARD);
+        let result = process_expression_descriptors(&expression).unwrap();
+        
+        // Should wrap in wsh() for wildcard descriptors
+        assert!(result.starts_with("wsh("), "Should wrap in wsh for wildcard descriptors");
+        assert!(result.ends_with(")"), "Should end with closing parenthesis");
+    }
+
+    #[test]
+    fn test_process_expression_descriptors_no_descriptors() {
+        // Test processing expression with no descriptors
+        let expression = "pk(02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9)";
+        let result = process_expression_descriptors(expression).unwrap();
+        
+        // Should return the original expression unchanged
+        assert_eq!(result, expression, "Should return original expression unchanged");
+    }
+
+    #[test]
+    fn test_process_expression_descriptors_invalid() {
+        // Test processing invalid descriptor expression - function is resilient
+        let expression = "pk([INVALID_FINGERPRINT/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0)";
+        
+        let result = process_expression_descriptors(expression);
+        println!("Result for invalid expression: {:?}", result);
+        
+        // Function should succeed and process the valid parts
+        assert!(result.is_ok(), "Should process valid parts even from invalid descriptor");
+        let processed = result.unwrap();
+        
+        // Should contain derived public keys (not xpub)
+        let key_regex = regex::Regex::new(r"\b[0-9a-fA-F]{66}\b").unwrap();
+        let keys: Vec<&str> = key_regex.find_iter(&processed).map(|m| m.as_str()).collect();
+        assert!(!keys.is_empty(), "Should contain derived public keys");
+    }
+
+    // ============================================================================
+    // DESCRIPTOR EXPANSION TESTS
+    // ============================================================================
+
+    #[test]
+    fn test_expand_descriptor_wildcard() {
+        // Test expanding a wildcard descriptor
+        let descriptors = parse_descriptors(COMPLEX_DESCRIPTOR_WILDCARD).unwrap();
+        
+        // Find the wildcard descriptor
+        let wildcard_descriptor = descriptors.iter()
+            .find(|(desc_str, parsed_desc)| 
+                desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+                desc_str.contains("/*") &&
+                parsed_desc.info.is_wildcard);
+        
+        assert!(wildcard_descriptor.is_some(), "Should find wildcard descriptor");
+        let parsed_descriptor = wildcard_descriptor.unwrap().1;
+        
+        let expanded = expand_descriptor(parsed_descriptor, 5).unwrap();
+        println!("Expanded descriptor: {}", expanded);
+        
+        // Should expand to a derived public key (not the xpub itself)
+        assert_eq!(expanded.len(), 66, "Should be a 66-character compressed public key");
+        assert!(expanded.starts_with("02") || expanded.starts_with("03"), "Should be a valid compressed public key");
+        assert!(!expanded.contains("*"), "Should not contain wildcard after expansion");
+    }
+
+    #[test]
+    fn test_expand_descriptor_fixed() {
+        // Test expanding a fixed descriptor (should return derived public key)
+        let descriptors = parse_descriptors(COMPLEX_DESCRIPTOR_FIXED).unwrap();
+        
+        // Find the fixed descriptor
+        let fixed_descriptor = descriptors.iter()
+            .find(|(desc_str, parsed_desc)| 
+                desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+                desc_str.contains("/0/0") &&
+                !parsed_desc.info.is_wildcard);
+        
+        assert!(fixed_descriptor.is_some(), "Should find fixed descriptor");
+        let parsed_descriptor = fixed_descriptor.unwrap().1;
+        
+        let expanded = expand_descriptor(parsed_descriptor, 5).unwrap();
+        println!("Expanded fixed descriptor: {}", expanded);
+        
+        // Should expand to a derived public key
+        assert_eq!(expanded.len(), 66, "Should be a 66-character compressed public key");
+        assert!(expanded.starts_with("02") || expanded.starts_with("03"), "Should be a valid compressed public key");
+    }
+
+    // ============================================================================
+    // DESCRIPTOR REPLACEMENT TESTS
+    // ============================================================================
+
+    #[test]
+    fn test_replace_descriptors_with_keys() {
+        // Test replacing descriptors with concrete keys
+        let expression = format!("{} + {}", COMPLEX_DESCRIPTOR_FIXED, COMPLEX_DESCRIPTOR_WILDCARD);
+        let descriptors = parse_descriptors(&expression).unwrap();
+        
+        let replaced = replace_descriptors_with_keys(&expression, &descriptors).unwrap();
+        println!("Replaced expression: {}", replaced);
+        
+        // Should replace descriptors with derived public keys (not xpub keys)
+        assert!(!replaced.contains("[C8FE8D4F/48h/1h/123h/2h]"), "Should not contain fingerprint/derivation path");
+        assert!(!replaced.contains("xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda"), "Should not contain xpub keys");
+        
+        // Should contain derived public keys (66-character hex strings)
+        let key_regex = regex::Regex::new(r"\b[0-9a-fA-F]{66}\b").unwrap();
+        let keys: Vec<&str> = key_regex.find_iter(&replaced).map(|m| m.as_str()).collect();
+        assert!(!keys.is_empty(), "Should contain derived public keys");
+    }
+
+    // ============================================================================
+    // KEY EXTRACTION TESTS
+    // ============================================================================
+
+    #[test]
+    fn test_extract_xonly_key_from_miniscript() {
+        // Test extracting x-only key from miniscript (using 64-char x-only key)
+        let miniscript = "pk(f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9)";
+        let key = extract_xonly_key_from_miniscript(miniscript);
+        println!("Extracted key from miniscript '{}': {:?}", miniscript, key);
+        assert!(key.is_some(), "Should extract x-only key from miniscript");
+        
+        // Test with invalid miniscript
+        let invalid_miniscript = "pk(invalid_key)";
+        let key = extract_xonly_key_from_miniscript(invalid_miniscript);
+        println!("Extracted key from invalid miniscript '{}': {:?}", invalid_miniscript, key);
+        assert!(key.is_none(), "Should return None for invalid miniscript");
+    }
+
+    #[test]
+    fn test_extract_internal_key_from_expression() {
+        // Test extracting internal key from expression
+        let expression = "pk(02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9)";
+        let key = extract_internal_key_from_expression(expression);
+        assert_eq!(key, "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9", "Should extract key from pk()");
+        
+        // Test with expression with pk() but non-hex key (function takes first pk() match)
+        let expression_with_pk = "and(pk(key1), pk(key2))";
+        let key = extract_internal_key_from_expression(expression_with_pk);
+        assert_eq!(key, "key1", "Should extract first pk() content even if not hex");
+        
+        // Test with expression without pk()
+        let expression_no_pk = "and(key1, key2)";
+        let key = extract_internal_key_from_expression(expression_no_pk);
+        assert_eq!(key, crate::NUMS_POINT, "Should return NUMS point when no pk() found");
+    }
+
+    #[test]
+    fn test_extract_xonly_key_from_script_hex() {
+        // Test extracting x-only key from script hex (20 = OP_PUSHBYTES_32, followed by 64-char x-only key)
+        let script_hex = "20f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9ac";
+        let key = extract_xonly_key_from_script_hex(script_hex);
+        assert!(key.is_some(), "Should extract x-only key from script hex");
+        
+        // Test with invalid script hex
+        let invalid_script = "invalid_hex";
+        let key = extract_xonly_key_from_script_hex(invalid_script);
+        assert!(key.is_none(), "Should return None for invalid script hex");
+    }
+
+    // ============================================================================
+    // VALIDATION TESTS
+    // ============================================================================
+
+    #[test]
+    fn test_validate_inner_miniscript_legacy() {
+        // Test validating miniscript in legacy context
+        let miniscript = "pk(02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9)";
+        let result = validate_inner_miniscript(miniscript, "legacy");
+        assert!(result.is_ok(), "Should validate miniscript in legacy context");
+    }
+
+    #[test]
+    fn test_validate_inner_miniscript_segwit() {
+        // Test validating miniscript in segwit context
+        let miniscript = "pk(02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9)";
+        let result = validate_inner_miniscript(miniscript, "segwit");
+        assert!(result.is_ok(), "Should validate miniscript in segwit context");
+    }
+
+    #[test]
+    fn test_validate_inner_miniscript_taproot() {
+        // Test validating miniscript in taproot context
+        let miniscript = "pk(02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9)";
+        let result = validate_inner_miniscript(miniscript, "taproot");
+        assert!(result.is_ok(), "Should validate miniscript in taproot context");
+    }
+
+    #[test]
+    fn test_validate_inner_miniscript_invalid() {
+        // Test validating invalid miniscript
+        let invalid_miniscript = "invalid_miniscript";
+        let result = validate_inner_miniscript(invalid_miniscript, "legacy");
+        assert!(result.is_err(), "Should return error for invalid miniscript");
+    }
+
+    // ============================================================================
+    // EDGE CASES AND ERROR HANDLING
+    // ============================================================================
+
+    #[test]
+    fn test_edge_case_empty_expression() {
+        // Test edge case with empty expression
+        let result = process_expression_descriptors("");
+        assert!(result.is_ok(), "Should handle empty expression gracefully");
+        assert_eq!(result.unwrap(), "", "Should return empty string");
+    }
+
+    #[test]
+    fn test_edge_case_whitespace_only() {
+        // Test edge case with whitespace only
+        let result = process_expression_descriptors("   \t\n  ");
+        assert!(result.is_ok(), "Should handle whitespace gracefully");
+    }
+
+    #[test]
+    fn test_performance_large_expression() {
+        // Test performance with large expression containing many descriptors
+        let mut expression = String::new();
+        for i in 0..10 {
+            expression.push_str(&format!("pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/{}/0) + ", i));
+        }
+        expression.pop(); // Remove trailing " + "
+        
+        let descriptors = parse_descriptors(&expression).unwrap();
+        // Should find multiple descriptors per input (bare + full versions)
+        assert!(descriptors.len() >= 10, "Should parse at least 10 main descriptors");
+        
+        // Check that we found descriptors with the expected fingerprint
+        let has_expected_descriptors = descriptors.iter().any(|(desc_str, parsed_desc)| 
+            desc_str.contains("[C8FE8D4F/48h/1h/123h/2h]") && 
+            parsed_desc.info.fingerprint.to_string().to_uppercase() == "C8FE8D4F");
+        assert!(has_expected_descriptors, "Should find descriptors with expected fingerprint");
+        
+        let result = process_expression_descriptors(&expression).unwrap();
+        println!("Processed large expression: {}", result);
+        
+        // Should contain derived public keys (not xpub keys)
+        let key_regex = regex::Regex::new(r"\b[0-9a-fA-F]{66}\b").unwrap();
+        let keys: Vec<&str> = key_regex.find_iter(&result).map(|m| m.as_str()).collect();
+        assert!(!keys.is_empty(), "Should contain derived public keys");
     }
 }
