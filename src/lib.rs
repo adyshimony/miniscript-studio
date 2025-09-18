@@ -26,6 +26,8 @@ mod lift;
 mod address;
 mod taproot;
 mod descriptors;
+mod keys;
+mod validation;
 
 // Re-exports from modules
 use types::{CompilationResult, LiftResult, AddressResult, ParsedDescriptor};
@@ -35,7 +37,7 @@ use parse::helpers::{detect_network, needs_descriptor_processing, is_descriptor_
 // External crate imports
 use wasm_bindgen::prelude::*;
 use serde::{Serialize};
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey, ScriptContext};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, DescriptorPublicKey};
 use miniscript::policy::Liftable;
 use bitcoin::{Address, Network, PublicKey, XOnlyPublicKey, secp256k1::Secp256k1};
 // ... existing code ...
@@ -65,70 +67,7 @@ pub const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547
 
 
 /// Extract the first x-only key from a miniscript string
-fn extract_xonly_key_from_miniscript(miniscript: &str) -> Option<XOnlyPublicKey> {
-    // Use regex to find all 64-character hex strings (x-only keys)
-    let key_regex = regex::Regex::new(r"\b[a-fA-F0-9]{64}\b").ok()?;
-    
-    for cap in key_regex.captures_iter(miniscript) {
-        if let Some(key_match) = cap.get(0) {
-            let key_str = key_match.as_str();
-            if let Ok(key_bytes) = hex::decode(key_str) {
-                if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
-                    console_log!("Found x-only key for Taproot address: {}", key_str);
-                    return Some(xonly_key);
-                }
-            }
-        }
-    }
-    
-    console_log!("No valid x-only key found in miniscript");
-    None
-}
-
-// moved to taproot::utils::get_taproot_nums_point
-
-/// Extract internal key from expression (same logic as JavaScript)
-fn extract_internal_key_from_expression(expression: &str) -> String {
-    console_log!("DEBUG: Extracting internal key from expression: {}", expression);
-    
-    // Match first pk() pattern to extract internal key
-    let re = regex::Regex::new(r"pk\(([^)]+)\)").unwrap();
-    if let Some(captures) = re.captures(expression) {
-        if let Some(key_match) = captures.get(1) {
-            let extracted_key = key_match.as_str().to_string();
-            console_log!("DEBUG: Extracted key from pk(): {}", extracted_key);
-            return extracted_key;
-        }
-    }
-    
-    // If no pk() found, use NUMS point
-    console_log!("DEBUG: No pk() found, using NUMS point");
-    NUMS_POINT.to_string()
-}
-
-// moved to taproot::utils::get_taproot_internal_key
-
-/// Extract x-only key from script hex (for Taproot address generation)
-fn extract_xonly_key_from_script_hex(script_hex: &str) -> Option<XOnlyPublicKey> {
-    // Look for 32-byte key pushes in the script hex
-    // Pattern: 20 (OP_PUSHBYTES_32) followed by 64 hex chars (32 bytes)
-    let key_regex = regex::Regex::new(r"20([a-fA-F0-9]{64})").ok()?;
-    
-    for cap in key_regex.captures_iter(script_hex) {
-        if let Some(key_match) = cap.get(1) {  // Group 1 is the key without the 20 prefix
-            let key_str = key_match.as_str();
-            if let Ok(key_bytes) = hex::decode(key_str) {
-                if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
-                    console_log!("Found x-only key in script hex: {}", key_str);
-                    return Some(xonly_key);
-                }
-            }
-        }
-    }
-    
-    console_log!("No valid x-only key found in script hex");
-    None
-}
+// Key extraction functions moved to src/keys/mod.rs
 
 // moved to address::generate_taproot_address_with_key
 
@@ -631,7 +570,7 @@ fn compile_taproot_keypath_descriptor(expression: &str) -> Result<(String, Strin
             let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
             
             // Extract internal key from expression (e.g., from pk(key))
-            let internal_key_str = extract_internal_key_from_expression(expression);
+            let internal_key_str = keys::extract_internal_key_from_expression(expression);
             console_log!("DEBUG DESCRIPTOR KEYPATH: Extracted internal key: {}", internal_key_str);
             
             // Parse internal key
@@ -884,7 +823,7 @@ fn compile_descriptor(expression: &str, context: &str) -> Result<(String, String
     console_log!("Parsing inner miniscript with proper validation: {}", inner_miniscript);
     
     // Parse and validate the inner miniscript based on context
-    validate_inner_miniscript(inner_miniscript, context)
+    validation::validate_inner_miniscript(inner_miniscript, context)
 }
 
 /// Parse non-WSH descriptors
@@ -912,48 +851,7 @@ fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<
 }
 
 /// Validate inner miniscript from descriptor
-fn validate_inner_miniscript(inner_miniscript: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    let validation_result = match context {
-        "legacy" => validate_miniscript::<Legacy>(inner_miniscript),
-        "taproot" => validate_miniscript::<Tap>(inner_miniscript),
-        _ => validate_miniscript::<Segwitv0>(inner_miniscript),
-    };
-    
-    match validation_result {
-        Ok(desc_str) => Ok((
-            "No single script - this descriptor defines multiple paths".to_string(),
-            "No single script - this descriptor defines multiple paths".to_string(),
-            None,
-            0,
-            "Descriptor".to_string(),
-            None,
-            None,
-            None,
-            None,
-            Some(format!("Valid descriptor: {}", desc_str))
-        )),
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
-}
-
-/// Validate miniscript for a specific context
-fn validate_miniscript<Ctx>(inner_miniscript: &str) -> Result<String, String>
-where
-    Ctx: ScriptContext,
-    Miniscript<DescriptorPublicKey, Ctx>: FromStr,
-    <Miniscript<DescriptorPublicKey, Ctx> as FromStr>::Err: std::fmt::Display,
-{
-    match inner_miniscript.parse::<Miniscript<DescriptorPublicKey, Ctx>>() {
-        Ok(ms) => {
-            let full_descriptor = format!("wsh({})", ms);
-            match Descriptor::<DescriptorPublicKey>::from_str(&full_descriptor) {
-                Ok(descriptor) => Ok(descriptor.to_string()),
-                Err(e) => Err(format!("Descriptor validation failed: {}", e))
-            }
-        },
-        Err(e) => Err(e.to_string())
-    }
-}
+// Validation functions moved to src/validation/mod.rs
 
 /// Compile Legacy context miniscript
 fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {

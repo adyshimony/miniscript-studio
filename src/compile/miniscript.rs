@@ -209,7 +209,7 @@ pub fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Opti
                     key.to_string()
                 },
                 None => {
-                    let extracted = crate::extract_internal_key_from_expression(expression);
+                    let extracted = crate::keys::extract_internal_key_from_expression(expression);
                     console_log!("DEBUG MULTILINE: Extracted internal key from expression: {}", extracted);
                     extracted
                 }
@@ -307,7 +307,7 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
             console_log!("After OR transformation: {}", transformed_miniscript);
             
             // Extract internal key name and resolve to actual key
-            let internal_key_name = crate::extract_internal_key_from_expression(expression);
+            let internal_key_name = crate::keys::extract_internal_key_from_expression(expression);
             console_log!("Extracted internal key name: {}", internal_key_name);
             
             // If we transformed an OR pattern, create a new tr() descriptor with tree notation
