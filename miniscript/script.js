@@ -1701,10 +1701,18 @@ class MiniscriptCompiler {
     }
 
     applySyntaxHighlighting(text) {
-        // Policy language syntax patterns
-        return text
+        // First escape only the problematic characters that could be interpreted as HTML
+        // We need to be careful to only escape what's necessary to prevent HTML injection
+        // while preserving the ability to read the original text back
+        let result = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        // Apply syntax highlighting - the patterns need to account for escaped < and >
+        result = result
             // HD wallet descriptors: [fingerprint/path]xpub/<range>/*
-            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)(<[0-9;]+>)?(\/\*)?/g, 
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'\/]+)(\])([xt]pub[A-Za-z0-9]+)(&lt;[0-9;]+&gt;)?(\/\*)?/g, 
                 '<span class="syntax-descriptor-bracket">$1</span>' +
                 '<span class="syntax-fingerprint">$2</span>' +
                 '<span class="syntax-descriptor-bracket">$3</span>' +
@@ -1715,7 +1723,7 @@ class MiniscriptCompiler {
                 '<span class="syntax-wildcard">$8</span>')
             // Functions (pk, and, or, thresh, etc.)
             .replace(/\b(pk|and|or|thresh|older|after|sha256|hash256|ripemd160|hash160)\b/g, '<span class="syntax-function">$1</span>')
-            // Numbers 
+            // Numbers
             .replace(/\b\d+\b/g, '<span class="syntax-number">$&</span>')
             // Key variables (capitalized words)
             .replace(/\b[A-Z][a-zA-Z]*\b/g, '<span class="syntax-key">$&</span>')
@@ -1723,6 +1731,8 @@ class MiniscriptCompiler {
             .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
             // Commas
             .replace(/,/g, '<span class="syntax-comma">$&</span>');
+
+        return result;
     }
 
     highlightMiniscriptSyntax(skipCursorRestore = false) {
@@ -1804,10 +1814,19 @@ class MiniscriptCompiler {
     }
 
     applyMiniscriptSyntaxHighlighting(text) {
+        // First escape only the problematic characters that could be interpreted as HTML
+        // We need to be careful to only escape what's necessary to prevent HTML injection
+        // while preserving the ability to read the original text back
+        let result = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
         // Miniscript syntax patterns (based on official spec: https://bitcoin.sipa.be/miniscript/)
-        return text
+        // Apply syntax highlighting - the patterns need to account for escaped < and >
+        result = result
             // HD wallet descriptors: [fingerprint/path]xpub/<range>/* or [fingerprint/path]xpub/path/index or [fingerprint/path]xpub/<range>/index
-            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'/]+)(\])([xt]pub[A-Za-z0-9]+)((?:\/<[0-9;]+>\/(?:\*|[0-9]+)|\/[0-9]+\/[0-9*]+))/g, 
+            .replace(/(\[)([A-Fa-f0-9]{8})(\/)([0-9h'\/]+)(\])([xt]pub[A-Za-z0-9]+)((?:\/&lt;[0-9;]+&gt;\/(?:\*|[0-9]+)|\/[0-9]+\/[0-9*]+))/g, 
                 '<span class="syntax-descriptor-bracket">$1</span>' +
                 '<span class="syntax-fingerprint">$2</span>' +
                 '<span class="syntax-descriptor-bracket">$3</span>' +
@@ -1844,6 +1863,8 @@ class MiniscriptCompiler {
             .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
             // Commas
             .replace(/,/g, '<span class="syntax-comma">$&</span>');
+
+        return result;
     }
 
     saveState(type, force = false) {
