@@ -1726,7 +1726,7 @@ export class MiniscriptCompiler {
             // Numbers
             .replace(/\b\d+\b/g, '<span class="syntax-number">$&</span>')
             // Key variables (capitalized words)
-            .replace(/\b[A-Z][a-zA-Z]*\b/g, '<span class="syntax-key">$&</span>')
+            .replace(/\b[A-Z][a-zA-Z0-9]*\b/g, '<span class="syntax-key">$&</span>')
             // Parentheses
             .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
             // Commas
@@ -1858,7 +1858,7 @@ export class MiniscriptCompiler {
             // Numbers 
             .replace(/\b\d+\b/g, '<span class="syntax-number">$&</span>')
             // Key variables (capitalized words)
-            .replace(/\b[A-Z][a-zA-Z]*\b/g, '<span class="syntax-key">$&</span>')
+            .replace(/\b[A-Z][a-zA-Z0-9]*\b/g, '<span class="syntax-key">$&</span>')
             // Parentheses
             .replace(/[()]/g, '<span class="syntax-parenthesis">$&</span>')
             // Commas
