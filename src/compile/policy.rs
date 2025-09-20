@@ -4,6 +4,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use miniscript::descriptor::TapTree;
 use crate::console_log;
+use regex::Regex;
 
 /// Compile policy for Legacy context
 pub fn compile_legacy_policy(
@@ -268,9 +269,29 @@ pub fn compile_taproot_policy_single_leaf(
 }
 
 /// Extract internal key from miniscript (helper function)
-fn extract_internal_key_from_miniscript(_ms: &Miniscript<XOnlyPublicKey, Tap>) -> XOnlyPublicKey {
-    // This is a simplified extraction - in a real implementation you'd want more robust parsing
-    // For now, we'll use a default NUMS key
+fn extract_internal_key_from_miniscript(ms: &Miniscript<XOnlyPublicKey, Tap>) -> XOnlyPublicKey {
+    // Try to extract the first x-only key from the miniscript
+    // This is a simplified approach - look for pk() nodes with x-only keys
+    let miniscript_str = ms.to_string();
+    
+    // Use the same logic as the keys module but adapted for XOnlyPublicKey
+    let re = Regex::new(r"pk\(([^)]+)\)").unwrap();
+    if let Some(captures) = re.captures(&miniscript_str) {
+        if let Some(key_match) = captures.get(1) {
+            let key_str = key_match.as_str();
+            if let Ok(key_bytes) = hex::decode(key_str) {
+                if key_bytes.len() == 32 {
+                    if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
+                        console_log!("Extracted x-only key from miniscript: {}", key_str);
+                        return xonly_key;
+                    }
+                }
+            }
+        }
+    }
+    
+    // If no pk() found, use NUMS point
+    console_log!("No pk() found in miniscript, using NUMS point");
     XOnlyPublicKey::from_str(crate::NUMS_POINT)
         .expect("NUMS key should be valid")
 }

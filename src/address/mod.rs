@@ -137,7 +137,7 @@ fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Re
     console_log!("Generating taproot address with miniscript: {} for network: {:?}", miniscript, network);
     
     // Build tr() descriptor with extracted internal key - same as compile_taproot_miniscript
-    let internal_key = extract_internal_key_from_expression(miniscript);
+    let internal_key = crate::keys::extract_internal_key_from_expression(miniscript);
     let tr_descriptor = format!("tr({},{})", internal_key, miniscript);
     console_log!("Built tr() descriptor for network switch: {}", tr_descriptor);
     
@@ -208,12 +208,6 @@ fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, in
     }
 }
 
-/// Extract internal key from miniscript expression (helper function)
-fn extract_internal_key_from_expression(_expression: &str) -> String {
-    // This is a simplified extraction - in a real implementation you'd want more robust parsing
-    // For now, we'll use a default NUMS key
-    crate::NUMS_POINT.to_string()
-}
 
 // ============================================================================
 // Taproot Address Generation Functions
