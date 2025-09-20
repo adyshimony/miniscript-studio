@@ -486,7 +486,7 @@ fn compile_expression_with_mode(
             "script-path" => {
                 console_log!("Using script-path compilation (descriptor approach) with NUMS: {}", nums_key);
                 // Script-path mode: use descriptor approach with NUMS
-                return compile_taproot_script_path_descriptor(expression, nums_key, network);
+                return compile::policy::compile_taproot_script_path_descriptor(expression, nums_key, network);
             },
             _ => {
                 console_log!("Using single-leaf compilation (descriptor approach) with NUMS");
@@ -549,10 +549,6 @@ fn compile_expression_with_mode_network(
     Ok(result)
 }
 
-/// Compile Taproot Script path using Descriptor::new_tr() approach (the correct way)
-fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::policy::compile_taproot_script_path_descriptor(expression, nums_key, network)
-}
 
 /// Compile Taproot Key path + script path using Descriptor::new_tr() approach with extracted internal key
 fn compile_taproot_keypath_descriptor(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
@@ -728,14 +724,7 @@ fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str, netwo
 }
 
 /// Compile miniscript for single-leaf taproot (shows raw script, not taproot address)
-fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::miniscript::compile_taproot_miniscript_raw(expression)
-}
 
-/// Compile miniscript for multi-leaf taproot (using TapTree optimization)
-fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Option<&str>) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::miniscript::compile_taproot_miniscript_multiline(expression, internal_key)
-}
 
 /// Internal function to compile miniscript expressions  
 fn compile_expression(
@@ -767,9 +756,9 @@ fn compile_expression(
     
     // Compile based on context
     match context {
-        "legacy" => compile_legacy_miniscript(&processed_expr, network),
-        "segwit" => compile_segwit_miniscript(&processed_expr, network),
-        "taproot" => compile_taproot_miniscript(&processed_expr, network),
+        "legacy" => compile::miniscript::compile_legacy_miniscript(&processed_expr, network),
+        "segwit" => compile::miniscript::compile_segwit_miniscript(&processed_expr, network),
+        "taproot" => compile::miniscript::compile_taproot_miniscript(&processed_expr, network),
         _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
     }
 }
@@ -857,15 +846,7 @@ fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<
 /// Validate inner miniscript from descriptor
 // Validation functions moved to src/validation/mod.rs
 
-/// Compile Legacy context miniscript
-fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::miniscript::compile_legacy_miniscript(expression, network)
-}
 
-/// Compile Segwit v0 context miniscript
-fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::miniscript::compile_segwit_miniscript(expression, network)
-}
 
 /// Compile Taproot context miniscript
 /// Compile a parsed Taproot descriptor
@@ -978,9 +959,6 @@ fn transform_or_to_tree(miniscript: &str) -> String {
     miniscript.to_string()
 }
 
-fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::miniscript::compile_taproot_miniscript(expression, network)
-}
 
 fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     compile_policy_to_miniscript_with_mode(policy, context, "multi-leaf")
