@@ -57,11 +57,72 @@ window.loadExample = function(example, exampleId) {
             }
         }, 600); // After the 500ms delayed highlighting
     }
-    
+
     // Check if auto-compile is enabled
     const autoCompile = document.getElementById('auto-compile-setting');
     const shouldPreserveResults = autoCompile && autoCompile.checked;
-    
+
+    // Always clear taproot descriptor when loading new examples
+    const taprootDescriptor = document.getElementById('taproot-descriptor');
+    if (taprootDescriptor) {
+        taprootDescriptor.style.display = 'none';
+    }
+
+    // Always clear ONLY Taproot Structure when loading new examples (preserve other messages)
+    // Targeted removal - only specific Taproot elements, not the entire page!
+
+    // Method 1: Remove .taproot-info class elements only
+    const taprootInfos = document.querySelectorAll('.taproot-info');
+    taprootInfos.forEach(el => {
+        console.log('Removing .taproot-info element');
+        el.remove();
+    });
+
+    // Method 2: Look for the specific text node containing "🌿 Taproot Structure" and remove its parent
+    const miniscriptMessages = document.getElementById('miniscript-messages');
+    if (miniscriptMessages) {
+        const walker = document.createTreeWalker(
+            miniscriptMessages,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+
+        let node;
+        while (node = walker.nextNode()) {
+            if (node.nodeValue && node.nodeValue.includes('🌿 Taproot Structure')) {
+                // Remove the parent element of this text node
+                const parentEl = node.parentElement;
+                if (parentEl) {
+                    console.log('Removing element containing 🌿 Taproot Structure');
+                    parentEl.remove();
+                    break;
+                }
+            }
+        }
+    }
+
+    // // Method 3: Remove "Taproot Structure:" from policy area only
+    // const policyErrors = document.getElementById('policy-errors');
+    // if (policyErrors) {
+    //     const divs = policyErrors.querySelectorAll('div');
+    //     divs.forEach(div => {
+    //         if (div.textContent && div.textContent.includes('Taproot Structure:') &&
+    //             !div.querySelector('div')) { // Make sure it's a leaf element
+    //             // Find the container to remove
+    //             let container = div;
+    //             while (container.parentElement && container.parentElement.id !== 'policy-errors') {
+    //                 container = container.parentElement;
+    //                 if (container.style && container.style.marginBottom) {
+    //                     console.log('Removing policy Taproot Structure container');
+    //                     container.remove();
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     });
+    // }
+
     if (!shouldPreserveResults) {
         // Only clear if auto-compile is disabled
         const resultsDiv = document.getElementById('results');
@@ -1960,5 +2021,55 @@ document.addEventListener('DOMContentLoaded', function() {
     if (policyContextRadios.length > 0 && miniscriptContextRadios.length > 0) {
         syncPolicyToMiniscriptContext();
         console.log('Unidirectional context synchronization initialized (policy → miniscript)');
+    }
+
+    // Add context change listeners to clear Taproot Structure when switching to non-Taproot contexts
+    function clearTaprootStructureOnContextChange() {
+        const allContextRadios = [...policyContextRadios, ...miniscriptContextRadios];
+
+        allContextRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    const isTaprootContext = this.value === 'taproot' || this.value === 'taproot-multi' || this.value === 'taproot-keypath';
+
+                    if (!isTaprootContext) {
+                        // Clear Taproot Structure from policy messages area
+                        const policyErrorsDiv = document.getElementById('policy-errors');
+                        if (policyErrorsDiv) {
+                            const taprootElements = policyErrorsDiv.querySelectorAll('*');
+                            taprootElements.forEach(element => {
+                                if (element.textContent && element.textContent.includes('Taproot Structure:')) {
+                                    // Remove the parent div containing the Taproot Structure
+                                    let parentToRemove = element;
+                                    while (parentToRemove && !parentToRemove.style.marginBottom) {
+                                        parentToRemove = parentToRemove.parentElement;
+                                    }
+                                    if (parentToRemove) {
+                                        parentToRemove.remove();
+                                    }
+                                }
+                            });
+                        }
+
+                        // Clear 🌿 Taproot Structure from miniscript messages area
+                        const miniscriptMessagesDiv = document.getElementById('miniscript-messages');
+                        if (miniscriptMessagesDiv) {
+                            const taprootInfo = miniscriptMessagesDiv.querySelector('.taproot-info');
+                            if (taprootInfo) {
+                                taprootInfo.remove();
+                            }
+                        }
+
+                        console.log(`Context changed to ${this.value}: Cleared any existing Taproot Structure`);
+                    }
+                }
+            });
+        });
+    }
+
+    // Initialize Taproot Structure clearing
+    if (policyContextRadios.length > 0 || miniscriptContextRadios.length > 0) {
+        clearTaprootStructureOnContextChange();
+        console.log('Taproot Structure clearing on context change initialized');
     }
 });
