@@ -637,11 +637,14 @@ export class MiniscriptCompiler {
                             const pushOv = (n) => n <= 75 ? 1 : (n <= 255 ? 2 : (n <= 65535 ? 3 : 5));
                             
                             // P2SH satisfaction cost calculation
-                            const scriptSize = result.script_size;               // e.g. 35 bytes for pk(Alice)
+                            const scriptSize = result.script_size;               // e.g. 25 bytes for pkh(Alice)
                             const sigLen = 73;                                   // worst-case DER + hashtype (71-73 typical)
-                            
-                            // P2SH scriptSig content: push(sig) + sig + push(script) + script
-                            const content = (pushOv(sigLen) + sigLen) + (pushOv(scriptSize) + scriptSize);
+                            const pubkeyLen = 33;                                 // compressed pubkey
+
+                            // P2SH scriptSig content: signatures + pubkeys + redeemScript + push-ops
+                            // For pkh: sig(73) + pubkey(33) + redeemScript(25) + pushops(3) = 134 bytes
+                            const witnessSize = sigLen + pubkeyLen;              // signatures + pubkeys
+                            const content = pushOv(sigLen) + sigLen + pushOv(pubkeyLen) + pubkeyLen + pushOv(scriptSize) + scriptSize;
                             const p2shSatisfactionWU = 4 * (cs(content) + content);
                             
                             // For display: also show the overhead
@@ -968,11 +971,14 @@ export class MiniscriptCompiler {
                             const pushOv = (n) => n <= 75 ? 1 : (n <= 255 ? 2 : (n <= 65535 ? 3 : 5));
                             
                             // P2SH satisfaction cost calculation
-                            const scriptSize = result.script_size;               // e.g. 35 bytes for pk(Alice)
+                            const scriptSize = result.script_size;               // e.g. 25 bytes for pkh(Alice)
                             const sigLen = 73;                                   // worst-case DER + hashtype (71-73 typical)
-                            
-                            // P2SH scriptSig content: push(sig) + sig + push(script) + script
-                            const content = (pushOv(sigLen) + sigLen) + (pushOv(scriptSize) + scriptSize);
+                            const pubkeyLen = 33;                                 // compressed pubkey
+
+                            // P2SH scriptSig content: signatures + pubkeys + redeemScript + push-ops
+                            // For pkh: sig(73) + pubkey(33) + redeemScript(25) + pushops(3) = 134 bytes
+                            const witnessSize = sigLen + pubkeyLen;              // signatures + pubkeys
+                            const content = pushOv(sigLen) + sigLen + pushOv(pubkeyLen) + pubkeyLen + pushOv(scriptSize) + scriptSize;
                             const p2shSatisfactionWU = 4 * (cs(content) + content);
                             
                             // For display: also show the overhead
