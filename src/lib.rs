@@ -424,7 +424,7 @@ pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str,
     console_log!("Context: {}", context);
     console_log!("Mode: {}", mode);
     
-    let result = match compile_expression_with_mode(expression, context, mode, nums_key) {
+    let result = match compile_expression_with_mode(expression, context, mode, nums_key, Network::Bitcoin) {
         Ok((script, script_asm, address, script_size, ms_type, 
             max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
             CompilationResult {
@@ -466,30 +466,32 @@ fn compile_expression_with_mode(
     expression: &str,
     context: &str,
     mode: &str,
-    nums_key: &str
+    nums_key: &str,
+    network: Network
 ) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("=== COMPILE_EXPRESSION_WITH_MODE CALLED ===");
     console_log!("Expression: {}", expression);
     console_log!("Context: {}", context);
     console_log!("Mode: {}", mode);
+    console_log!("Network: {:?}", network);
     
     // For taproot context, handle different compilation modes
     if context == "taproot" {
         match mode {
             "multi-leaf" => {
                 console_log!("Using multi-leaf compilation (descriptor approach)");
-                // Multi-leaf mode: extract internal key from expression and use descriptor  
-                return compile_taproot_keypath_descriptor(expression);
+                // Multi-leaf mode: extract internal key from expression and use descriptor
+                return compile_taproot_keypath_descriptor(expression, network);
             },
             "script-path" => {
                 console_log!("Using script-path compilation (descriptor approach) with NUMS: {}", nums_key);
                 // Script-path mode: use descriptor approach with NUMS
-                return compile_taproot_script_path_descriptor(expression, nums_key);
+                return compile_taproot_script_path_descriptor(expression, nums_key, network);
             },
             _ => {
                 console_log!("Using single-leaf compilation (descriptor approach) with NUMS");
                 // Single-leaf mode: use descriptor approach with NUMS (same as script-path)
-                return compile_taproot_simplified_descriptor(expression, nums_key);
+                return compile_taproot_simplified_descriptor(expression, nums_key, network);
             }
         }
     }
@@ -512,8 +514,8 @@ fn compile_expression_with_mode_network(
     console_log!("Mode: {}", mode);
     console_log!("Network: {:?}", network);
     
-    // First compile with the existing function (uses Bitcoin network)
-    let mut result = compile_expression_with_mode(expression, context, mode, nums_key)?;
+    // First compile with the existing function
+    let mut result = compile_expression_with_mode(expression, context, mode, nums_key, network)?;
     
     // If it's taproot and we need a different network, regenerate the address
     if context == "taproot" && network != Network::Bitcoin {
@@ -548,19 +550,18 @@ fn compile_expression_with_mode_network(
 }
 
 /// Compile Taproot Script path using Descriptor::new_tr() approach (the correct way)
-fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile::policy::compile_taproot_script_path_descriptor(expression, nums_key)
+fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    compile::policy::compile_taproot_script_path_descriptor(expression, nums_key, network)
 }
 
 /// Compile Taproot Key path + script path using Descriptor::new_tr() approach with extracted internal key
-fn compile_taproot_keypath_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+fn compile_taproot_keypath_descriptor(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     use std::sync::Arc;
     use miniscript::descriptor::TapTree;
-    
+
     console_log!("=== COMPILE_TAPROOT_KEYPATH_DESCRIPTOR ===");
     console_log!("Expression: {}", expression);
-    
-    let network = Network::Bitcoin;
+    console_log!("Network: {:?}", network);
     let processed_expr = expression.trim();
     
     // Parse as XOnlyPublicKey miniscript for Taproot
@@ -645,15 +646,14 @@ fn compile_taproot_keypath_descriptor(expression: &str) -> Result<(String, Strin
 }
 
 /// Compile Taproot Simplified using Descriptor::new_tr() approach (same as script path)
-fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     use std::sync::Arc;
     use miniscript::descriptor::TapTree;
-    
+
     console_log!("=== COMPILE_TAPROOT_SIMPLIFIED_DESCRIPTOR ===");
     console_log!("Expression: {}", expression);
     console_log!("NUMS key: {}", nums_key);
-    
-    let network = Network::Bitcoin;
+    console_log!("Network: {:?}", network);
     let processed_expr = expression.trim();
     
     // Parse as XOnlyPublicKey miniscript for Taproot
@@ -1840,18 +1840,34 @@ pub fn lift_to_policy(miniscript: &str) -> JsValue {
 // ============================================================================
 
 /// Generate address for a specific network
+/// Generate address for network switching (Legacy/Segwit only)
+/// 
+/// # Deprecated
+/// This function is deprecated for taproot addresses.
+/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+#[deprecated(since = "0.1.0", note = "For taproot, use compile_miniscript_with_mode_and_network() instead")]
 #[wasm_bindgen]
 pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
     address::generate_address_for_network(script_hex, script_type, network)
 }
 
 /// Generate taproot address for a specific network with miniscript
+/// 
+/// # Deprecated
+/// This function is deprecated and no longer used by the JavaScript interface.
+/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+#[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
 #[wasm_bindgen]
 pub fn generate_taproot_address_for_network(miniscript: &str, network_str: &str) -> JsValue {
     address::generate_taproot_address_for_network(miniscript, network_str)
 }
 
 /// Generate taproot address using TaprootBuilder (matches compilation logic)
+/// 
+/// # Deprecated
+/// This function is deprecated and no longer used by the JavaScript interface.
+/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+#[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
 #[wasm_bindgen]
 pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, internal_key: Option<String>) -> JsValue {
     address::generate_taproot_address_with_builder(miniscript, network_str, internal_key)

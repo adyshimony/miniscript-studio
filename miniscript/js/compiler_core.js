@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_miniscript_with_mode, compile_miniscript_with_mode_and_network, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, generate_taproot_address_for_network, generate_taproot_address_with_builder, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from '../pkg/miniscript_wasm.js';
+import init, { compile_miniscript, compile_miniscript_with_mode, compile_miniscript_with_mode_and_network, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from '../pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 export class MiniscriptCompiler {

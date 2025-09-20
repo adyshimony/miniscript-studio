@@ -280,15 +280,14 @@ fn extract_internal_key_from_miniscript(_ms: &Miniscript<XOnlyPublicKey, Tap>) -
 // ============================================================================
 
 /// Compile Taproot Script path using Descriptor::new_tr() approach (the correct way)
-pub fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+pub fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     use std::sync::Arc;
     use miniscript::descriptor::TapTree;
-    
+
     console_log!("=== COMPILE_TAPROOT_SCRIPT_PATH_DESCRIPTOR ===");
     console_log!("Expression: {}", expression);
     console_log!("NUMS key: {}", nums_key);
-    
-    let network = Network::Bitcoin;
+    console_log!("Network: {:?}", network);
     let processed_expr = expression.trim();
     
     // Parse as XOnlyPublicKey miniscript for Taproot
