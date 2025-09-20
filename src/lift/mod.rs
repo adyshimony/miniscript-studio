@@ -1,5 +1,6 @@
 use wasm_bindgen::JsValue;
 use crate::console_log;
+use crate::opcodes::parse_asm_to_script;
 use miniscript::{Miniscript, Legacy, Segwitv0, Tap, policy::Liftable};
 use bitcoin::{ScriptBuf, Script};
 
@@ -224,9 +225,3 @@ where
     }
 }
 
-/// Parse ASM to script (helper function)
-fn parse_asm_to_script(_asm: &str) -> Result<ScriptBuf, String> {
-    // This is a simplified ASM parser - in a real implementation you'd want a more robust one
-    // For now, we'll just return an error for non-hex input
-    Err("ASM parsing not implemented - please provide hex script".to_string())
-}
