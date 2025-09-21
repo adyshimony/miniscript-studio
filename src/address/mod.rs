@@ -1,24 +1,229 @@
 use wasm_bindgen::JsValue;
 use crate::console_log;
-use bitcoin::{Address, Network, ScriptBuf, XOnlyPublicKey, secp256k1::Secp256k1, Script};
-use miniscript::{Miniscript, Tap, Descriptor};
+use bitcoin::{Address, Network, ScriptBuf, XOnlyPublicKey, secp256k1::Secp256k1, Script, PublicKey};
+use miniscript::{Miniscript, Tap, Segwitv0, Descriptor};
 use std::str::FromStr;
 use std::sync::Arc;
 use miniscript::descriptor::TapTree;
 
+// ============================================================================
+// Network Parsing Utilities
+// ============================================================================
+
+/// Parse network string to Network enum
+/// Centralized network parsing to eliminate duplication
+pub fn parse_network(network_str: &str) -> Result<Network, String> {
+    match network_str {
+        "mainnet" | "bitcoin" => Ok(Network::Bitcoin),
+        "testnet" => Ok(Network::Testnet),
+        "regtest" => Ok(Network::Regtest),
+        "signet" => Ok(Network::Signet),
+        _ => Err(format!("Invalid network: {}", network_str))
+    }
+}
+
+// ============================================================================
+// Address Generation Types
+// ============================================================================
+
+/// Address generation result for internal use
+#[derive(Debug)]
+pub struct AddressGenerationResult {
+    pub address: String,
+    pub script_type: String,
+    pub network: Network,
+}
+
+/// Address generation error type
+#[derive(Debug)]
+pub enum AddressError {
+    NetworkParse(String),
+    ScriptDecode(String),
+    AddressCreation(String),
+    DescriptorParse(String),
+    KeyParse(String),
+    InternalKeyMissing,
+}
+
+impl std::fmt::Display for AddressError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AddressError::NetworkParse(msg) => write!(f, "Network parsing error: {}", msg),
+            AddressError::ScriptDecode(msg) => write!(f, "Script decode error: {}", msg),
+            AddressError::AddressCreation(msg) => write!(f, "Address creation error: {}", msg),
+            AddressError::DescriptorParse(msg) => write!(f, "Descriptor parse error: {}", msg),
+            AddressError::KeyParse(msg) => write!(f, "Key parse error: {}", msg),
+            AddressError::InternalKeyMissing => write!(f, "Internal key is required for taproot address generation"),
+        }
+    }
+}
+
+impl std::error::Error for AddressError {}
+
+impl From<String> for AddressError {
+    fn from(msg: String) -> Self {
+        AddressError::NetworkParse(msg)
+    }
+}
+
+// ============================================================================
+// Unified Address Generator - ONE FUNCTION TO RULE THEM ALL
+// ============================================================================
+
+/// Input parameters for address generation
+#[derive(Debug)]
+pub struct AddressInput {
+    /// Script hex (for Legacy/Segwit) or miniscript expression (for Taproot)
+    pub script_or_miniscript: String,
+    /// Script type: "Legacy", "Segwit v0", or "Taproot"
+    pub script_type: String,
+    /// Network: "mainnet", "testnet", "regtest", "signet"
+    pub network: String,
+    /// Internal key for Taproot (optional, will be extracted if not provided)
+    pub internal_key: Option<String>,
+    /// Use single leaf approach for Taproot (uses NUMS point instead of extracted key)
+    pub use_single_leaf: Option<bool>,
+}
+
+/// THE ONLY ADDRESS GENERATION FUNCTION YOU NEED
+/// 
+/// This single function handles ALL address generation scenarios:
+/// - Legacy P2SH addresses from script hex
+/// - Segwit v0 P2WSH addresses from script hex  
+/// - Taproot addresses from miniscript expressions
+/// - Taproot addresses with explicit internal keys
+pub fn generate_address(input: AddressInput) -> Result<AddressGenerationResult, AddressError> {
+    let network = parse_network(&input.network).map_err(|e| AddressError::NetworkParse(e))?;
+    
+    match input.script_type.as_str() {
+        "Legacy" => {
+            // Handle Legacy P2SH addresses from miniscript or script hex
+            let address = if input.script_or_miniscript.starts_with("pk(") || input.script_or_miniscript.contains("(") {
+                // It's a miniscript expression - parse and compile it
+                console_log!("Generating Legacy address from miniscript: {}", input.script_or_miniscript);
+                
+                let ms = input.script_or_miniscript.parse::<Miniscript<PublicKey, Segwitv0>>()
+                    .map_err(|e| AddressError::DescriptorParse(e.to_string()))?;
+                
+                let script = ms.encode();
+                Address::p2sh(&script, network)
+                    .map_err(|e| AddressError::AddressCreation(format!("P2SH: {}", e)))?
+            } else {
+                // It's script hex - decode and use directly
+                let script_bytes = hex::decode(&input.script_or_miniscript)
+                    .map_err(|e| AddressError::ScriptDecode(e.to_string()))?;
+                let script = ScriptBuf::from_bytes(script_bytes);
+                Address::p2sh(&script, network)
+                    .map_err(|e| AddressError::AddressCreation(format!("P2SH: {}", e)))?
+            };
+            
+            Ok(AddressGenerationResult {
+                address: address.to_string(),
+                script_type: input.script_type,
+                network,
+            })
+        },
+        
+        "Segwit v0" => {
+            // Handle Segwit v0 P2WSH addresses from miniscript or script hex
+            let address = if input.script_or_miniscript.starts_with("pk(") || input.script_or_miniscript.contains("(") {
+                // It's a miniscript expression - parse and compile it
+                console_log!("Generating Segwit address from miniscript: {}", input.script_or_miniscript);
+                
+                let ms = input.script_or_miniscript.parse::<Miniscript<PublicKey, Segwitv0>>()
+                    .map_err(|e| AddressError::DescriptorParse(e.to_string()))?;
+                
+                let script = ms.encode();
+                Address::p2wsh(&script, network)
+            } else {
+                // It's script hex - decode and use directly
+                let script_bytes = hex::decode(&input.script_or_miniscript)
+                    .map_err(|e| AddressError::ScriptDecode(e.to_string()))?;
+                let script = ScriptBuf::from_bytes(script_bytes);
+                Address::p2wsh(&script, network)
+            };
+            
+            Ok(AddressGenerationResult {
+                address: address.to_string(),
+                script_type: input.script_type,
+                network,
+            })
+        },
+        
+        "Taproot" => {
+            // Handle Taproot addresses from miniscript
+            console_log!("Generating Taproot address with miniscript: {} for network: {:?}", 
+                        input.script_or_miniscript, network);
+            
+            // If internal key is provided, use it; otherwise extract from miniscript
+            let internal_key = if let Some(key) = input.internal_key {
+                console_log!("Using provided internal key: {}", key);
+                key
+            } else if input.use_single_leaf.unwrap_or(false) {
+                // Use NUMS point for single leaf approach
+                console_log!("Using NUMS point for single leaf approach");
+                crate::NUMS_POINT.to_string()
+            } else {
+                let extracted = crate::keys::extract_internal_key_from_expression(&input.script_or_miniscript);
+                console_log!("Extracted internal key: {}", extracted);
+                extracted
+            };
+            
+            console_log!("Final internal key being used: {}", internal_key);
+            
+            // Parse miniscript and create descriptor
+            let ms = input.script_or_miniscript.parse::<Miniscript<XOnlyPublicKey, Tap>>()
+                .map_err(|e| AddressError::DescriptorParse(e.to_string()))?;
+            
+            let internal_xonly_key = XOnlyPublicKey::from_str(&internal_key)
+                .map_err(|e| AddressError::KeyParse(format!("Internal key: {}", e)))?;
+            
+            let tree = TapTree::Leaf(Arc::new(ms));
+            let descriptor = Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree))
+                .map_err(|e| AddressError::DescriptorParse(format!("Descriptor creation: {:?}", e)))?;
+            
+            let address = descriptor.address(network)
+                .map_err(|e| AddressError::AddressCreation(format!("Address generation: {:?}", e)))?;
+            
+            console_log!("Generated Taproot address: {}", address);
+            
+            Ok(AddressGenerationResult {
+                address: address.to_string(),
+                script_type: "Taproot".to_string(),
+                network,
+            })
+        },
+        
+        _ => Err(AddressError::AddressCreation(format!("Unknown script type: {}", input.script_type)))
+    }
+}
+
+// ============================================================================
+// JavaScript Interface Functions
+// ============================================================================
+
+/// Generate address for network switching (JavaScript interface)
 pub(crate) fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
     console_log!("Generating address for network: {}", network);
     console_log!("Script type: {}", script_type);
     
-    let result = match perform_address_generation(script_hex, script_type, network) {
-        Ok(address) => crate::AddressResult {
+    let input = AddressInput {
+        script_or_miniscript: script_hex.to_string(),
+        script_type: script_type.to_string(),
+        network: network.to_string(),
+        internal_key: None,
+        use_single_leaf: None,
+    };
+    
+    let result = match generate_address(input) {
+        Ok(address_result) => crate::AddressResult {
             success: true,
             error: None,
-            address: Some(address),
+            address: Some(address_result.address),
         },
         Err(e) => crate::AddressResult {
             success: false,
-            error: Some(e),
+            error: Some(e.to_string()),
             address: None,
         }
     };
@@ -26,7 +231,7 @@ pub(crate) fn generate_address_for_network(script_hex: &str, script_type: &str, 
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-/// Generate taproot address for network switching
+/// Generate taproot address for network switching (JavaScript interface)
 /// 
 /// # Deprecated
 /// This function is deprecated and no longer used by the JavaScript interface.
@@ -35,15 +240,23 @@ pub(crate) fn generate_address_for_network(script_hex: &str, script_type: &str, 
 pub(crate) fn generate_taproot_address_for_network(miniscript: &str, network_str: &str) -> JsValue {
     console_log!("Generating taproot address for network: {} with miniscript: {}", network_str, miniscript);
     
-    let result = match perform_taproot_address_generation(miniscript, network_str) {
-        Ok(address) => crate::AddressResult {
+    let input = AddressInput {
+        script_or_miniscript: miniscript.to_string(),
+        script_type: "Taproot".to_string(),
+        network: network_str.to_string(),
+        internal_key: None,
+        use_single_leaf: None,
+    };
+    
+    let result = match generate_address(input) {
+        Ok(address_result) => crate::AddressResult {
             success: true,
             error: None,
-            address: Some(address),
+            address: Some(address_result.address),
         },
         Err(e) => crate::AddressResult {
             success: false,
-            error: Some(e),
+            error: Some(e.to_string()),
             address: None,
         }
     };
@@ -51,25 +264,32 @@ pub(crate) fn generate_taproot_address_for_network(miniscript: &str, network_str
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-/// Generate taproot address using TaprootBuilder approach
+/// Generate taproot address using descriptor approach (JavaScript interface)
 /// 
 /// # Deprecated
 /// This function is deprecated and no longer used by the JavaScript interface.
 /// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
 #[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
-pub(crate) fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, internal_key: Option<String>) -> JsValue {
-    console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, internal_key);
+pub(crate) fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, _internal_key: Option<String>) -> JsValue {
+    console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, _internal_key);
     
-    // Use the new descriptor-based approach for cleaner code
-    let result = match perform_descriptor_address_generation(miniscript, network_str, internal_key) {
-        Ok(address) => crate::AddressResult {
+    let input = AddressInput {
+        script_or_miniscript: miniscript.to_string(),
+        script_type: "Taproot".to_string(),
+        network: network_str.to_string(),
+        internal_key: None,
+        use_single_leaf: None,
+    };
+    
+    let result = match generate_address(input) {
+        Ok(address_result) => crate::AddressResult {
             success: true,
             error: None,
-            address: Some(address),
+            address: Some(address_result.address),
         },
         Err(e) => crate::AddressResult {
             success: false,
-            error: Some(e),
+            error: Some(e.to_string()),
             address: None,
         }
     };
@@ -77,143 +297,61 @@ pub(crate) fn generate_taproot_address_with_builder(miniscript: &str, network_st
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-/// Internal function to generate address
+// ============================================================================
+// Legacy Functions (for backward compatibility) - DEPRECATED
+// ============================================================================
+
+/// Internal function to generate address (legacy - use generate_address() instead)
 fn perform_address_generation(script_hex: &str, script_type: &str, network_str: &str) -> Result<String, String> {
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
+    let input = AddressInput {
+        script_or_miniscript: script_hex.to_string(),
+        script_type: script_type.to_string(),
+        network: network_str.to_string(),
+        internal_key: None,
+        use_single_leaf: None,
     };
     
-    // Decode script hex
-    let script_bytes = hex::decode(script_hex)
-        .map_err(|e| format!("Invalid script hex: {}", e))?;
-    let script = ScriptBuf::from_bytes(script_bytes.clone());
-    
-    // Generate address based on script type
-    let address = match script_type {
-        "Legacy" => {
-            Address::p2sh(&script, network)
-                .map_err(|e| format!("Failed to generate P2SH address: {}", e))?
-        },
-        "Segwit v0" => {
-            Address::p2wsh(&script, network)
-        },
-        "Taproot" => {
-            // For Taproot, we need to create a simple tr() descriptor with NUMS point
-            // Since we only have the script hex, we'll create a basic P2TR address
-            console_log!("Generating Taproot address for network switch");
-            
-            // Use NUMS point for network switching
-            let nums_point = XOnlyPublicKey::from_str(
-                crate::NUMS_POINT
-            ).map_err(|e| format!("Invalid NUMS point: {}", e))?;
-            
-            // Create a simple key-path only P2TR address with NUMS point
-            // This is a limitation - we can't recreate the exact script-path address
-            // without the original miniscript expression
-            Address::p2tr(&Secp256k1::verification_only(), nums_point, None, network)
-        },
-        _ => return Err(format!("Unknown script type: {}", script_type))
-    };
-    
-    Ok(address.to_string())
+    generate_address(input)
+        .map(|result| result.address)
+        .map_err(|e| e.to_string())
 }
 
-/// Internal function to generate taproot address using miniscript
+/// Internal function to generate taproot address using miniscript (legacy)
 fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Result<String, String> {
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
+    let input = AddressInput {
+        script_or_miniscript: miniscript.to_string(),
+        script_type: "Taproot".to_string(),
+        network: network_str.to_string(),
+        internal_key: None,
+        use_single_leaf: None,
     };
     
-    console_log!("Generating taproot address with miniscript: {} for network: {:?}", miniscript, network);
-    
-    // Build tr() descriptor with extracted internal key - same as compile_taproot_miniscript
-    let internal_key = crate::keys::extract_internal_key_from_expression(miniscript);
-    let tr_descriptor = format!("tr({},{})", internal_key, miniscript);
-    console_log!("Built tr() descriptor for network switch: {}", tr_descriptor);
-    
-    // Parse as descriptor to get proper taproot address
-    match tr_descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
-        Ok(descriptor) => {
-            console_log!("Successfully parsed tr() descriptor for network switch");
-            
-            // Generate address from descriptor
-            descriptor.address(network)
-                .map(|addr| addr.to_string())
-                .map_err(|e| format!("Failed to generate address from descriptor: {}", e))
-        }
-        Err(e) => {
-            console_log!("Failed to parse tr() descriptor for network switch: {}", e);
-            Err(format!("Failed to create tr() descriptor: {}", e))
-        }
-    }
+    generate_address(input)
+        .map(|result| result.address)
+        .map_err(|e| e.to_string())
 }
 
-/// Internal function using Descriptor approach (cleaner than TaprootBuilder)
-fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, internal_key: Option<String>) -> Result<String, String> {
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => return Err(format!("Invalid network: {}", network_str))
+/// Internal function using Descriptor approach (legacy)
+fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, _internal_key: Option<String>) -> Result<String, String> {
+    let input = AddressInput {
+        script_or_miniscript: miniscript.to_string(),
+        script_type: "Taproot".to_string(),
+        network: network_str.to_string(),
+        internal_key: None,
+        use_single_leaf: None,
     };
     
-    console_log!("Building taproot address with Descriptor for network: {:?}", network);
-    
-    // Parse as XOnlyPublicKey miniscript for Taproot
-    match miniscript.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-        Ok(ms) => {
-            // Require internal key to be provided
-            let internal_key_str = match internal_key {
-                Some(key) => key,
-                None => return Err("Internal key is required for taproot address generation".to_string())
-            };
-            
-            console_log!("Using internal key for address generation: {}", internal_key_str);
-            
-            let internal_xonly_key = match XOnlyPublicKey::from_str(&internal_key_str) {
-                Ok(key) => key,
-                Err(_) => return Err(format!("Failed to parse internal key: {}", internal_key_str))
-            };
-            
-            // Create the tree with the miniscript
-            let tree = TapTree::Leaf(Arc::new(ms));
-            
-            // Create descriptor and get address directly
-            match Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree)) {
-                Ok(descriptor) => {
-                    match descriptor.address(network) {
-                        Ok(addr) => {
-                            console_log!("Generated taproot address with Descriptor: {}", addr);
-                            Ok(addr.to_string())
-                        },
-                        Err(e) => Err(format!("Address generation failed: {:?}", e))
-                    }
-                },
-                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
-            }
-        },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
+    generate_address(input)
+        .map(|result| result.address)
+        .map_err(|e| e.to_string())
 }
-
 
 // ============================================================================
-// Taproot Address Generation Functions
+// Specialized Taproot Functions (for advanced use cases)
 // ============================================================================
 
 /// Generate a Taproot address with a specific internal key and script
+/// This is for advanced use cases where you have a raw script and internal key
 pub fn generate_taproot_address_with_key(script: &Script, internal_key: XOnlyPublicKey, network: Network) -> Option<String> {
     use bitcoin::taproot::TaprootBuilder;
     
@@ -249,7 +387,7 @@ pub fn generate_taproot_address(_script: &Script, _network: Network) -> Option<S
     None
 }
 
-/// Generate a Taproot address using the descriptor approach (correct method)
+/// Generate a Taproot address using the descriptor approach (recommended method)
 /// Uses tr(internal_key, taptree) descriptor to generate deterministic address
 pub fn generate_taproot_address_descriptor(
     miniscript: &Miniscript<XOnlyPublicKey, Tap>,
@@ -280,36 +418,6 @@ pub fn generate_taproot_address_descriptor(
         },
         Err(_e) => {
             console_log!("Failed to create tr() descriptor: {}", _e);
-            None
-        }
-    }
-}
-
-/// OLD VERSION - Generate a Taproot address with a specific internal key and script
-/// Keeping this for rollback if needed
-pub fn generate_taproot_address_with_key_old(script: &Script, internal_key: XOnlyPublicKey, network: Network) -> Option<String> {
-    use bitcoin::taproot::TaprootBuilder;
-    
-    // For simple pk(key), just use key-path only
-    let script_bytes = script.as_bytes();
-    if script_bytes.len() == 34 && script_bytes[0] == 0x20 && script_bytes[33] == 0xac {
-        // This is a simple pk() script (32-byte key push + OP_CHECKSIG)
-        return Some(Address::p2tr(&Secp256k1::verification_only(), internal_key, None, network).to_string());
-    }
-    
-    // For complex scripts, create a taproot tree with the script
-    match TaprootBuilder::new()
-        .add_leaf(0, script.to_owned())
-        .map(|builder| builder.finalize(&Secp256k1::verification_only(), internal_key))
-    {
-        Ok(Ok(spend_info)) => {
-            // Create the P2TR address with both key-path and script-path
-            let output_key = spend_info.output_key();
-            let address = Address::p2tr(&Secp256k1::verification_only(), output_key.to_x_only_public_key(), None, network);
-            Some(address.to_string())
-        },
-        _ => {
-            console_log!("Failed to create Taproot spend info");
             None
         }
     }

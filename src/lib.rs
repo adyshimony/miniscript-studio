@@ -22,7 +22,7 @@ mod opcodes;
 mod utils;
 mod parse { pub(crate) mod helpers; }
 mod lift;
-mod address;
+pub mod address;
 mod taproot;
 
 // Export modules for integration tests
@@ -371,14 +371,8 @@ pub fn compile_miniscript_with_mode_and_network(expression: &str, context: &str,
     console_log!("Mode: {}", mode);
     console_log!("Network: {}", network_str);
     
-    // Parse network
-    let network = match network_str {
-        "mainnet" | "bitcoin" => Network::Bitcoin,
-        "testnet" => Network::Testnet,
-        "regtest" => Network::Regtest,
-        "signet" => Network::Signet,
-        _ => Network::Bitcoin // Default to mainnet
-    };
+    // Parse network using centralized utility
+    let network = address::parse_network(network_str).unwrap_or(Network::Bitcoin);
     
     let result = match compile_expression_with_mode_network(expression, context, mode, nums_key, network) {
         Ok((script, script_asm, address, script_size, ms_type, 

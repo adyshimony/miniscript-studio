@@ -17,3 +17,8 @@ pub(crate) fn detect_network(expression: &str) -> bitcoin::Network {
 		bitcoin::Network::Bitcoin
 	}
 }
+
+/// Parse network string to Network enum using centralized logic
+pub(crate) fn parse_network_string(network_str: &str) -> Result<bitcoin::Network, String> {
+	crate::address::parse_network(network_str)
+}
