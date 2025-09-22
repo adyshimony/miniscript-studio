@@ -236,7 +236,6 @@ pub(crate) fn generate_address_for_network(script_hex: &str, script_type: &str, 
 /// # Deprecated
 /// This function is deprecated and no longer used by the JavaScript interface.
 /// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
-#[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
 pub(crate) fn generate_taproot_address_for_network(miniscript: &str, network_str: &str) -> JsValue {
     console_log!("Generating taproot address for network: {} with miniscript: {}", network_str, miniscript);
     
@@ -269,7 +268,6 @@ pub(crate) fn generate_taproot_address_for_network(miniscript: &str, network_str
 /// # Deprecated
 /// This function is deprecated and no longer used by the JavaScript interface.
 /// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
-#[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
 pub(crate) fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, _internal_key: Option<String>) -> JsValue {
     console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, _internal_key);
     
