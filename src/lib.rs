@@ -1812,6 +1812,39 @@ pub fn lift_to_policy(miniscript: &str) -> JsValue {
 // ============================================================================
 
 
+/// Generate address for a specific network
+/// Generate address for network switching (Legacy/Segwit only)
+/// 
+/// # Deprecated
+/// This function is deprecated for taproot addresses.
+/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+#[deprecated(since = "0.1.0", note = "For taproot, use compile_miniscript_with_mode_and_network() instead")]
+#[wasm_bindgen]
+pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
+    address::generate_address_for_network(script_hex, script_type, network)
+}
+
+/// Generate taproot address for a specific network with miniscript
+/// 
+/// # Deprecated
+/// This function is deprecated and no longer used by the JavaScript interface.
+/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+#[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
+#[wasm_bindgen]
+pub fn generate_taproot_address_for_network(miniscript: &str, network_str: &str) -> JsValue {
+    address::generate_taproot_address_for_network(miniscript, network_str)
+}
+
+/// Generate taproot address using TaprootBuilder (matches compilation logic)
+/// 
+/// # Deprecated
+/// This function is deprecated and no longer used by the JavaScript interface.
+/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+#[deprecated(since = "0.1.0", note = "Use compile_miniscript_with_mode_and_network() instead")]
+#[wasm_bindgen]
+pub fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, internal_key: Option<String>) -> JsValue {
+    address::generate_taproot_address_with_builder(miniscript, network_str, internal_key)
+}
 
 
 // ============================================================================
