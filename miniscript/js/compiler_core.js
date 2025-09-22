@@ -1,4 +1,4 @@
-import init, { compile_miniscript, compile_miniscript_with_mode, compile_miniscript_with_mode_and_network, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from '../pkg/miniscript_wasm.js';
+import init, { compile_unified, compile_miniscript, compile_miniscript_with_mode, compile_miniscript_with_mode_and_network, compile_policy, compile_policy_with_mode, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_leaves, get_taproot_branches, get_taproot_miniscript_branches } from '../pkg/miniscript_wasm.js';
 // Cache buster - updated 2025-01-18 v3
 
 export class MiniscriptCompiler {
@@ -512,24 +512,40 @@ export class MiniscriptCompiler {
             const cleanedExpression = this.cleanExpression(expression);
             const processedExpression = this.replaceKeyVariables(cleanedExpression, context);
             
-            // Call the WASM function with context and mode
+            // Call the WASM function with unified options
             let result;
+            const numsKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+
             if (context === 'taproot' || context === 'taproot-multi' || context === 'taproot-keypath') {
                 // Determine mode based on context
                 const currentMode = context === 'taproot-keypath' ? 'multi-leaf' : context === 'taproot-multi' ? 'script-path' : 'single-leaf';
                 window.currentTaprootMode = currentMode; // Update the global mode
                 console.log(`Compiling miniscript in taproot context, mode: ${currentMode}`);
-                // Always pass 'taproot' as the actual context to Rust
-                // Get NUMS key (hardcoded for now, will be configurable in settings later)
-                const numsKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
-                result = compile_miniscript_with_mode(processedExpression, 'taproot', currentMode, numsKey);
+
+                // Use unified compile with options
+                const options = {
+                    input_type: "Miniscript",
+                    context: "Taproot",
+                    mode: currentMode === 'multi-leaf' ? "MultiLeaf" :
+                          currentMode === 'script-path' ? "ScriptPath" : "SingleLeaf",
+                    network_str: "bitcoin",
+                    nums_key: numsKey
+                };
+                result = compile_unified(processedExpression, options);
                 if (result.success) {
                     result.taprootMode = currentMode;
                 }
             } else {
-                // Non-taproot contexts: use regular compilation (NUMS not used)
-                const numsKey = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
-                result = compile_miniscript_with_mode(processedExpression, context, 'single-leaf', numsKey);
+                // Non-taproot contexts: use unified compile
+                const contextStr = context === 'legacy' ? "Legacy" : "Segwit";
+                const options = {
+                    input_type: "Miniscript",
+                    context: contextStr,
+                    mode: "Default",
+                    network_str: "bitcoin",
+                    nums_key: numsKey
+                };
+                result = compile_unified(processedExpression, options);
             }
             
             // Reset button
@@ -826,17 +842,35 @@ export class MiniscriptCompiler {
             delete policyInput.dataset.lastHighlightedText;
             this.highlightPolicySyntax();
             
-            // Call the WASM function with context and mode for taproot
+            // Call the WASM function with unified options
             let result;
             if (context === 'taproot' || context === 'taproot-multi' || context === 'taproot-keypath') {
                 // Determine mode based on context
                 const mode = context === 'taproot-keypath' ? 'multi-leaf' : context === 'taproot-multi' ? 'script-path' : 'single-leaf';
                 window.currentTaprootMode = mode; // Update the global mode
                 console.log('Compiling policy with mode:', mode);
-                // Always pass 'taproot' as the actual context to Rust
-                result = compile_policy_with_mode(processedPolicy, 'taproot', mode);
+
+                // Use unified compile with options
+                const options = {
+                    input_type: "Policy",
+                    context: "Taproot",
+                    mode: mode === 'multi-leaf' ? "MultiLeaf" :
+                          mode === 'script-path' ? "ScriptPath" : "SingleLeaf",
+                    network_str: "bitcoin",
+                    nums_key: null
+                };
+                result = compile_unified(processedPolicy, options);
             } else {
-                result = compile_policy(processedPolicy, context);
+                // Non-taproot contexts: use unified compile
+                const contextStr = context === 'legacy' ? "Legacy" : "Segwit";
+                const options = {
+                    input_type: "Policy",
+                    context: contextStr,
+                    mode: "Default",
+                    network_str: "bitcoin",
+                    nums_key: null
+                };
+                result = compile_unified(processedPolicy, options);
             }
             
             // Reset button
@@ -4894,7 +4928,17 @@ export class MiniscriptCompiler {
         // Compile the modified expression without touching the editor
         const context = document.querySelector('input[name="context"]:checked').value;
 
-        const result = compile_miniscript(modifiedExpression, context);
+        // Use unified compile for consistency
+        const contextStr = context === 'legacy' ? "Legacy" :
+                          context === 'taproot' ? "Taproot" : "Segwit";
+        const options = {
+            input_type: "Miniscript",
+            context: contextStr,
+            mode: context === 'taproot' ? "SingleLeaf" : "Default",
+            network_str: "bitcoin",
+            nums_key: null
+        };
+        const result = compile_unified(modifiedExpression, options);
 
         // Store the original expression for restoration
         this.originalExpression = originalExpression;
@@ -6511,9 +6555,16 @@ export class MiniscriptCompiler {
                 console.log('- internalKey:', internalKey);
                 
                 try {
-                    // Use the same compilation function as original compilation with network parameter
-                    // This ensures the same taproot tree structure
-                    result = compile_miniscript_with_mode_and_network(miniscript, 'taproot', currentMode, internalKey, newNetwork);
+                    // Use unified compile with network parameter
+                    const options = {
+                        input_type: "Miniscript",
+                        context: "Taproot",
+                        mode: currentMode === 'multi-leaf' ? "MultiLeaf" :
+                              currentMode === 'script-path' ? "ScriptPath" : "SingleLeaf",
+                        network_str: newNetwork,
+                        nums_key: internalKey
+                    };
+                    result = compile_unified(miniscript, options);
                     console.log('NETWORK TOGGLE COMPILATION RESULT:', result);
                     
                     if (result.success && result.address) {

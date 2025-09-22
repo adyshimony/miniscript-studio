@@ -274,26 +274,31 @@ fn replace_descriptors_with_keys(expression: &str, descriptors: &HashMap<String,
 pub fn compile_policy(policy: &str, context: &str) -> JsValue {
     console_log!("Compiling policy: {}", policy);
     console_log!("Context: {}", context);
-    
-    let result = match compile_policy_to_miniscript(policy, context) {
-        Ok((script, script_asm, address, script_size, ms_type, compiled_miniscript, 
-            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => {
-            CompilationResult {
-                success: true,
-                error: None,
-                script: Some(script),
-                script_asm: Some(script_asm),
-                address,
-                script_size: Some(script_size),
-                miniscript_type: Some(ms_type),
-                compiled_miniscript: Some(compiled_miniscript),
-                max_satisfaction_size,
-                max_weight_to_satisfy,
-                sanity_check,
-                is_non_malleable,
-            }
-        },
-        Err(e) => CompilationResult {
+
+    // Use unified compile with default options for backward compatibility
+    let options = match compile::options::CompileOptions::for_policy(context, None, None) {
+        Ok(opts) => opts,
+        Err(e) => {
+            let result = CompilationResult {
+                success: false,
+                error: Some(e),
+                script: None,
+                script_asm: None,
+                address: None,
+                script_size: None,
+                miniscript_type: None,
+                compiled_miniscript: None,
+                max_satisfaction_size: None,
+                max_weight_to_satisfy: None,
+                sanity_check: None,
+                is_non_malleable: None,
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+
+    let result = compile::engine::compile_unified(policy, options)
+        .unwrap_or_else(|e| CompilationResult {
             success: false,
             error: Some(e),
             script: None,
@@ -306,9 +311,8 @@ pub fn compile_policy(policy: &str, context: &str) -> JsValue {
             max_weight_to_satisfy: None,
             sanity_check: None,
             is_non_malleable: None,
-        }
-    };
-    
+        });
+
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
@@ -318,28 +322,43 @@ pub fn compile_policy_with_mode(policy: &str, context: &str, mode: &str) -> JsVa
     console_log!("🚀 WASM LOADED AND WORKING - BUILD: 2025-01-09-16:47:00 🚀");
     console_log!("✅ get_taproot_branches function should be available!");
     console_log!("Compiling policy with mode: {} (context: {})", mode, context);
-    
-    let result = match compile_policy_to_miniscript_with_mode(policy, context, mode) {
-        Ok((script, script_asm, address, script_size, ms_type, compiled_miniscript, 
-            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable)) => {
-            console_log!("✅ Policy compilation SUCCESS");
-            console_log!("📝 Compiled miniscript: '{}'", compiled_miniscript);
-            console_log!("📝 Script: '{}'", script);
-            console_log!("📝 Address: '{:?}'", address);
-            CompilationResult {
-                success: true,
-                error: None,
-                script: Some(script),
-                script_asm: Some(script_asm),
-                address,
-                script_size: Some(script_size),
-                miniscript_type: Some(ms_type),
-                compiled_miniscript: Some(compiled_miniscript),
-                max_satisfaction_size,
-                max_weight_to_satisfy,
-                sanity_check,
-                is_non_malleable,
+
+    // Use unified compile with mode options for backward compatibility
+    let options = match compile::options::CompileOptions::for_policy(context, Some(mode), None) {
+        Ok(opts) => opts,
+        Err(e) => {
+            console_log!("❌ Policy compilation ERROR: {}", e);
+            let result = CompilationResult {
+                success: false,
+                error: Some(e),
+                script: None,
+                script_asm: None,
+                address: None,
+                script_size: None,
+                miniscript_type: None,
+                compiled_miniscript: None,
+                max_satisfaction_size: None,
+                max_weight_to_satisfy: None,
+                sanity_check: None,
+                is_non_malleable: None,
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+
+    let result = match compile::engine::compile_unified(policy, options) {
+        Ok(res) => {
+            if res.success {
+                console_log!("✅ Policy compilation SUCCESS");
+                if let Some(ref ms) = res.compiled_miniscript {
+                    console_log!("📝 Compiled miniscript: '{}'", ms);
+                }
+                if let Some(ref script) = res.script {
+                    console_log!("📝 Script: '{}'", script);
+                }
+                console_log!("📝 Address: '{:?}'", res.address);
             }
+            res
         },
         Err(e) => {
             console_log!("❌ Policy compilation ERROR: {}", e);
@@ -359,15 +378,52 @@ pub fn compile_policy_with_mode(policy: &str, context: &str, mode: &str) -> JsVa
             }
         }
     };
-    
+
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
 /// Compile a miniscript expression to Bitcoin script
 #[wasm_bindgen]
 pub fn compile_miniscript(expression: &str, context: &str) -> JsValue {
-    // No NUMS needed for single-leaf mode - will be ignored anyway
-    compile_miniscript_with_mode(expression, context, "single-leaf", "")
+    // Use unified compile with default options
+    let options = match compile::options::CompileOptions::for_miniscript(context, Some("single-leaf"), None, None) {
+        Ok(opts) => opts,
+        Err(e) => {
+            let result = CompilationResult {
+                success: false,
+                error: Some(e),
+                script: None,
+                script_asm: None,
+                address: None,
+                script_size: None,
+                miniscript_type: None,
+                compiled_miniscript: None,
+                max_satisfaction_size: None,
+                max_weight_to_satisfy: None,
+                sanity_check: None,
+                is_non_malleable: None,
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+
+    let result = compile::engine::compile_unified(expression, options)
+        .unwrap_or_else(|e| CompilationResult {
+            success: false,
+            error: Some(e),
+            script: None,
+            script_asm: None,
+            address: None,
+            script_size: None,
+            miniscript_type: None,
+            compiled_miniscript: None,
+            max_satisfaction_size: None,
+            max_weight_to_satisfy: None,
+            sanity_check: None,
+            is_non_malleable: None,
+        });
+
+    serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
 /// Compile a miniscript expression to Bitcoin script with compilation mode and network
@@ -377,29 +433,39 @@ pub fn compile_miniscript_with_mode_and_network(expression: &str, context: &str,
     console_log!("Context: {}", context);
     console_log!("Mode: {}", mode);
     console_log!("Network: {}", network_str);
-    
+
     // Parse network using centralized utility
     let network = address::parse_network(network_str).unwrap_or(Network::Bitcoin);
-    
-    let result = match compile_expression_with_mode_network(expression, context, mode, nums_key, network) {
-        Ok((script, script_asm, address, script_size, ms_type, 
-            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
-            CompilationResult {
-                success: true,
-                error: None,
-                script: Some(script),
-                script_asm: Some(script_asm),
-                address,
-                script_size: Some(script_size),
-                miniscript_type: Some(ms_type),
-                compiled_miniscript: normalized_miniscript,
-                max_satisfaction_size,
-                max_weight_to_satisfy,
-                sanity_check,
-                is_non_malleable,
-            }
-        },
-        Err(e) => CompilationResult {
+
+    // Use unified compile with full options
+    let options = match compile::options::CompileOptions::for_miniscript(
+        context,
+        Some(mode),
+        Some(nums_key.to_string()),
+        Some(network)
+    ) {
+        Ok(opts) => opts,
+        Err(e) => {
+            let result = CompilationResult {
+                success: false,
+                error: Some(e),
+                script: None,
+                script_asm: None,
+                address: None,
+                script_size: None,
+                miniscript_type: None,
+                compiled_miniscript: None,
+                max_satisfaction_size: None,
+                max_weight_to_satisfy: None,
+                sanity_check: None,
+                is_non_malleable: None,
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+
+    let result = compile::engine::compile_unified(expression, options)
+        .unwrap_or_else(|e| CompilationResult {
             success: false,
             error: Some(e),
             script: None,
@@ -412,9 +478,67 @@ pub fn compile_miniscript_with_mode_and_network(expression: &str, context: &str,
             max_weight_to_satisfy: None,
             sanity_check: None,
             is_non_malleable: None,
+        });
+
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
+/// Unified compilation function accepting options as JavaScript object
+///
+/// This is the new recommended way to compile both policies and miniscripts.
+/// It provides a single entry point with full control over all compilation options.
+///
+/// # Example JavaScript usage:
+/// ```javascript
+/// const options = {
+///     input_type: "Policy",  // or "Miniscript"
+///     context: "Taproot",    // or "Legacy", "Segwit"
+///     mode: "MultiLeaf",     // or "SingleLeaf", "ScriptPath", "Default"
+///     network: "Bitcoin",    // or "Testnet", etc.
+///     nums_key: "..."        // optional NUMS key for taproot
+/// };
+/// const result = compile_unified("or(pk(key1),pk(key2))", options);
+/// ```
+#[wasm_bindgen]
+pub fn compile_unified(expression: &str, options_js: JsValue) -> JsValue {
+    // Parse options from JavaScript
+    let options: compile::options::CompileOptions = match serde_wasm_bindgen::from_value(options_js) {
+        Ok(opts) => opts,
+        Err(e) => {
+            let result = CompilationResult {
+                success: false,
+                error: Some(format!("Invalid options: {}", e)),
+                script: None,
+                script_asm: None,
+                address: None,
+                script_size: None,
+                miniscript_type: None,
+                compiled_miniscript: None,
+                max_satisfaction_size: None,
+                max_weight_to_satisfy: None,
+                sanity_check: None,
+                is_non_malleable: None,
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
         }
     };
-    
+
+    let result = compile::engine::compile_unified(expression, options)
+        .unwrap_or_else(|e| CompilationResult {
+            success: false,
+            error: Some(e),
+            script: None,
+            script_asm: None,
+            address: None,
+            script_size: None,
+            miniscript_type: None,
+            compiled_miniscript: None,
+            max_satisfaction_size: None,
+            max_weight_to_satisfy: None,
+            sanity_check: None,
+            is_non_malleable: None,
+        });
+
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
@@ -424,26 +548,36 @@ pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str,
     console_log!("Compiling miniscript: {}", expression);
     console_log!("Context: {}", context);
     console_log!("Mode: {}", mode);
-    
-    let result = match compile_expression_with_mode(expression, context, mode, nums_key, Network::Bitcoin) {
-        Ok((script, script_asm, address, script_size, ms_type, 
-            max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
-            CompilationResult {
-                success: true,
-                error: None,
-                script: Some(script),
-                script_asm: Some(script_asm),
-                address,
-                script_size: Some(script_size),
-                miniscript_type: Some(ms_type),
-                compiled_miniscript: normalized_miniscript,
-                max_satisfaction_size,
-                max_weight_to_satisfy,
-                sanity_check,
-                is_non_malleable,
-            }
-        },
-        Err(e) => CompilationResult {
+
+    // Use unified compile with mode and default network
+    let options = match compile::options::CompileOptions::for_miniscript(
+        context,
+        Some(mode),
+        Some(nums_key.to_string()),
+        Some(Network::Bitcoin)
+    ) {
+        Ok(opts) => opts,
+        Err(e) => {
+            let result = CompilationResult {
+                success: false,
+                error: Some(e),
+                script: None,
+                script_asm: None,
+                address: None,
+                script_size: None,
+                miniscript_type: None,
+                compiled_miniscript: None,
+                max_satisfaction_size: None,
+                max_weight_to_satisfy: None,
+                sanity_check: None,
+                is_non_malleable: None,
+            };
+            return serde_wasm_bindgen::to_value(&result).unwrap();
+        }
+    };
+
+    let result = compile::engine::compile_unified(expression, options)
+        .unwrap_or_else(|e| CompilationResult {
             success: false,
             error: Some(e),
             script: None,
@@ -456,9 +590,8 @@ pub fn compile_miniscript_with_mode(expression: &str, context: &str, mode: &str,
             max_weight_to_satisfy: None,
             sanity_check: None,
             is_non_malleable: None,
-        }
-    };
-    
+        });
+
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
