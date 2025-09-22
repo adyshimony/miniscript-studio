@@ -1,10 +1,223 @@
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, policy::Liftable};
 use bitcoin::{PublicKey, XOnlyPublicKey, Network};
 use std::str::FromStr;
 use std::sync::Arc;
 use miniscript::descriptor::TapTree;
 use crate::console_log;
 use regex::Regex;
+use miniscript::descriptor::DescriptorPublicKey;
+use crate::translators::DescriptorKeyTranslator;
+use bitcoin::Address;
+use std::collections::HashMap;
+use crate::descriptors::parser::parse_descriptors;
+use crate::descriptors::utils::replace_descriptors_with_keys;
+use crate::descriptors::types::ParsedDescriptor;
+use crate::NUMS_POINT;
+
+/// Compile policy to miniscript
+pub fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    compile_policy_to_miniscript_with_mode(policy, context, "multi-leaf")
+}
+
+/// Compile policy to miniscript with mode
+pub fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
+    if policy.trim().is_empty() {
+        return Err("Empty policy - please enter a policy expression".to_string());
+    }
+
+    let trimmed = policy.trim();
+    
+    // Check for incompatible key types based on context
+    if context != "taproot" {
+        // Check for x-only keys (64 hex chars) in non-taproot contexts
+        let xonly_key_regex = regex::Regex::new(r"\b[a-fA-F0-9]{64}\b").unwrap();
+        if xonly_key_regex.is_match(trimmed) {
+            // Check if it's not an xpub/tpub, descriptor, or SHA256 hash
+            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") && !trimmed.contains("sha256(") {
+                return Err(format!(
+                    "{} context requires compressed public keys (66 characters starting with 02/03). Found x-only key (64 characters).",
+                    if context == "legacy" { "Legacy" } else { "Segwit v0" }
+                ));
+            }
+        }
+    } else {
+        // Check for compressed keys (66 hex chars starting with 02/03) in taproot context
+        let compressed_key_regex = regex::Regex::new(r"\b(02|03)[a-fA-F0-9]{64}\b").unwrap();
+        if compressed_key_regex.is_match(trimmed) {
+            // Check if it's not part of a descriptor
+            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
+                return Err("Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03).".to_string());
+            }
+        }
+    }
+    
+    // Detect network based on key type
+    let network = if trimmed.contains("tpub") {
+        Network::Testnet
+    } else {
+        Network::Bitcoin
+    };
+    
+    console_log!("Processing policy directly: {}", trimmed);
+    
+    // Check if policy contains descriptor keys
+    let processed_policy = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[") {
+        console_log!("Detected descriptor keys in policy, checking for ranges...");
+        
+        // For policies, check for range patterns directly instead of using parse_descriptors
+        // Match both /*  and /<0;1>/* and /<0;1>/1 patterns
+        let has_range_descriptors = trimmed.contains("/*") || (trimmed.contains("/<") && trimmed.contains(">/"));
+        
+        if has_range_descriptors {
+            // For range descriptors in policy, we need to compile the policy to miniscript first
+            console_log!("Found range descriptors in policy, compiling to miniscript");
+            
+            // Parse the original policy with descriptor keys (not wrapped with wsh)
+            match trimmed.parse::<Concrete<DescriptorPublicKey>>() {
+                Ok(descriptor_policy) => {
+                    // Try to compile the policy to miniscript based on context
+                    let miniscript_result = match context {
+                        "legacy" => descriptor_policy.compile::<Legacy>().map(|ms| ms.to_string()),
+                        "taproot" => descriptor_policy.compile::<Tap>().map(|ms| ms.to_string()),
+                        _ => descriptor_policy.compile::<Segwitv0>().map(|ms| ms.to_string()),
+                    };
+                    
+                    match miniscript_result {
+                        Ok(compiled_miniscript) => {
+                            // Now validate the resulting descriptor
+                            let test_descriptor = format!("wsh({})", compiled_miniscript);
+                            match test_descriptor.parse::<Descriptor<DescriptorPublicKey>>() {
+                                Ok(_) => {
+                                    console_log!("Valid range descriptor compiled to: {}, now processing as descriptor", compiled_miniscript);
+                                    // Instead of returning here, continue with descriptor processing
+                                    // by calling compile_expression with the wrapped descriptor
+                                    match crate::compile_expression(&test_descriptor, context) {
+                                        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+                                            return Ok((
+                                                normalized_miniscript.unwrap_or(script), // Put "Valid descriptor: ..." in script field for success message
+                                                script_asm,
+                                                address,
+                                                script_size,
+                                                ms_type,
+                                                compiled_miniscript, // Put clean miniscript in compiled_miniscript for editor
+                                                max_satisfaction_size,
+                                                max_weight_to_satisfy,
+                                                sanity_check,
+                                                is_non_malleable
+                                            ));
+                                        },
+                                        Err(e) => return Err(e)
+                                    }
+                                },
+                                Err(e) => {
+                                    console_log!("Invalid compiled descriptor: {}", e);
+                                    return Err(format!("Invalid descriptor: {}", e));
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            console_log!("Failed to compile policy with range descriptors: {}", e);
+                            return Err(format!("Failed to compile policy: {}", e));
+                        }
+                    }
+                },
+                Err(e) => {
+                    console_log!("Failed to parse policy with descriptors: {}", e);
+                    return Err(format!("Invalid policy with descriptors: {}", e));
+                }
+            }
+        } else {
+            // For non-range descriptors, use the original parse_descriptors approach
+            console_log!("Policy has descriptor keys but no ranges, parsing descriptors...");
+            match parse_descriptors(trimmed) {
+                Ok(descriptors) => {
+                    if descriptors.is_empty() {
+                        console_log!("No descriptors found, using original policy");
+                        trimmed.to_string()
+                    } else {
+                        console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
+                        match replace_descriptors_with_keys(trimmed, &descriptors) {
+                            Ok(processed) => {
+                                console_log!("Successfully replaced descriptors with keys in policy");
+                                processed
+                            },
+                            Err(e) => {
+                                console_log!("Failed to replace descriptors: {}", e);
+                                return Err(format!("Descriptor processing failed: {}", e));
+                            }
+                        }
+                    }
+                },
+                Err(e) => {
+                    console_log!("Failed to parse descriptors in policy: {}", e);
+                    return Err(format!("Descriptor parsing failed: {}", e));
+                }
+            }
+        }
+    } else {
+        trimmed.to_string()
+    };
+    
+    // Now I need to handle the Taproot context properly for XOnlyPublicKey
+    if context == "taproot" {
+        // First try parsing as XOnlyPublicKey for 64-char keys
+        match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
+            Ok(xonly_policy) => {
+                return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
+            },
+            Err(_) => {
+                // Fall through to try PublicKey parsing
+            }
+        }
+    }
+    
+    // First try parsing with DescriptorPublicKey to support xpub descriptors  
+    match processed_policy.parse::<Concrete<DescriptorPublicKey>>() {
+        Ok(descriptor_policy) => {
+            // Translate DescriptorPublicKey to PublicKey using our translator
+            let mut translator = DescriptorKeyTranslator::new();
+            let concrete_policy = match descriptor_policy.translate_pk(&mut translator) {
+                Ok(policy) => policy,
+                Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
+            };
+            
+            
+            match context {
+                "legacy" => compile_legacy_policy(concrete_policy, network),
+                "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
+                _ => compile_segwit_policy(concrete_policy, network),
+            }
+        },
+        Err(_) => {
+            // For taproot context, try parsing as XOnlyPublicKey first
+            if context == "taproot" {
+                console_log!("DEBUG: Parsing policy for taproot with XOnly keys: {}", processed_policy);
+                match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
+                    Ok(xonly_policy) => {
+                        console_log!("DEBUG: Successfully parsed XOnly policy: {}", xonly_policy);
+                        return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
+                    },
+                    Err(_) => {
+                        // Fall through to try PublicKey parsing, but it will fail with proper error
+                    }
+                }
+            }
+            
+            // If descriptor parsing fails, try parsing as regular Concrete<PublicKey>
+            match processed_policy.parse::<Concrete<PublicKey>>() {
+                Ok(concrete_policy) => {
+                    
+                    match context {
+                        "legacy" => compile_legacy_policy(concrete_policy, network),
+                        "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
+                        _ => compile_segwit_policy(concrete_policy, network),
+                    }
+                },
+                Err(e) => Err(format!("Policy parsing failed: {}", e))
+            }
+        }
+    }
+}
 
 /// Compile policy for Legacy context
 pub fn compile_legacy_policy(

@@ -155,40 +155,46 @@ pub fn generate_address(input: AddressInput) -> Result<AddressGenerationResult, 
             console_log!("Generating Taproot address with miniscript: {} for network: {:?}", 
                         input.script_or_miniscript, network);
             
-            // If internal key is provided, use it; otherwise extract from miniscript
-            let internal_key = if let Some(key) = input.internal_key {
-                console_log!("Using provided internal key: {}", key);
-                key
+            // Determine the taproot mode based on input parameters
+            let mode = if let Some(key) = input.internal_key {
+                if key == crate::NUMS_POINT {
+                    console_log!("Using script-path mode (NUMS key provided)");
+                    "script-path"
+                } else {
+                    console_log!("Using multi-leaf mode (custom internal key provided)");
+                    "multi-leaf"
+                }
             } else if input.use_single_leaf.unwrap_or(false) {
-                // Use NUMS point for single leaf approach
-                console_log!("Using NUMS point for single leaf approach");
-                crate::NUMS_POINT.to_string()
+                console_log!("Using single-leaf mode (use_single_leaf=true)");
+                "single-leaf"
             } else {
-                let extracted = crate::keys::extract_internal_key_from_expression(&input.script_or_miniscript);
-                console_log!("Extracted internal key: {}", extracted);
-                extracted
+                console_log!("Using multi-leaf mode (extract internal key from miniscript)");
+                "multi-leaf"
             };
             
-            console_log!("Final internal key being used: {}", internal_key);
+            // Dispatch to the appropriate taproot compilation function
+            let result = match mode {
+                "multi-leaf" => {
+                    crate::compile::modes::compile_taproot_multi_leaf(&input.script_or_miniscript, network)
+                },
+                "single-leaf" => {
+                    crate::compile::modes::compile_taproot_single_leaf(&input.script_or_miniscript, crate::NUMS_POINT, network)
+                },
+                "script-path" => {
+                    crate::compile::modes::compile_taproot_script_path(&input.script_or_miniscript, crate::NUMS_POINT, network)
+                },
+                _ => return Err(AddressError::DescriptorParse("Invalid taproot mode".to_string()))
+            };
             
-            // Parse miniscript and create descriptor
-            let ms = input.script_or_miniscript.parse::<Miniscript<XOnlyPublicKey, Tap>>()
-                .map_err(|e| AddressError::DescriptorParse(e.to_string()))?;
+            let compilation_result = result.map_err(|e| AddressError::DescriptorParse(e))?;
             
-            let internal_xonly_key = XOnlyPublicKey::from_str(&internal_key)
-                .map_err(|e| AddressError::KeyParse(format!("Internal key: {}", e)))?;
-            
-            let tree = TapTree::Leaf(Arc::new(ms));
-            let descriptor = Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree))
-                .map_err(|e| AddressError::DescriptorParse(format!("Descriptor creation: {:?}", e)))?;
-            
-            let address = descriptor.address(network)
-                .map_err(|e| AddressError::AddressCreation(format!("Address generation: {:?}", e)))?;
+            let address = compilation_result.address
+                .ok_or_else(|| AddressError::AddressCreation("No address generated".to_string()))?;
             
             console_log!("Generated Taproot address: {}", address);
             
             Ok(AddressGenerationResult {
-                address: address.to_string(),
+                address,
                 script_type: "Taproot".to_string(),
                 network,
             })

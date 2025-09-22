@@ -17,6 +17,7 @@
 #![allow(clippy::collapsible_match)]
 #![allow(clippy::char_indices_as_byte_indices)]
 mod types;
+pub mod compile;
 mod translators;
 mod opcodes;
 mod utils;
@@ -26,7 +27,6 @@ pub mod address;
 mod taproot;
 
 // Export modules for integration tests
-pub mod compile;
 pub mod descriptors;
 pub mod keys;
 pub mod validation;
@@ -473,19 +473,52 @@ fn compile_expression_with_mode(
     if context == "taproot" {
         match mode {
             "multi-leaf" => {
-                console_log!("Using multi-leaf compilation (descriptor approach)");
-                // Multi-leaf mode: extract internal key from expression and use descriptor
-                return compile_taproot_keypath_descriptor(expression, network);
+                console_log!("Using multi-leaf compilation (new engine)");
+                let result = compile::modes::compile_taproot_multi_leaf(expression, network)?;
+                return Ok((
+                    result.script.unwrap_or_default(),
+                    result.script_asm.unwrap_or_default(),
+                    result.address,
+                    result.script_size.unwrap_or(0),
+                    result.miniscript_type.unwrap_or_default(),
+                    result.max_satisfaction_size,
+                    result.max_weight_to_satisfy,
+                    result.sanity_check,
+                    result.is_non_malleable,
+                    result.compiled_miniscript,
+                ));
             },
             "script-path" => {
-                console_log!("Using script-path compilation (descriptor approach) with NUMS: {}", nums_key);
-                // Script-path mode: use descriptor approach with NUMS
-                return compile::policy::compile_taproot_script_path_descriptor(expression, nums_key, network);
+                console_log!("Using script-path compilation (new engine) with NUMS: {}", nums_key);
+                let result = compile::modes::compile_taproot_script_path(expression, nums_key, network)?;
+                return Ok((
+                    result.script.unwrap_or_default(),
+                    result.script_asm.unwrap_or_default(),
+                    result.address,
+                    result.script_size.unwrap_or(0),
+                    result.miniscript_type.unwrap_or_default(),
+                    result.max_satisfaction_size,
+                    result.max_weight_to_satisfy,
+                    result.sanity_check,
+                    result.is_non_malleable,
+                    result.compiled_miniscript,
+                ));
             },
             _ => {
-                console_log!("Using single-leaf compilation (descriptor approach) with NUMS");
-                // Single-leaf mode: use descriptor approach with NUMS (same as script-path)
-                return compile_taproot_simplified_descriptor(expression, nums_key, network);
+                console_log!("Using single-leaf compilation (new engine) with NUMS");
+                let result = compile::modes::compile_taproot_single_leaf(expression, nums_key, network)?;
+                return Ok((
+                    result.script.unwrap_or_default(),
+                    result.script_asm.unwrap_or_default(),
+                    result.address,
+                    result.script_size.unwrap_or(0),
+                    result.miniscript_type.unwrap_or_default(),
+                    result.max_satisfaction_size,
+                    result.max_weight_to_satisfy,
+                    result.sanity_check,
+                    result.is_non_malleable,
+                    result.compiled_miniscript,
+                ));
             }
         }
     }
@@ -544,178 +577,7 @@ fn compile_expression_with_mode_network(
 }
 
 
-/// Compile Taproot Key path + script path using Descriptor::new_tr() approach with extracted internal key
-fn compile_taproot_keypath_descriptor(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    use std::sync::Arc;
-    use miniscript::descriptor::TapTree;
 
-    console_log!("=== COMPILE_TAPROOT_KEYPATH_DESCRIPTOR ===");
-    console_log!("Expression: {}", expression);
-    console_log!("Network: {:?}", network);
-    let processed_expr = expression.trim();
-    
-    // Parse as XOnlyPublicKey miniscript for Taproot
-    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-        Ok(ms) => {
-            let _normalized_miniscript = ms.to_string();
-            console_log!("Parsed miniscript: {}", _normalized_miniscript);
-            
-            // Calculate satisfaction weights 
-            let max_satisfaction_size = ms.max_satisfaction_size().ok();
-            let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
-            
-            // Extract internal key from expression (e.g., from pk(key))
-            let internal_key_str = keys::extract_internal_key_from_expression(expression);
-            console_log!("DEBUG DESCRIPTOR KEYPATH: Extracted internal key: {}", internal_key_str);
-            
-            // Parse internal key
-            let internal_xonly_key = if let Ok(key_bytes) = hex::decode(&internal_key_str) {
-                if key_bytes.len() == 32 {
-                    if let Ok(xonly_key) = XOnlyPublicKey::from_slice(&key_bytes) {
-                        console_log!("DEBUG DESCRIPTOR KEYPATH: Successfully created XOnlyPublicKey from hex");
-                        xonly_key
-                    } else {
-                        console_log!("DEBUG DESCRIPTOR KEYPATH: Failed to create XOnlyPublicKey, using NUMS");
-                        taproot::utils::get_taproot_nums_point()
-                    }
-                } else {
-                    console_log!("DEBUG DESCRIPTOR KEYPATH: Key bytes length is not 32, using NUMS");
-                    taproot::utils::get_taproot_nums_point()
-                }
-            } else {
-                console_log!("DEBUG DESCRIPTOR KEYPATH: Failed to decode hex key, using NUMS");
-                taproot::utils::get_taproot_nums_point()
-            };
-            
-            console_log!("DEBUG DESCRIPTOR KEYPATH: Using internal key: {}", internal_xonly_key);
-            
-            // Create the tree with the miniscript (clone to avoid move)
-            let tree = TapTree::Leaf(Arc::new(ms.clone()));
-            console_log!("DEBUG DESCRIPTOR KEYPATH: Created TapTree leaf");
-            
-            // Create descriptor using Descriptor::new_tr() approach (the correct way!)
-            match Descriptor::<XOnlyPublicKey>::new_tr(internal_xonly_key, Some(tree)) {
-                Ok(descriptor) => {
-                    console_log!("DEBUG DESCRIPTOR KEYPATH: Successfully created descriptor: {}", descriptor);
-                    
-                    // Generate address from descriptor
-                    match descriptor.address(network) {
-                        Ok(address) => {
-                            console_log!("DEBUG DESCRIPTOR KEYPATH: Generated address: {}", address);
-                            
-                            // Get the scriptPubKey (OP_1 + 32-byte tweaked key)
-                            let script_pubkey = address.script_pubkey();
-                            let script_hex = script_pubkey.to_hex_string();
-                            let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
-                            let script_size = script_pubkey.len();
-                            
-                            console_log!("DEBUG DESCRIPTOR KEYPATH: Script hex: {}", script_hex);
-                            console_log!("DEBUG DESCRIPTOR KEYPATH: Script ASM: {}", script_asm);
-                            
-                            Ok((
-                                script_hex,
-                                script_asm,
-                                Some(address.to_string()),
-                                script_size,
-                                "Taproot".to_string(),
-                                max_satisfaction_size,
-                                max_weight_to_satisfy,
-                                Some(true), // sanity_check
-                                Some(true), // is_non_malleable
-                                Some(descriptor.to_string()) // Return the full descriptor
-                            ))
-                        },
-                        Err(e) => Err(format!("Address generation failed: {:?}", e))
-                    }
-                },
-                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
-            }
-        },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
-}
-
-/// Compile Taproot Simplified using Descriptor::new_tr() approach (same as script path)
-fn compile_taproot_simplified_descriptor(expression: &str, nums_key: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    use std::sync::Arc;
-    use miniscript::descriptor::TapTree;
-
-    console_log!("=== COMPILE_TAPROOT_SIMPLIFIED_DESCRIPTOR ===");
-    console_log!("Expression: {}", expression);
-    console_log!("NUMS key: {}", nums_key);
-    console_log!("Network: {:?}", network);
-    let processed_expr = expression.trim();
-    
-    // Parse as XOnlyPublicKey miniscript for Taproot
-    match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
-        Ok(ms) => {
-            let _normalized_miniscript = ms.to_string();
-            console_log!("Parsed miniscript: {}", _normalized_miniscript);
-            
-            // Calculate satisfaction weights 
-            let max_satisfaction_size = ms.max_satisfaction_size().ok();
-            let max_weight_to_satisfy = max_satisfaction_size.map(|s| s as u64);
-            
-            // Parse NUMS key
-            let nums_xonly_key = match XOnlyPublicKey::from_str(nums_key) {
-                Ok(key) => key,
-                Err(_) => return Err(format!("Failed to parse NUMS key: {}", nums_key))
-            };
-            
-            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Using NUMS key: {}", nums_xonly_key);
-            
-            // Get the leaf script (raw miniscript script)
-            let leaf_script = ms.encode();
-            let _leaf_script_hex = leaf_script.to_hex_string();
-            let leaf_script_asm = format!("{:?}", leaf_script).replace("Script(", "").trim_end_matches(')').to_string();
-            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script hex: {}", _leaf_script_hex);
-            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Leaf script ASM: {}", leaf_script_asm);
-            
-            // Create the tree with the miniscript (clone to avoid move)
-            let tree = TapTree::Leaf(Arc::new(ms.clone()));
-            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Created TapTree leaf");
-            
-            // Create descriptor using Descriptor::new_tr() approach (the correct way!)
-            match Descriptor::<XOnlyPublicKey>::new_tr(nums_xonly_key, Some(tree)) {
-                Ok(descriptor) => {
-                    console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Successfully created descriptor: {}", descriptor);
-                    
-                    // Generate address from descriptor
-                    match descriptor.address(network) {
-                        Ok(address) => {
-                            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Generated address: {}", address);
-                            
-                            // Get the scriptPubKey (OP_1 + 32-byte tweaked key)
-                            let script_pubkey = address.script_pubkey();
-                            let script_hex = script_pubkey.to_hex_string();
-                            let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
-                            let script_size = script_pubkey.len();
-                            
-                            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Script hex: {}", script_hex);
-                            console_log!("DEBUG DESCRIPTOR SIMPLIFIED: Script ASM: {}", script_asm);
-                            
-                            Ok((
-                                script_hex,
-                                script_asm,
-                                Some(address.to_string()),
-                                script_size,
-                                "Taproot".to_string(),
-                                max_satisfaction_size,
-                                max_weight_to_satisfy,
-                                Some(true), // sanity_check
-                                Some(true), // is_non_malleable
-                                Some(format!("{}|LEAF_ASM:{}", descriptor.to_string(), leaf_script_asm)) // Descriptor + leaf ASM
-                            ))
-                        },
-                        Err(e) => Err(format!("Address generation failed: {:?}", e))
-                    }
-                },
-                Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
-            }
-        },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
-    }
-}
 
 /// Compile miniscript for single-leaf taproot (shows raw script, not taproot address)
 
@@ -955,206 +817,11 @@ fn transform_or_to_tree(miniscript: &str) -> String {
 
 
 fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    compile_policy_to_miniscript_with_mode(policy, context, "multi-leaf")
+    compile::policy::compile_policy_to_miniscript(policy, context)
 }
 
 fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    if policy.trim().is_empty() {
-        return Err("Empty policy - please enter a policy expression".to_string());
-    }
-
-    let trimmed = policy.trim();
-    
-    // Check for incompatible key types based on context
-    if context != "taproot" {
-        // Check for x-only keys (64 hex chars) in non-taproot contexts
-        let xonly_key_regex = regex::Regex::new(r"\b[a-fA-F0-9]{64}\b").unwrap();
-        if xonly_key_regex.is_match(trimmed) {
-            // Check if it's not an xpub/tpub, descriptor, or SHA256 hash
-            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") && !trimmed.contains("sha256(") {
-                return Err(format!(
-                    "{} context requires compressed public keys (66 characters starting with 02/03). Found x-only key (64 characters).",
-                    if context == "legacy" { "Legacy" } else { "Segwit v0" }
-                ));
-            }
-        }
-    } else {
-        // Check for compressed keys (66 hex chars starting with 02/03) in taproot context
-        let compressed_key_regex = regex::Regex::new(r"\b(02|03)[a-fA-F0-9]{64}\b").unwrap();
-        if compressed_key_regex.is_match(trimmed) {
-            // Check if it's not part of a descriptor
-            if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
-                return Err("Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03).".to_string());
-            }
-        }
-    }
-    
-    // Detect network based on key type
-    let network = if trimmed.contains("tpub") {
-        Network::Testnet
-    } else {
-        Network::Bitcoin
-    };
-    
-    console_log!("Processing policy directly: {}", trimmed);
-    
-    // Check if policy contains descriptor keys
-    let processed_policy = if trimmed.contains("tpub") || trimmed.contains("xpub") || trimmed.contains("[") {
-        console_log!("Detected descriptor keys in policy, checking for ranges...");
-        
-        // For policies, check for range patterns directly instead of using parse_descriptors
-        // Match both /*  and /<0;1>/* and /<0;1>/1 patterns
-        let has_range_descriptors = trimmed.contains("/*") || (trimmed.contains("/<") && trimmed.contains(">/"));
-        
-        if has_range_descriptors {
-            // For range descriptors in policy, we need to compile the policy to miniscript first
-            console_log!("Found range descriptors in policy, compiling to miniscript");
-            
-            // Parse the original policy with descriptor keys (not wrapped with wsh)
-            match trimmed.parse::<Concrete<DescriptorPublicKey>>() {
-                Ok(descriptor_policy) => {
-                    // Try to compile the policy to miniscript based on context
-                    let miniscript_result = match context {
-                        "legacy" => descriptor_policy.compile::<Legacy>().map(|ms| ms.to_string()),
-                        "taproot" => descriptor_policy.compile::<Tap>().map(|ms| ms.to_string()),
-                        _ => descriptor_policy.compile::<Segwitv0>().map(|ms| ms.to_string()),
-                    };
-                    
-                    match miniscript_result {
-                        Ok(compiled_miniscript) => {
-                            // Now validate the resulting descriptor
-                            let test_descriptor = format!("wsh({})", compiled_miniscript);
-                            match test_descriptor.parse::<Descriptor<DescriptorPublicKey>>() {
-                                Ok(_) => {
-                                    console_log!("Valid range descriptor compiled to: {}, now processing as descriptor", compiled_miniscript);
-                                    // Instead of returning here, continue with descriptor processing
-                                    // by calling compile_expression with the wrapped descriptor
-                                    match compile_expression(&test_descriptor, context) {
-                                        Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
-                                            return Ok((
-                                                normalized_miniscript.unwrap_or(script), // Put "Valid descriptor: ..." in script field for success message
-                                                script_asm,
-                                                address,
-                                                script_size,
-                                                ms_type,
-                                                compiled_miniscript, // Put clean miniscript in compiled_miniscript for editor
-                                                max_satisfaction_size,
-                                                max_weight_to_satisfy,
-                                                sanity_check,
-                                                is_non_malleable
-                                            ));
-                                        },
-                                        Err(e) => return Err(e)
-                                    }
-                                },
-                                Err(e) => {
-                                    console_log!("Invalid compiled descriptor: {}", e);
-                                    return Err(format!("Invalid descriptor: {}", e));
-                                }
-                            }
-                        },
-                        Err(e) => {
-                            console_log!("Failed to compile policy with range descriptors: {}", e);
-                            return Err(format!("Failed to compile policy: {}", e));
-                        }
-                    }
-                },
-                Err(e) => {
-                    console_log!("Failed to parse policy with descriptors: {}", e);
-                    return Err(format!("Invalid policy with descriptors: {}", e));
-                }
-            }
-        } else {
-            // For non-range descriptors, use the original parse_descriptors approach
-            console_log!("Policy has descriptor keys but no ranges, parsing descriptors...");
-            match parse_descriptors(trimmed) {
-                Ok(descriptors) => {
-                    if descriptors.is_empty() {
-                        console_log!("No descriptors found, using original policy");
-                        trimmed.to_string()
-                    } else {
-                        console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
-                        match replace_descriptors_with_keys(trimmed, &descriptors) {
-                            Ok(processed) => {
-                                console_log!("Successfully replaced descriptors with keys in policy");
-                                processed
-                            },
-                            Err(e) => {
-                                console_log!("Failed to replace descriptors: {}", e);
-                                return Err(format!("Descriptor processing failed: {}", e));
-                            }
-                        }
-                    }
-                },
-                Err(e) => {
-                    console_log!("Failed to parse descriptors in policy: {}", e);
-                    return Err(format!("Descriptor parsing failed: {}", e));
-                }
-            }
-        }
-    } else {
-        trimmed.to_string()
-    };
-    
-    // Now I need to handle the Taproot context properly for XOnlyPublicKey
-    if context == "taproot" {
-        // First try parsing as XOnlyPublicKey for 64-char keys
-        match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
-            Ok(xonly_policy) => {
-                return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
-            },
-            Err(_) => {
-                // Fall through to try PublicKey parsing
-            }
-        }
-    }
-    
-    // First try parsing with DescriptorPublicKey to support xpub descriptors  
-    match processed_policy.parse::<Concrete<DescriptorPublicKey>>() {
-        Ok(descriptor_policy) => {
-            // Translate DescriptorPublicKey to PublicKey using our translator
-            let mut translator = DescriptorKeyTranslator::new();
-            let concrete_policy = match descriptor_policy.translate_pk(&mut translator) {
-                Ok(policy) => policy,
-                Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
-            };
-            
-            
-            match context {
-                "legacy" => compile_legacy_policy(concrete_policy, network),
-                "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
-                _ => compile_segwit_policy(concrete_policy, network),
-            }
-        },
-        Err(_) => {
-            // For taproot context, try parsing as XOnlyPublicKey first
-            if context == "taproot" {
-                console_log!("DEBUG: Parsing policy for taproot with XOnly keys: {}", processed_policy);
-                match processed_policy.parse::<Concrete<XOnlyPublicKey>>() {
-                    Ok(xonly_policy) => {
-                        console_log!("DEBUG: Successfully parsed XOnly policy: {}", xonly_policy);
-                        return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
-                    },
-                    Err(_) => {
-                        // Fall through to try PublicKey parsing, but it will fail with proper error
-                    }
-                }
-            }
-            
-            // If descriptor parsing fails, try parsing as regular Concrete<PublicKey>
-            match processed_policy.parse::<Concrete<PublicKey>>() {
-                Ok(concrete_policy) => {
-                    
-                    match context {
-                        "legacy" => compile_legacy_policy(concrete_policy, network),
-                        "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
-                        _ => compile_segwit_policy(concrete_policy, network),
-                    }
-                },
-                Err(e) => Err(format!("Policy parsing failed: {}", e))
-            }
-        }
-    }
+    compile::policy::compile_policy_to_miniscript_with_mode(policy, context, mode)
 }
 
 
