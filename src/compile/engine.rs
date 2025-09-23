@@ -10,10 +10,6 @@ use bitcoin::Network;
 use crate::parse::helpers::{detect_network, needs_descriptor_processing, is_descriptor_wrapper};
 use crate::descriptors::parser::parse_descriptors;
 use crate::validation;
-#[allow(unused_imports)]
-use std::collections::HashMap;
-#[allow(unused_imports)]
-use crate::descriptors::types::ParsedDescriptor;
 use miniscript::{Descriptor, DescriptorPublicKey};
 use std::str::FromStr;
 

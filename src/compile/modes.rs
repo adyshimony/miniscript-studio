@@ -204,7 +204,7 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
             console_log!("Parsed miniscript: {}", normalized_miniscript);
             
             // Transform top-level OR patterns to tree notation
-            let transformed_miniscript = crate::transform_or_to_tree(&normalized_miniscript);
+            let transformed_miniscript = super::utils::transform_or_to_tree(&normalized_miniscript);
             console_log!("After OR transformation: {}", transformed_miniscript);
             
             // Calculate satisfaction weights 

@@ -303,7 +303,7 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
             console_log!("Normalized miniscript: {}", normalized_miniscript);
             
             // Transform top-level OR patterns to tree notation
-            let transformed_miniscript = crate::transform_or_to_tree(&normalized_miniscript);
+            let transformed_miniscript = super::utils::transform_or_to_tree(&normalized_miniscript);
             console_log!("After OR transformation: {}", transformed_miniscript);
             
             // Extract internal key name and resolve to actual key

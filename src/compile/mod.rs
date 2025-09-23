@@ -10,4 +10,5 @@ pub mod types;
 pub mod modes;
 pub mod engine;
 pub mod options;
+pub mod utils;
 
