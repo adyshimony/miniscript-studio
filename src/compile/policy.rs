@@ -84,8 +84,8 @@ pub fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode:
                                 Ok(_) => {
                                     console_log!("Valid range descriptor compiled to: {}, now processing as descriptor", compiled_miniscript);
                                     // Instead of returning here, continue with descriptor processing
-                                    // by calling compile_expression with the wrapped descriptor
-                                    match crate::compile_expression(&test_descriptor, context) {
+                                    // by calling compile_non_taproot_context with the wrapped descriptor
+                                    match crate::compile::engine::compile_non_taproot_context(&test_descriptor, context) {
                                         Ok((script, script_asm, address, script_size, ms_type, max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
                                             return Ok((
                                                 normalized_miniscript.unwrap_or(script), // Put "Valid descriptor: ..." in script field for success message
