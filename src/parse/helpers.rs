@@ -1,3 +1,5 @@
+//! Helper functions
+
 pub(crate) fn is_descriptor_wrapper(expression: &str) -> bool {
 	expression.starts_with("wsh(") || expression.starts_with("sh(") || expression.starts_with("wpkh(")
 }

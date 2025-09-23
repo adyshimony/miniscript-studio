@@ -16,10 +16,8 @@ mod tests {
     const COMPLEX_DESCRIPTOR_WILDCARD: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/*)";
     const COMPLEX_DESCRIPTOR_MULTIPATH: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/0)";
 
-    // ============================================================================
-    // DESCRIPTOR PARSING TESTS
-    // ============================================================================
-
+        // DESCRIPTOR PARSING TESTS
+    
     #[test]
     fn test_parse_descriptors_fixed() {
         // Test parsing a fixed descriptor
@@ -112,10 +110,8 @@ mod tests {
         assert!(has_bare_xpub, "Should find bare xpub parts");
     }
 
-    // ============================================================================
-    // DESCRIPTOR PROCESSING TESTS
-    // ============================================================================
-
+        // DESCRIPTOR PROCESSING TESTS
+    
     #[test]
     fn test_process_expression_descriptors_fixed_only() {
         // Test processing expression with only fixed descriptors
@@ -172,10 +168,8 @@ mod tests {
         assert!(!keys.is_empty(), "Should contain derived public keys");
     }
 
-    // ============================================================================
-    // DESCRIPTOR EXPANSION TESTS
-    // ============================================================================
-
+        // DESCRIPTOR EXPANSION TESTS
+    
     #[test]
     fn test_expand_descriptor_wildcard() {
         // Test expanding a wildcard descriptor
@@ -223,10 +217,8 @@ mod tests {
         assert!(expanded.starts_with("02") || expanded.starts_with("03"), "Should be a valid compressed public key");
     }
 
-    // ============================================================================
-    // DESCRIPTOR REPLACEMENT TESTS
-    // ============================================================================
-
+        // DESCRIPTOR REPLACEMENT TESTS
+    
     #[test]
     fn test_replace_descriptors_with_keys() {
         // Test replacing descriptors with concrete keys
@@ -246,10 +238,8 @@ mod tests {
         assert!(!keys.is_empty(), "Should contain derived public keys");
     }
 
-    // ============================================================================
-    // KEY EXTRACTION TESTS
-    // ============================================================================
-
+        // KEY EXTRACTION TESTS
+    
     #[test]
     fn test_extract_xonly_key_from_miniscript() {
         // Test extracting x-only key from miniscript (using 64-char x-only key)
@@ -296,10 +286,8 @@ mod tests {
         assert!(key.is_none(), "Should return None for invalid script hex");
     }
 
-    // ============================================================================
-    // VALIDATION TESTS
-    // ============================================================================
-
+        // VALIDATION TESTS
+    
     #[test]
     fn test_validate_inner_miniscript_legacy() {
         // Test validating miniscript in legacy context
@@ -332,10 +320,8 @@ mod tests {
         assert!(result.is_err(), "Should return error for invalid miniscript");
     }
 
-    // ============================================================================
-    // EDGE CASES AND ERROR HANDLING
-    // ============================================================================
-
+        // EDGE CASES AND ERROR HANDLING
+    
     #[test]
     fn test_edge_case_empty_expression() {
         // Test edge case with empty expression

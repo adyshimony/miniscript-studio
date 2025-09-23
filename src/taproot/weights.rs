@@ -1,3 +1,5 @@
+//! Weights implementation
+
 use miniscript::{Miniscript, Tap};
 use bitcoin::XOnlyPublicKey;
 

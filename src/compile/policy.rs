@@ -1,3 +1,5 @@
+//! Policy implementation
+
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor};
 use bitcoin::{PublicKey, XOnlyPublicKey, Network};
 use std::str::FromStr;
@@ -578,11 +580,6 @@ pub fn compile_taproot_policy_with_mode(
     Err("Taproot policy compilation with compressed keys is not yet implemented. Please use x-only keys (64 characters) for taproot policies.".to_string())
 }
 
-
-
-// ============================================================================
-// Taproot Compilation Functions (moved from lib.rs)
-// ============================================================================
 
 /// Compile Taproot Script path using Descriptor::new_tr() approach (the correct way)
 pub fn compile_taproot_script_path_descriptor(expression: &str, nums_key: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {

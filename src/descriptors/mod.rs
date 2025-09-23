@@ -1,3 +1,5 @@
+//! HD wallet descriptor parsing and processing
+
 pub mod types;
 pub mod parser;
 pub mod processor;

@@ -3,9 +3,6 @@
 use miniscript::{Translator, DescriptorPublicKey, MiniscriptKey, ToPublicKey};
 use bitcoin::{PublicKey, XOnlyPublicKey};
 
-// ============================================================================
-// Descriptor to PublicKey Translator
-// ============================================================================
 
 /// Translator for converting DescriptorPublicKey to PublicKey
 pub struct DescriptorKeyTranslator;
@@ -41,9 +38,6 @@ impl Translator<DescriptorPublicKey, PublicKey, ()> for DescriptorKeyTranslator 
     }
 }
 
-// ============================================================================
-// Descriptor to XOnlyPublicKey Translator
-// ============================================================================
 
 /// Translator for converting DescriptorPublicKey to XOnlyPublicKey (for Taproot)
 pub struct XOnlyKeyTranslator;
@@ -88,9 +82,6 @@ impl Translator<DescriptorPublicKey, XOnlyPublicKey, ()> for XOnlyKeyTranslator 
     }
 }
 
-// ============================================================================
-// PublicKey to XOnlyPublicKey Translator
-// ============================================================================
 
 /// Translator for converting PublicKey to XOnlyPublicKey (for Taproot policy compilation)
 pub struct PublicKeyToXOnlyTranslator;

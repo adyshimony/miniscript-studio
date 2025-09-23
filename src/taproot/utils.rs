@@ -1,3 +1,5 @@
+//! Utility functions
+
 use bitcoin::XOnlyPublicKey;
 use miniscript::{Miniscript, Tap};
 use crate::NUMS_POINT;

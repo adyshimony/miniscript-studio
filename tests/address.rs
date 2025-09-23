@@ -27,9 +27,6 @@ const EXPECTED_TAPROOT_SCRIPT_ONLY_MAINNET: &str = "bc1p8jxxw8payzdytn2qmgrypsqp
 const TEST_HD_DESCRIPTOR: &str = "pk([C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/1)";
 const EXPECTED_HD_ADDRESS: &str = "bc1qar0le8q8h2v6pcrudn3a6f09ghq5405h9aw5ehdeguxx3cuqg5fs8uhyhu";
 
-// ============================================================================
-// NETWORK PARSING TESTS
-// ============================================================================
 
 #[test]
 fn test_parse_network_valid() {
@@ -47,9 +44,6 @@ fn test_parse_network_invalid() {
     assert!(parse_network("main").is_err());
 }
 
-// ============================================================================
-// UNIFIED ADDRESS GENERATION TESTS
-// ============================================================================
 
 #[test]
 fn test_generate_address_legacy_mainnet() {
@@ -291,9 +285,6 @@ fn test_generate_address_taproot_testnet() {
     println!("Generated Taproot testnet address: {}", address_result.address);
 }
 
-// ============================================================================
-// ERROR HANDLING TESTS
-// ============================================================================
 
 #[test]
 fn test_generate_address_invalid_network() {
@@ -371,19 +362,13 @@ fn test_generate_address_invalid_taproot_miniscript() {
     }
 }
 
-// ============================================================================
-// JAVASCRIPT INTERFACE TESTS (SKIPPED - WASM bindings don't work in integration tests)
-// ============================================================================
 
 // Note: JavaScript interface tests are skipped because they use WASM bindings
 // that don't work in integration test environment. These functions are tested in
 // browser environment or with wasm-pack test.
 
-// ============================================================================
-// COMPREHENSIVE TESTING FUNCTIONS
-// ============================================================================
 
-/// Test all address types for a given network
+// Test all address types for a given network
 fn test_all_address_types_for_network(network: &str) {
     println!("\n=== Testing all address types for {} ===", network);
     
@@ -451,9 +436,6 @@ fn test_all_networks_comprehensive() {
     test_all_address_types_for_network("signet");
 }
 
-// ============================================================================
-// REAL DATA TESTING (Ready for your input)
-// ============================================================================
 
 #[test]
 fn test_real_address_generation() {

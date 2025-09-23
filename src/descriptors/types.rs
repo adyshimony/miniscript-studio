@@ -1,3 +1,5 @@
+//! Type definitions
+
 use regex::Regex;
 
 // Re-export descriptor types from the main types module

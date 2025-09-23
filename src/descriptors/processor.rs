@@ -1,3 +1,5 @@
+//! Processor implementation
+
 use std::collections::HashMap;
 use regex::Regex;
 use bitcoin::bip32::{DerivationPath, Fingerprint};
@@ -6,7 +8,7 @@ use crate::descriptors::types::{DescriptorPatterns, DescriptorInfo, ParsedDescri
 use crate::descriptors::utils::{parse_fingerprint, parse_derivation_path, parse_xpub, parse_child_paths};
 use crate::console_log;
 
-/// Helper function to process a single pattern type
+// Helper function to process a single pattern type
 fn process_pattern<F>(
     expression: &str,
     pattern: &Regex,

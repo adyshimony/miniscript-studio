@@ -1,3 +1,5 @@
+//! Utility functions
+
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint, ChildNumber};
 use bitcoin::secp256k1::Secp256k1;
 use std::str::FromStr;

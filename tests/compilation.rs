@@ -33,9 +33,6 @@ const COMPRESSED_KEY: &str = "02f9308a019258c31049344f85f89d5229b531c845836f99b0
 const XONLY_KEY: &str = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
 const SECOND_COMPRESSED_KEY: &str = "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd";
 
-// ============================================================================
-// YOUR POLICY COMPILATION TESTS
-// ============================================================================
 
 #[test]
 fn test_your_compile_legacy_policy() {
@@ -123,9 +120,6 @@ fn test_your_compile_complex_policy() {
     assert!(!normalized.is_empty(), "Your normalized policy should not be empty");
 }
 
-// ============================================================================
-// YOUR MINISCRIPT COMPILATION TESTS
-// ============================================================================
 
 #[test]
 fn test_your_compile_legacy_miniscript() {
@@ -203,9 +197,6 @@ fn test_your_compile_complex_miniscript() {
     assert!(normalized_opt.unwrap().len() > 0, "Your normalized miniscript should not be empty");
 }
 
-// ============================================================================
-// YOUR DESCRIPTOR PROCESSING TESTS
-// ============================================================================
 
 #[test]
 fn test_your_parse_descriptors() {
@@ -231,9 +222,6 @@ fn test_your_process_expression_descriptors() {
     assert!(!processed.is_empty(), "Your processed expression should not be empty");
 }
 
-// ============================================================================
-// YOUR KEY EXTRACTION TESTS
-// ============================================================================
 
 #[test]
 fn test_your_extract_internal_key_from_expression() {
@@ -285,9 +273,6 @@ fn test_your_extract_xonly_key_from_script_hex() {
     assert!(result.is_some(), "Your x-only key extraction should extract key from script hex");
 }
 
-// ============================================================================
-// YOUR VALIDATION TESTS
-// ============================================================================
 
 #[test]
 fn test_your_validate_inner_miniscript_legacy() {
@@ -346,9 +331,6 @@ fn test_your_validate_invalid_miniscript() {
     assert!(result.is_err(), "Your validation should fail for invalid miniscript");
 }
 
-// ============================================================================
-// YOUR ERROR HANDLING TESTS
-// ============================================================================
 
 #[test]
 fn test_your_compile_miniscript_invalid_key() {
@@ -360,9 +342,6 @@ fn test_your_compile_miniscript_invalid_key() {
     assert!(result.is_err(), "Your compilation should fail for invalid key");
 }
 
-// ============================================================================
-// YOUR PERFORMANCE TESTS
-// ============================================================================
 
 #[test]
 fn test_your_rapid_compilation() {

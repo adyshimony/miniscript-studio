@@ -26,9 +26,6 @@ use miniscript_wasm::keys::{
 const COMPRESSED_KEY: &str = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
 const XONLY_KEY: &str = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
 
-// ============================================================================
-// KEY TYPE VALIDATION TESTS (Testing your key type validation logic)
-// ============================================================================
 
 #[test]
 fn test_your_xonly_key_rejected_in_segwit_miniscript() {
@@ -82,9 +79,6 @@ fn test_your_compressed_key_rejected_in_taproot_miniscript() {
     assert!(result.is_err(), "Your validation should reject compressed key in Taproot miniscript context");
 }
 
-// ============================================================================
-// POLICY KEY VALIDATION TESTS (Testing your policy key validation logic)
-// ============================================================================
 
 #[test]
 fn test_your_xonly_key_in_segwit_policy() {
@@ -166,10 +160,6 @@ fn test_your_compressed_key_in_taproot_policy() {
     }
 }
 
-// ============================================================================
-// KEY EXTRACTION TESTS (Testing your key extraction logic)
-// ============================================================================
-
 
 #[test]
 fn test_your_key_extraction_from_xonly_expression() {
@@ -182,11 +172,6 @@ fn test_your_key_extraction_from_xonly_expression() {
     assert_eq!(result, XONLY_KEY, "Your key extraction should extract the x-only key from pk() expression");
 }
 
-
-
-// ============================================================================
-// KEY FORMAT VALIDATION TESTS (Testing your key format validation logic)
-// ============================================================================
 
 #[test]
 fn test_your_key_format_validation() {
@@ -229,9 +214,6 @@ fn test_your_invalid_key_format_validation() {
     }
 }
 
-// ============================================================================
-// KEY CONTEXT VALIDATION TESTS (Testing your key context validation logic)
-// ============================================================================
 
 #[test]
 fn test_your_key_context_validation_legacy() {
@@ -284,9 +266,6 @@ fn test_your_key_context_validation_taproot() {
     assert!(result.is_ok(), "Your validation should accept x-only key in taproot context");
 }
 
-// ============================================================================
-// KEY PARSING EDGE CASES TESTS (Testing your edge case handling)
-// ============================================================================
 
 #[test]
 fn test_your_key_parsing_edge_cases() {
@@ -306,9 +285,6 @@ fn test_your_key_parsing_edge_cases() {
     }
 }
 
-// ============================================================================
-// KEY PARSING PERFORMANCE TESTS (Testing your performance characteristics)
-// ============================================================================
 
 #[test]
 fn test_your_key_parsing_performance() {
@@ -342,9 +318,6 @@ fn test_your_key_parsing_consistency() {
     }
 }
 
-// ============================================================================
-// KEY PARSING ERROR HANDLING TESTS (Testing your error handling)
-// ============================================================================
 
 #[test]
 fn test_your_key_parsing_error_handling() {

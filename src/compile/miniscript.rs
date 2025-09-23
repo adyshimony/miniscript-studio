@@ -1,3 +1,5 @@
+//! Miniscript implementation
+
 use miniscript::{Miniscript, Tap, Segwitv0, Legacy, Descriptor};
 use miniscript::descriptor::TapTree;
 use bitcoin::{PublicKey, XOnlyPublicKey, Network, Address, secp256k1::Secp256k1, taproot::TaprootBuilder};
@@ -8,9 +10,6 @@ use crate::taproot::utils::get_taproot_nums_point;
 use crate::NUMS_POINT;
 use crate::descriptors::compiler::compile_parsed_descriptor;
 
-// ============================================================================
-// Miniscript Compilation Functions (moved from lib.rs)
-// ============================================================================
 
 /// Compile Legacy context miniscript
 pub fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {

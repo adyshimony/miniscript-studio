@@ -1,3 +1,5 @@
+//! Script lifting functionality
+
 use wasm_bindgen::JsValue;
 use crate::console_log;
 use crate::opcodes::parse_asm_to_script;
@@ -46,7 +48,7 @@ pub(crate) fn lift_to_policy(miniscript: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-/// Internal function to perform lift to miniscript
+// Internal function to perform lift to miniscript
 fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     if bitcoin_script.trim().is_empty() {
         return Err("Empty Bitcoin script".to_string());
@@ -101,7 +103,7 @@ fn perform_lift_to_miniscript(bitcoin_script: &str) -> Result<String, String> {
     format_lift_error(context_errors)
 }
 
-/// Try to lift script to miniscript for a specific context
+// Try to lift script to miniscript for a specific context
 fn try_lift_script_to_miniscript<Ctx>(script: &Script) -> Result<String, String> 
 where 
     Ctx: miniscript::ScriptContext,
@@ -135,7 +137,7 @@ where
     }
 }
 
-/// Format lift error message
+// Format lift error message
 fn format_lift_error(context_errors: Vec<(&str, String)>) -> Result<String, String> {
     let mut error_msg = String::from("❌ Script is not liftable to Miniscript\n\n");
     error_msg.push_str("This Bitcoin script cannot be lifted to miniscript. Attempted lifting with both standard and non-standard parsers across all contexts:\n\n");
@@ -164,7 +166,7 @@ fn format_lift_error(context_errors: Vec<(&str, String)>) -> Result<String, Stri
     Err(error_msg)
 }
 
-/// Internal function to perform lift to policy
+// Internal function to perform lift to policy
 fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
     if miniscript.trim().is_empty() {
         return Err("Empty miniscript".to_string());
@@ -203,7 +205,7 @@ fn perform_lift_to_policy(miniscript: &str) -> Result<String, String> {
     Err(error_msg)
 }
 
-/// Lift miniscript to policy for a specific context
+// Lift miniscript to policy for a specific context
 fn lift_miniscript_to_policy<Ctx>(miniscript: &str) -> Result<String, String>
 where
     Ctx: miniscript::ScriptContext,

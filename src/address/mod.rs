@@ -1,3 +1,5 @@
+//! Bitcoin address generation
+
 use wasm_bindgen::JsValue;
 use crate::console_log;
 use bitcoin::{Address, Network, ScriptBuf, XOnlyPublicKey, secp256k1::Secp256k1, Script, PublicKey};
@@ -5,9 +7,6 @@ use miniscript::{Miniscript, Tap, Segwitv0, Descriptor};
 use std::sync::Arc;
 use miniscript::descriptor::TapTree;
 
-// ============================================================================
-// Network Parsing Utilities
-// ============================================================================
 
 /// Parse network string to Network enum
 /// Centralized network parsing to eliminate duplication
@@ -21,9 +20,6 @@ pub fn parse_network(network_str: &str) -> Result<Network, String> {
     }
 }
 
-// ============================================================================
-// Address Generation Types
-// ============================================================================
 
 /// Address generation result for internal use
 #[derive(Debug)]
@@ -65,9 +61,6 @@ impl From<String> for AddressError {
     }
 }
 
-// ============================================================================
-// Unified Address Generator - ONE FUNCTION TO RULE THEM ALL
-// ============================================================================
 
 /// Input parameters for address generation
 #[derive(Debug)]
@@ -203,9 +196,6 @@ pub fn generate_address(input: AddressInput) -> Result<AddressGenerationResult, 
     }
 }
 
-// ============================================================================
-// JavaScript Interface Functions
-// ============================================================================
 
 /// Generate address for network switching (JavaScript interface)
 pub(crate) fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
@@ -301,11 +291,7 @@ pub(crate) fn generate_taproot_address_with_builder(miniscript: &str, network_st
 }
 
 
-// ============================================================================
-// Legacy Functions (for backward compatibility) - DEPRECATED
-// ============================================================================
-
-/// Internal function to generate address (legacy - use generate_address() instead)
+// Internal function to generate address (legacy - use generate_address() instead)
 fn perform_address_generation(script_hex: &str, script_type: &str, network_str: &str) -> Result<String, String> {
     let input = AddressInput {
         script_or_miniscript: script_hex.to_string(),
@@ -320,7 +306,7 @@ fn perform_address_generation(script_hex: &str, script_type: &str, network_str: 
         .map_err(|e| e.to_string())
 }
 
-/// Internal function to generate taproot address using miniscript (legacy)
+// Internal function to generate taproot address using miniscript (legacy)
 fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Result<String, String> {
     let input = AddressInput {
         script_or_miniscript: miniscript.to_string(),
@@ -335,7 +321,7 @@ fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Re
         .map_err(|e| e.to_string())
 }
 
-/// Internal function using Descriptor approach (legacy)
+// Internal function using Descriptor approach (legacy)
 fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, _internal_key: Option<String>) -> Result<String, String> {
     let input = AddressInput {
         script_or_miniscript: miniscript.to_string(),
@@ -350,9 +336,6 @@ fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, _i
         .map_err(|e| e.to_string())
 }
 
-// ============================================================================
-// Specialized Taproot Functions (for advanced use cases)
-// ============================================================================
 
 /// Generate a Taproot address with a specific internal key and script
 /// This is for advanced use cases where you have a raw script and internal key

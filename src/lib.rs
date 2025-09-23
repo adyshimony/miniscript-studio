@@ -1,9 +1,11 @@
-//! Bitcoin Miniscript Compiler
-//! 
-//! This library provides WebAssembly bindings for compiling Bitcoin policies and miniscripts,
-//! lifting Bitcoin scripts back to miniscript/policy representations, and generating addresses.
+//! WebAssembly Interface for Bitcoin Miniscript Compiler
+//!
+//! This module serves as the primary entry point for all WebAssembly exports.
+//! It provides JavaScript bindings for compiling Bitcoin policies and miniscripts,
+//! lifting scripts, generating addresses, and analyzing taproot branches.
+//! All implementation logic resides in submodules - this file only handles
+//! WASM serialization and delegation to the appropriate modules.
 
-// Module declarations
 #![allow(dead_code)]
 #![allow(deprecated)]
 #![allow(clippy::type_complexity)]
@@ -26,111 +28,24 @@ mod lift;
 pub mod address;
 mod taproot;
 
-// Export modules for integration tests
+// Public modules for integration tests
 pub mod descriptors;
 pub mod keys;
 pub mod validation;
 
-// Module functions are accessible via the pub mod declarations above
-
-// Re-exports from modules
 use types::{CompilationResult, LiftResult, AddressResult};
-
-// External crate imports
 use wasm_bindgen::prelude::*;
 use miniscript::{Miniscript, Tap, policy::Concrete, Descriptor, policy::Liftable};
 use bitcoin::XOnlyPublicKey;
 use std::str::FromStr;
 
-// Constants
+// Standard NUMS point for taproot (unspendable key)
 pub const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
 
-// ... existing code ...
 
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/// Detect the Bitcoin network based on key types in the expression
-// moved to parse::helpers::detect_network
-
-/// Check if expression needs descriptor processing
-// moved to parse::helpers::needs_descriptor_processing
-
-/// Check if expression is a descriptor wrapper
-// moved to parse::helpers::is_descriptor_wrapper
-
-
-/// Extract the first x-only key from a miniscript string
-// Key extraction functions moved to src/keys/mod.rs
-
-// moved to address::generate_taproot_address_with_key
-
-// moved to address::generate_taproot_address
-
-// moved to address::generate_taproot_address_descriptor
-
-// moved to address::generate_taproot_address_with_key_old
-
-// ============================================================================
-// Descriptor Parsing
-// ============================================================================
-
-/// Parse HD wallet descriptors from miniscript expressions
-
-/// Container for descriptor regex patterns
-
-/// Create regex patterns for descriptor parsing
-
-/// Comprehensive descriptor processing for all patterns
-
-/// Helper function to process a single pattern type
-
-
-/// Process bare extended keys with ranges
-
-/// Process single derivation keys
-
-/// Process fixed double derivation descriptors
-
-/// Parse derivation path from string
-
-/// Parse extended public key
-
-/// Parse child paths from range notation
-
-/// Expand a descriptor at a specific child index
-
-
-
-// ============================================================================
-// Compilation Functions
-// ============================================================================
-
-
-
-
-
-/// Unified compilation function accepting options as JavaScript object
-///
-/// This is the new recommended way to compile both policies and miniscripts.
-/// It provides a single entry point with full control over all compilation options.
-///
-/// # Example JavaScript usage:
-/// ```javascript
-/// const options = {
-///     input_type: "Policy",  // or "Miniscript"
-///     context: "Taproot",    // or "Legacy", "Segwit"
-///     mode: "MultiLeaf",     // or "SingleLeaf", "ScriptPath", "Default"
-///     network: "Bitcoin",    // or "Testnet", etc.
-///     nums_key: "..."        // optional NUMS key for taproot
-/// };
-/// const result = compile_unified("or(pk(key1),pk(key2))", options);
-/// ```
+// Compile policies and miniscripts with unified options interface
 #[wasm_bindgen]
 pub fn compile_unified(expression: &str, options_js: JsValue) -> JsValue {
-    // Parse options from JavaScript
     let options: compile::options::CompileOptions = match serde_wasm_bindgen::from_value(options_js) {
         Ok(opts) => opts,
         Err(e) => {
@@ -171,17 +86,7 @@ pub fn compile_unified(expression: &str, options_js: JsValue) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-
-
-
-
-/// Validate inner miniscript from descriptor
-// Validation functions moved to src/validation/mod.rs
-
-
-
-
-/// Transform top-level OR patterns to tree notation for Taproot
+// Transform top-level OR patterns to tree notation for Taproot
 fn transform_or_to_tree(miniscript: &str) -> String {
     let trimmed = miniscript.trim();
     
@@ -253,19 +158,7 @@ fn transform_or_to_tree(miniscript: &str) -> String {
     miniscript.to_string()
 }
 
-
-
-
-
-
-
-
-// ============================================================================
-// Taproot Branch Display Functions
-// ============================================================================
-
-
-/// Collect all leaf miniscripts under a subtree
+// Collect all leaf miniscripts under a subtree
 fn collect_leaf_miniscripts<'a>(
     t: &'a miniscript::descriptor::TapTree<XOnlyPublicKey>,
     out: &mut Vec<&'a Miniscript<XOnlyPublicKey, Tap>>,
@@ -280,25 +173,25 @@ fn collect_leaf_miniscripts<'a>(
     }
 }
 
-/// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies
+// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies
 fn branch_to_miniscript(
     subtree: &miniscript::descriptor::TapTree<XOnlyPublicKey>,
 ) -> Result<Miniscript<XOnlyPublicKey, Tap>, String> {
     use miniscript::policy::Liftable;
     
-    // 1) gather leaves
+    // Gather leaves
     let mut leaves = Vec::new();
     collect_leaf_miniscripts(subtree, &mut leaves);
     if leaves.is_empty() {
         return Err("Subtree has no scripts".to_string());
     }
 
-    // 2) If only one leaf, return it as-is
+    // If only one leaf, return it as-is
     if leaves.len() == 1 {
         return Ok(leaves[0].clone());
     }
 
-    // 3) OR the lifted policies (string form)
+    // OR the lifted policies (string form)
     let mut policy_parts = Vec::new();
     for ms in leaves {
         match ms.lift() {
@@ -324,7 +217,7 @@ fn branch_to_miniscript(
         result
     };
 
-    // 4) Compile to Miniscript (Tap context)
+    // Compile to Miniscript (Tap context)
     match policy_str.parse::<Concrete<XOnlyPublicKey>>() {
         Ok(conc) => {
             match conc.compile::<Tap>() {
@@ -336,7 +229,7 @@ fn branch_to_miniscript(
     }
 }
 
-/// Collect all leaf miniscripts under a subtree - NEW VERSION FOR MINISCRIPT BRANCHES
+// Collect all leaf miniscripts under a subtree (generic version)
 fn collect_leaf_miniscripts_new<'a, K: miniscript::MiniscriptKey>(
     t: &'a miniscript::descriptor::TapTree<K>,
     out: &mut Vec<&'a Miniscript<K, Tap>>,
@@ -351,18 +244,18 @@ fn collect_leaf_miniscripts_new<'a, K: miniscript::MiniscriptKey>(
     }
 }
 
-/// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies - NEW VERSION
+// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies (generic version)
 fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKey>(
     subtree: &miniscript::descriptor::TapTree<K>,
 ) -> Result<Miniscript<K, Tap>, String> {
-    // 1) gather leaves
+    // Gather leaves
     let mut leaves = Vec::new();
     collect_leaf_miniscripts_new(subtree, &mut leaves);
     if leaves.is_empty() {
         return Err("subtree has no leaves".to_string());
     }
 
-    // 2) OR the lifted policies (string form)
+    // OR the lifted policies (string form)
     let parts: Vec<String> = leaves
         .iter()
         .map(|ms| ms.lift().map(|p| p.to_string()))
@@ -374,7 +267,7 @@ fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKe
         format!("or({})", parts.join(","))
     };
 
-    // 3) Compile to Miniscript (Tap context)
+    // Compile to Miniscript (Tap context)
     let conc = Concrete::<K>::from_str(&policy_str)
         .map_err(|e| format!("Failed to parse policy: {}", e))?;
     let ms: Miniscript<K, Tap> = conc.compile::<Tap>()
@@ -382,7 +275,7 @@ fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKe
     Ok(ms)
 }
 
-/// Return the Miniscript for the root's direct branches (L and R) - RESTORED ORIGINAL
+// Return the Miniscript for the root's direct branches (L and R)
 fn get_taproot_branches_as_miniscript(
     descriptor_str: &str
 ) -> Result<Vec<(String, String)>, String> {
@@ -420,75 +313,41 @@ fn get_taproot_branches_as_miniscript(
     Ok(out)
 }
 
-/// Compute worst-case Taproot script-path witness weight (in WU).
-/// Includes stack data, script, control block, and CompactSize prefixes.
-/// Always assumes 65-byte Schnorr sigs (worst case).
-// moved to taproot::utils::taproot_leaf_witness_weight_worst
-
-/// Compute Taproot witness weight breakdown for display
-// moved to taproot::weights::taproot_witness_breakdown
-
-/// Get miniscript branches for taproot descriptors using YOUR WORKING CODE
+// Get miniscript branches for taproot descriptors
 #[wasm_bindgen]
 pub fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
     crate::taproot::branches::get_taproot_miniscript_branches(descriptor)
 }
 
-/// Get taproot branches - real implementation
+// Get taproot branches
 #[wasm_bindgen]
 pub fn get_taproot_branches(descriptor: &str) -> JsValue {
     crate::taproot::branches::get_taproot_branches(descriptor)
 }
 
-// ============================================================================
-// Taproot Branch Weight Calculation
-// ============================================================================
-
-/// Calculate weight information for each taproot branch
+// Calculate weight information for each taproot branch
 #[wasm_bindgen]
 pub fn get_taproot_branch_weights(descriptor: &str) -> JsValue {
     crate::taproot::branches::get_taproot_branch_weights(descriptor)
 }
 
-// ============================================================================
-// Lifting Functions
-// ============================================================================
-
-/// Lift a Bitcoin script to miniscript
+// Lift a Bitcoin script to miniscript
 #[wasm_bindgen]
 pub fn lift_to_miniscript(bitcoin_script: &str) -> JsValue {
     lift::lift_to_miniscript(bitcoin_script)
 }
 
-/// Lift a miniscript to policy
+// Lift a miniscript to policy
 #[wasm_bindgen]
 pub fn lift_to_policy(miniscript: &str) -> JsValue {
     lift::lift_to_policy(miniscript)
 }
-
-
-// ============================================================================
-// Address Generation
-// ============================================================================
-
-
-/// Generate address for a specific network
-/// Generate address for network switching (Legacy/Segwit only)
-/// 
-/// # Deprecated
-/// This function is deprecated for taproot addresses.
-/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
+// Generate address for network switching (Legacy/Segwit/Taproot)
 #[wasm_bindgen]
 pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
     address::generate_address_for_network(script_hex, script_type, network)
 }
-
-
-
-
-// Main Function (for testing)
-// ============================================================================
-
+// Main function for testing
 pub fn main() {
     console_log!("Miniscript compiler library loaded");
 }

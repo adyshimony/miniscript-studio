@@ -5,9 +5,6 @@ use bitcoin::blockdata::opcodes::all;
 use std::collections::HashMap;
 use lazy_static::lazy_static;
 
-// ============================================================================
-// Opcode Mapping
-// ============================================================================
 
 lazy_static! {
     /// Static mapping of opcode strings to their corresponding Bitcoin opcodes  
@@ -170,9 +167,6 @@ lazy_static! {
     };
 }
 
-// ============================================================================
-// Script Parsing
-// ============================================================================
 
 /// Parse Bitcoin Script ASM to ScriptBuf
 pub fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
@@ -210,7 +204,7 @@ pub fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
     Ok(builder.into_script())
 }
 
-/// Handle OP_PUSHBYTES_* opcodes
+// Handle OP_PUSHBYTES_* opcodes
 fn handle_pushbytes_opcode(opcode: &str, parts: &[&str], index: &mut usize) -> Result<Builder, String> {
     let expected_size = opcode.strip_prefix("OP_PUSHBYTES_")
         .and_then(|s| s.parse::<usize>().ok())
@@ -246,12 +240,12 @@ fn handle_pushbytes_opcode(opcode: &str, parts: &[&str], index: &mut usize) -> R
     Ok(Builder::new().push_slice(push_bytes))
 }
 
-/// Check if a string is valid hex data
+// Check if a string is valid hex data
 fn is_hex_data(s: &str) -> bool {
     s.len() > 2 && s.len() % 2 == 0 && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
-/// Push hex data to script builder
+// Push hex data to script builder
 fn push_hex_data(builder: Builder, hex: &str) -> Result<Builder, String> {
     let bytes = hex::decode(hex)
         .map_err(|_| "Invalid hex in ASM")?;

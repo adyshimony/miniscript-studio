@@ -33,9 +33,6 @@ const COMPRESSED_KEY: &str = "02f9308a019258c31049344f85f89d5229b531c845836f99b0
 const XONLY_KEY: &str = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
 const SECOND_COMPRESSED_KEY: &str = "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd";
 
-// ============================================================================
-// COMPREHENSIVE MINISCRIPT COMPILATION TESTS (Testing your core logic)
-// ============================================================================
 
 #[test]
 fn test_your_legacy_miniscript_comprehensive() {
@@ -118,9 +115,6 @@ fn test_your_taproot_miniscript_comprehensive() {
     assert!(address.starts_with("bc1p"), "Your taproot address should start with bc1p");
 }
 
-// ============================================================================
-// COMPREHENSIVE POLICY COMPILATION TESTS (Testing your policy logic)
-// ============================================================================
 
 #[test]
 fn test_your_legacy_policy_comprehensive() {
@@ -205,9 +199,6 @@ fn test_your_taproot_policy_comprehensive() {
     assert!(address.starts_with("bc1p"), "Your taproot address should start with bc1p");
 }
 
-// ============================================================================
-// COMPLEX EXPRESSION TESTS (Testing your complex logic)
-// ============================================================================
 
 #[test]
 fn test_your_complex_miniscript_expressions() {
@@ -259,9 +250,6 @@ fn test_your_complex_policy_expressions() {
     assert!(!normalized.is_empty(), "Your normalized complex policy should not be empty");
 }
 
-// ============================================================================
-// DESCRIPTOR PROCESSING TESTS (Testing your descriptor logic)
-// ============================================================================
 
 #[test]
 fn test_your_descriptor_processing_logic() {
@@ -289,9 +277,6 @@ fn test_your_expression_descriptor_processing_logic() {
     assert!(!processed.is_empty(), "Your processed expression should not be empty");
 }
 
-// ============================================================================
-// KEY EXTRACTION TESTS (Testing your key extraction logic)
-// ============================================================================
 
 #[test]
 fn test_your_key_extraction_from_simple_expression() {
@@ -348,9 +333,6 @@ fn test_your_xonly_key_extraction_from_script_hex() {
     assert!(result.is_some(), "Your x-only key extraction should extract key from script hex");
 }
 
-// ============================================================================
-// NETWORK HANDLING TESTS (Testing your network logic)
-// ============================================================================
 
 #[test]
 fn test_your_network_handling_logic() {
@@ -376,9 +358,6 @@ fn test_your_network_handling_logic() {
                "Your network handling should produce different addresses for different networks");
 }
 
-// ============================================================================
-// VALIDATION TESTS (Testing your validation logic)
-// ============================================================================
 
 #[test]
 fn test_your_validation_logic_legacy() {
@@ -428,9 +407,6 @@ fn test_your_validation_logic_taproot() {
     assert!(error_msg_opt.is_some(), "Your validation should provide a result message");
 }
 
-// ============================================================================
-// EDGE CASE TESTS (Testing your edge case handling)
-// ============================================================================
 
 #[test]
 fn test_your_empty_inputs_handling() {
@@ -454,9 +430,6 @@ fn test_your_malformed_keys_handling() {
     }
 }
 
-// ============================================================================
-// PERFORMANCE TESTS (Testing your performance characteristics)
-// ============================================================================
 
 #[test]
 fn test_your_concurrent_style_operations_logic() {

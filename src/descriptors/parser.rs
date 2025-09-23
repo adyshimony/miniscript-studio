@@ -1,3 +1,5 @@
+//! Parser implementation
+
 use regex::Regex;
 use std::collections::HashMap;
 use crate::descriptors::types::{DescriptorPatterns, ParsedDescriptor};

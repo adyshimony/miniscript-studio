@@ -6,9 +6,6 @@
 use miniscript_wasm::*;
 use bitcoin::Network;
 
-// ============================================================================
-// TEST DATA
-// ============================================================================
 
 // Test miniscript expression
 const TEST_MINISCRIPT_TAPROOT: &str = "or_d(pk(d127f475aba7d9111ff69cc6858305d15e8912205cfa5dcc7a4c66a97ebb8174),and_v(v:pk(b2afcd04877595b269282f860135bb03c8706046b0a57b17f252cf66e35cce89),older(144)))";
@@ -23,9 +20,6 @@ const EXPECTED_TAPROOT_MULTI_LEAF_MAINNET: &str = "bc1pnl34fvwg835tsvrmjjlgwhx9n
 const EXPECTED_TAPROOT_SINGLE_LEAF_MAINNET: &str = "bc1p0karmafx8lav4lukylck9xwsr2mhu47qdhm5f6muhasj4pz6mwtshunq5e";
 const EXPECTED_TAPROOT_SCRIPT_ONLY_MAINNET: &str = "bc1p8jxxw8payzdytn2qmgrypsqp9udtqt8ae2vd62qdc56er82u435sdax2md";
 
-// ============================================================================
-// CORE TAPROOT MODE TESTS
-// ============================================================================
 
 #[test]
 fn test_taproot_modes_generate_different_addresses() {
@@ -85,9 +79,6 @@ fn test_taproot_modes_generate_different_addresses() {
     }
 }
 
-// ============================================================================
-// INDIVIDUAL MODE TESTS
-// ============================================================================
 
 #[test]
 fn test_taproot_multi_leaf_mode_mainnet() {
@@ -164,9 +155,6 @@ fn test_taproot_script_path_mode_mainnet() {
     println!("  Address: {}", result.address);
 }
 
-// ============================================================================
-// SIMPLIFIED MODE TESTS (from taproot_modes_final.rs)
-// ============================================================================
 
 #[test]
 fn test_taproot_multi_leaf_mode() {
@@ -218,9 +206,6 @@ fn test_taproot_script_path_mode() {
     }
 }
 
-// ============================================================================
-// NETWORK-SPECIFIC TESTS
-// ============================================================================
 
 #[test]
 fn test_taproot_modes_different_networks() {
@@ -288,9 +273,6 @@ fn test_taproot_modes_different_networks() {
     }
 }
 
-// ============================================================================
-// COMPREHENSIVE RESULT VALIDATION
-// ============================================================================
 
 #[test]
 fn test_taproot_comprehensive_result_validation() {

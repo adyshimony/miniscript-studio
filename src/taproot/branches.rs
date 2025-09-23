@@ -1,3 +1,5 @@
+//! Branches implementation
+
 use wasm_bindgen::JsValue;
 use crate::console_log;
 use serde::Serialize;
@@ -6,11 +8,8 @@ use miniscript::policy::Liftable;
 use bitcoin::XOnlyPublicKey;
 use std::str::FromStr;
 
-// =========================================================================
-// Taproot Branch Display Functions
-// =========================================================================
 
-/// Collect all leaf miniscripts under a subtree
+// Collect all leaf miniscripts under a subtree
 fn collect_leaf_miniscripts<'a>(
     t: &'a miniscript::descriptor::TapTree<XOnlyPublicKey>,
     out: &mut Vec<&'a Miniscript<XOnlyPublicKey, Tap>>,
@@ -25,25 +24,25 @@ fn collect_leaf_miniscripts<'a>(
     }
 }
 
-/// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies
+// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies
 fn branch_to_miniscript(
     subtree: &miniscript::descriptor::TapTree<XOnlyPublicKey>,
 ) -> Result<Miniscript<XOnlyPublicKey, Tap>, String> {
     use miniscript::policy::Liftable;
     
-    // 1) gather leaves
+    // gather leaves
     let mut leaves = Vec::new();
     collect_leaf_miniscripts(subtree, &mut leaves);
     if leaves.is_empty() {
         return Err("Subtree has no scripts".to_string());
     }
 
-    // 2) If only one leaf, return it as-is
+    // If only one leaf, return it as-is
     if leaves.len() == 1 {
         return Ok(leaves[0].clone());
     }
 
-    // 3) OR the lifted policies (string form)
+    // OR the lifted policies (string form)
     let mut policy_parts = Vec::new();
     for ms in leaves {
         match ms.lift() {
@@ -69,7 +68,7 @@ fn branch_to_miniscript(
         result
     };
 
-    // 4) Compile to Miniscript (Tap context)
+    // Compile to Miniscript (Tap context)
     match policy_str.parse::<Concrete<XOnlyPublicKey>>() {
         Ok(conc) => {
             match conc.compile::<Tap>() {
@@ -81,7 +80,7 @@ fn branch_to_miniscript(
     }
 }
 
-/// Collect all leaf miniscripts under a subtree - NEW VERSION FOR MINISCRIPT BRANCHES
+// Collect all leaf miniscripts under a subtree - NEW VERSION FOR MINISCRIPT BRANCHES
 fn collect_leaf_miniscripts_new<'a, K: miniscript::MiniscriptKey>(
     t: &'a miniscript::descriptor::TapTree<K>,
     out: &mut Vec<&'a Miniscript<K, Tap>>,
@@ -96,18 +95,18 @@ fn collect_leaf_miniscripts_new<'a, K: miniscript::MiniscriptKey>(
     }
 }
 
-/// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies - NEW VERSION
+// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies - NEW VERSION
 fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKey>(
     subtree: &miniscript::descriptor::TapTree<K>,
 ) -> Result<Miniscript<K, Tap>, String> {
-    // 1) gather leaves
+    // gather leaves
     let mut leaves = Vec::new();
     collect_leaf_miniscripts_new(subtree, &mut leaves);
     if leaves.is_empty() {
         return Err("subtree has no leaves".to_string());
     }
 
-    // 2) OR the lifted policies (string form)
+    // OR the lifted policies (string form)
     let parts: Vec<String> = leaves
         .iter()
         .map(|ms| ms.lift().map(|p| p.to_string()))
@@ -119,7 +118,7 @@ fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKe
         format!("or({})", parts.join(","))
     };
 
-    // 3) Compile to Miniscript (Tap context)
+    // Compile to Miniscript (Tap context)
     let conc = Concrete::<K>::from_str(&policy_str)
         .map_err(|e| format!("Failed to parse policy: {}", e))?;
     let ms: Miniscript<K, Tap> = conc.compile::<Tap>()
@@ -127,7 +126,7 @@ fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKe
     Ok(ms)
 }
 
-/// Return the Miniscript for the root's direct branches (L and R) - RESTORED ORIGINAL
+// Return the Miniscript for the root's direct branches (L and R) - RESTORED ORIGINAL
 fn get_taproot_branches_as_miniscript(
     descriptor_str: &str
 ) -> Result<Vec<(String, String)>, String> {
@@ -368,9 +367,6 @@ pub(crate) fn get_taproot_branches(descriptor: &str) -> JsValue {
     }
 }
 
-// =========================================================================
-// Taproot Branch Weight Calculation
-// =========================================================================
 
 /// Calculate weight information for each taproot branch
 pub(crate) fn get_taproot_branch_weights(descriptor: &str) -> JsValue {

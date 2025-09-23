@@ -3,9 +3,6 @@
 use serde::{Deserialize, Serialize};
 use bitcoin::bip32::{Xpub, DerivationPath, Fingerprint};
 
-// ============================================================================
-// Result Structures
-// ============================================================================
 
 /// Result structure returned to JavaScript for compilation operations
 #[derive(Serialize, Deserialize)]
@@ -41,9 +38,6 @@ pub struct AddressResult {
     pub address: Option<String>,
 }
 
-// ============================================================================
-// Descriptor Structures
-// ============================================================================
 
 /// Information about a parsed HD wallet descriptor
 #[derive(Debug, Clone)]
