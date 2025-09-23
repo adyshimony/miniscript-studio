@@ -694,15 +694,6 @@ fn transform_or_to_tree(miniscript: &str) -> String {
 }
 
 
-#[deprecated(since = "1.0.0", note = "Use compile::engine::compile_unified() instead")]
-fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    compile::policy::compile_policy_to_miniscript(policy, context)
-}
-
-#[deprecated(since = "1.0.0", note = "Use compile::engine::compile_unified() instead")]
-fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
-    compile::policy::compile_policy_to_miniscript_with_mode(policy, context, mode)
-}
 
 
 
