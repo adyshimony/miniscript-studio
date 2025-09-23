@@ -4,10 +4,8 @@
 //! carefully preserving all existing behavior including special cases
 //! for taproot, descriptors, ranges, etc.
 
-use crate::compile::options::{CompileOptions, InputType, CompileContext, CompileMode};
-use crate::compile::types::CompileResponse;
+use crate::compile::options::{CompileOptions, InputType, CompileContext};
 use crate::types::CompilationResult;
-use bitcoin::Network;
 use crate::console_log;
 
 /// Unified compilation entry point

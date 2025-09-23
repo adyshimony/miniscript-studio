@@ -3,7 +3,7 @@
 //! This module contains the three distinct taproot compilation functions
 //! that must remain separate to generate different addresses.
 
-use crate::compile::types::{CompileResponse, CompileRequest};
+use crate::compile::types::CompileResponse;
 use crate::console_log;
 use bitcoin::{Network, XOnlyPublicKey};
 use miniscript::{Miniscript, Tap, Descriptor};
@@ -13,8 +13,6 @@ use miniscript::descriptor::TapTree;
 
 /// Compile taproot multi-leaf mode (extracts internal key from miniscript)
 pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<CompileResponse, String> {
-    use std::sync::Arc;
-    use miniscript::descriptor::TapTree;
 
     console_log!("=== COMPILE_TAPROOT_KEYPATH_DESCRIPTOR ===");
     console_log!("Expression: {}", expression);

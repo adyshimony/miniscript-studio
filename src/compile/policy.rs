@@ -1,17 +1,11 @@
-use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor, policy::Liftable};
-use bitcoin::{PublicKey, XOnlyPublicKey, Network, secp256k1::Secp256k1};
+use miniscript::{Miniscript, Tap, Segwitv0, Legacy, policy::Concrete, Descriptor};
+use bitcoin::{PublicKey, XOnlyPublicKey, Network};
 use std::str::FromStr;
-use std::sync::Arc;
-use miniscript::descriptor::TapTree;
 use crate::console_log;
-use regex::Regex;
 use miniscript::descriptor::DescriptorPublicKey;
-use crate::translators::DescriptorKeyTranslator;
-use bitcoin::Address;
-use std::collections::HashMap;
 use crate::descriptors::parser::parse_descriptors;
 use crate::descriptors::utils::replace_descriptors_with_keys;
-use crate::descriptors::types::ParsedDescriptor;
+use crate::translators::DescriptorKeyTranslator;
 use crate::NUMS_POINT;
 
 /// Compile policy to miniscript

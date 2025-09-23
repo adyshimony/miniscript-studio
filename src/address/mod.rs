@@ -2,7 +2,6 @@ use wasm_bindgen::JsValue;
 use crate::console_log;
 use bitcoin::{Address, Network, ScriptBuf, XOnlyPublicKey, secp256k1::Secp256k1, Script, PublicKey};
 use miniscript::{Miniscript, Tap, Segwitv0, Descriptor};
-use std::str::FromStr;
 use std::sync::Arc;
 use miniscript::descriptor::TapTree;
 
