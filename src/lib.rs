@@ -23,12 +23,7 @@ pub mod validation;
 
 use types::{CompilationResult, LiftResult, AddressResult};
 use wasm_bindgen::prelude::*;
-use miniscript::{Miniscript, Tap, policy::Concrete, Descriptor, policy::Liftable};
-use bitcoin::XOnlyPublicKey;
-use std::str::FromStr;
 
-// Standard NUMS point for taproot (unspendable key)
-pub const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
 
 
 // Compile policies and miniscripts with unified options interface

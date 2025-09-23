@@ -14,7 +14,6 @@ mod tests {
     // Real Bitcoin descriptors for testing - these are the exact descriptors the user mentioned
     const COMPLEX_DESCRIPTOR_FIXED: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/0)";
     const COMPLEX_DESCRIPTOR_WILDCARD: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/0/*)";
-    const COMPLEX_DESCRIPTOR_MULTIPATH: &str = "pk([C8FE8D4F/48h/1h/123h/2h]xpub6Ctf53JHVC5K4JHwatPdJyXjzADFQt7pazJdQ4rc7j1chsQW6KcJUHFDbBn6e5mvGDEnFhFBCkX383uvzq14Y9Ado5qn5Y7qBiXi5DtVBda/<0;1>/0)";
 
         // DESCRIPTOR PARSING TESTS
     
@@ -270,7 +269,7 @@ mod tests {
         // Test with expression without pk()
         let expression_no_pk = "and(key1, key2)";
         let key = extract_internal_key_from_expression(expression_no_pk);
-        assert_eq!(key, crate::NUMS_POINT, "Should return NUMS point when no pk() found");
+        assert_eq!(key, crate::taproot::utils::NUMS_POINT, "Should return NUMS point when no pk() found");
     }
 
     #[test]

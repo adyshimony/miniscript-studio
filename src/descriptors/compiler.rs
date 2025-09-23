@@ -27,7 +27,7 @@ pub fn compile_descriptor(expression: &str, context: &str) -> Result<(String, St
 }
 
 /// Parse non-WSH descriptors
-pub fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+pub(crate) fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     match Descriptor::<DescriptorPublicKey>::from_str(expression) {
         Ok(descriptor) => {
             let desc_str = descriptor.to_string();
@@ -51,7 +51,7 @@ pub fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Opt
 }
 
 /// Compile a parsed Taproot descriptor
-pub fn compile_parsed_descriptor(descriptor: Descriptor<XOnlyPublicKey>, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+pub(crate) fn compile_parsed_descriptor(descriptor: Descriptor<XOnlyPublicKey>, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("Compiling parsed descriptor");
 
     // Get the address from the descriptor

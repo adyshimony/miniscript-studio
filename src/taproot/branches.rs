@@ -3,8 +3,7 @@
 use wasm_bindgen::JsValue;
 use crate::console_log;
 use serde::Serialize;
-use miniscript::{Miniscript, Tap, policy::Concrete, Descriptor};
-use miniscript::policy::Liftable;
+use miniscript::{Miniscript, Tap, policy::Concrete, Descriptor, policy::Liftable};
 use bitcoin::XOnlyPublicKey;
 use std::str::FromStr;
 
@@ -28,8 +27,7 @@ fn collect_leaf_miniscripts<'a>(
 fn branch_to_miniscript(
     subtree: &miniscript::descriptor::TapTree<XOnlyPublicKey>,
 ) -> Result<Miniscript<XOnlyPublicKey, Tap>, String> {
-    use miniscript::policy::Liftable;
-    
+        
     // gather leaves
     let mut leaves = Vec::new();
     collect_leaf_miniscripts(subtree, &mut leaves);
@@ -80,51 +78,6 @@ fn branch_to_miniscript(
     }
 }
 
-// Collect all leaf miniscripts under a subtree - NEW VERSION FOR MINISCRIPT BRANCHES
-fn collect_leaf_miniscripts_new<'a, K: miniscript::MiniscriptKey>(
-    t: &'a miniscript::descriptor::TapTree<K>,
-    out: &mut Vec<&'a Miniscript<K, Tap>>,
-) {
-    use miniscript::descriptor::TapTree;
-    match t {
-        TapTree::Leaf(ms) => out.push(ms),
-        TapTree::Tree { left, right, .. } => {
-            collect_leaf_miniscripts_new(&left, out);
-            collect_leaf_miniscripts_new(&right, out);
-        }
-    }
-}
-
-// Convert a subtree (branch) to ONE valid Miniscript by OR-ing all leaf policies - NEW VERSION
-fn branch_to_miniscript_new<K: miniscript::MiniscriptKey + miniscript::FromStrKey>(
-    subtree: &miniscript::descriptor::TapTree<K>,
-) -> Result<Miniscript<K, Tap>, String> {
-    // gather leaves
-    let mut leaves = Vec::new();
-    collect_leaf_miniscripts_new(subtree, &mut leaves);
-    if leaves.is_empty() {
-        return Err("subtree has no leaves".to_string());
-    }
-
-    // OR the lifted policies (string form)
-    let parts: Vec<String> = leaves
-        .iter()
-        .map(|ms| ms.lift().map(|p| p.to_string()))
-        .collect::<Result<_, _>>()
-        .map_err(|e| format!("Failed to lift policy: {}", e))?;
-    let policy_str = if parts.len() == 1 { 
-        parts[0].clone() 
-    } else { 
-        format!("or({})", parts.join(","))
-    };
-
-    // Compile to Miniscript (Tap context)
-    let conc = Concrete::<K>::from_str(&policy_str)
-        .map_err(|e| format!("Failed to parse policy: {}", e))?;
-    let ms: Miniscript<K, Tap> = conc.compile::<Tap>()
-        .map_err(|e| format!("Failed to compile miniscript: {}", e))?;
-    Ok(ms)
-}
 
 // Return the Miniscript for the root's direct branches (L and R) - RESTORED ORIGINAL
 fn get_taproot_branches_as_miniscript(
@@ -167,8 +120,7 @@ fn get_taproot_branches_as_miniscript(
 /// Get miniscript branches for taproot descriptors using YOUR WORKING CODE
 pub(crate) fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
     use miniscript::descriptor::{TapTree, Tr};
-    use miniscript::policy::Liftable;
-    
+        
     #[derive(Serialize)]
     struct BranchInfo {
         miniscript: String,
@@ -395,7 +347,7 @@ pub(crate) fn get_taproot_branch_weights(descriptor: &str) -> JsValue {
     let tap_tree = match descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
         Ok(Descriptor::Tr(tr_desc)) => {
             // Get the tap tree from the Tr descriptor
-            match tr_desc.taptree() {
+            match tr_desc.tap_tree() {
                 Some(tree) => tree.clone(),
                 None => {
                     let result = BranchWeightResult {

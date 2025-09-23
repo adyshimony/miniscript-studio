@@ -10,8 +10,6 @@ use bitcoin::Network;
 use crate::parse::helpers::{detect_network, needs_descriptor_processing, is_descriptor_wrapper};
 use crate::descriptors::parser::parse_descriptors;
 use crate::validation;
-use miniscript::{Descriptor, DescriptorPublicKey};
-use std::str::FromStr;
 
 // Unified compilation entry point
 pub fn compile_unified(expression: &str, options: CompileOptions) -> Result<CompilationResult, String> {
@@ -71,7 +69,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
 
     if options.context == CompileContext::Taproot {
         let mode_str = options.mode.as_str();
-        let nums_key = options.nums_key.clone().unwrap_or_else(|| crate::NUMS_POINT.to_string());
+        let nums_key = options.nums_key.clone().unwrap_or_else(|| crate::taproot::utils::NUMS_POINT.to_string());
         let network = options.network();
 
         match compile_taproot_with_mode_network(expression, mode_str, &nums_key, network) {
@@ -325,7 +323,7 @@ fn compile_descriptor(expression: &str, context: &str) -> Result<(String, String
     let inner_miniscript = if expression.starts_with("wsh(") && expression.ends_with(")") {
         &expression[4..expression.len()-1]
     } else {
-        return parse_non_wsh_descriptor(expression);
+        return crate::descriptors::compiler::parse_non_wsh_descriptor(expression);
     };
 
     console_log!("Parsing inner miniscript with proper validation: {}", inner_miniscript);
@@ -333,29 +331,3 @@ fn compile_descriptor(expression: &str, context: &str) -> Result<(String, String
     validation::validate_inner_miniscript(inner_miniscript, context)
 }
 
-// Parse non-WSH descriptors
-fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    match Descriptor::<DescriptorPublicKey>::from_str(expression) {
-        Ok(descriptor) => {
-            let desc_str = descriptor.to_string();
-            console_log!("Successfully parsed non-wsh descriptor: {}", desc_str);
-
-            Ok((
-                "No single script - this descriptor defines multiple paths".to_string(),
-                "No single script - this descriptor defines multiple paths".to_string(),
-                None,
-                0,
-                "Descriptor".to_string(),
-                None,
-                None,
-                None,
-                None,
-                Some(desc_str),
-            ))
-        },
-        Err(e) => {
-            console_log!("Failed to parse descriptor: {}", e);
-            Err(format!("Invalid descriptor format: {}", e))
-        }
-    }
-}

@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use crate::console_log;
 use crate::taproot::utils::get_taproot_nums_point;
-use crate::NUMS_POINT;
+use crate::taproot::utils::NUMS_POINT;
 use crate::descriptors::compiler::compile_parsed_descriptor;
 
 

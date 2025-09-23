@@ -8,7 +8,7 @@ use miniscript::descriptor::DescriptorPublicKey;
 use crate::descriptors::parser::parse_descriptors;
 use crate::descriptors::utils::replace_descriptors_with_keys;
 use crate::translators::DescriptorKeyTranslator;
-use crate::NUMS_POINT;
+use crate::taproot::utils::NUMS_POINT;
 
 /// Compile policy to miniscript
 pub fn compile_policy_to_miniscript(policy: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {

@@ -39,7 +39,7 @@ where
 }
 
 /// Comprehensive descriptor processing for all patterns
-pub fn process_comprehensive_descriptors(
+pub(crate) fn process_comprehensive_descriptors(
     expression: &str,
     patterns: &DescriptorPatterns,
     descriptors: &mut HashMap<String, ParsedDescriptor>

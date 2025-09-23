@@ -8,7 +8,7 @@ use crate::descriptors::types::ParsedDescriptor;
 use crate::console_log;
 
 /// Parse fingerprint from hex string
-pub fn parse_fingerprint(hex_str: &str) -> Result<Fingerprint, String> {
+pub(crate) fn parse_fingerprint(hex_str: &str) -> Result<Fingerprint, String> {
     let bytes = hex::decode(hex_str)
         .map_err(|e| format!("Invalid fingerprint hex: {}", e))?;
     
@@ -22,7 +22,7 @@ pub fn parse_fingerprint(hex_str: &str) -> Result<Fingerprint, String> {
 }
 
 /// Parse derivation path from string
-pub fn parse_derivation_path(path_str: &str) -> Result<DerivationPath, String> {
+pub(crate) fn parse_derivation_path(path_str: &str) -> Result<DerivationPath, String> {
     let normalized_path = path_str.replace("h", "'");
     
     DerivationPath::from_str(&normalized_path)
@@ -30,13 +30,13 @@ pub fn parse_derivation_path(path_str: &str) -> Result<DerivationPath, String> {
 }
 
 /// Parse extended public key
-pub fn parse_xpub(xpub_str: &str) -> Result<Xpub, String> {
+pub(crate) fn parse_xpub(xpub_str: &str) -> Result<Xpub, String> {
     Xpub::from_str(xpub_str)
         .map_err(|e| format!("Invalid xpub: {}", e))
 }
 
 /// Parse child paths from range notation
-pub fn parse_child_paths(range_str: Option<&str>) -> Result<Vec<u32>, String> {
+pub(crate) fn parse_child_paths(range_str: Option<&str>) -> Result<Vec<u32>, String> {
     match range_str {
         Some(range) => {
             range.split(';')

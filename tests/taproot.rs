@@ -13,7 +13,6 @@ const TEST_MINISCRIPT_TAPROOT: &str = "or_d(pk(d127f475aba7d9111ff69cc6858305d15
 // Internal keys for different modes
 const TEST_INTERNAL_KEY_MULTI_LEAF: &str = "d127f475aba7d9111ff69cc6858305d15e8912205cfa5dcc7a4c66a97ebb8174";
 const TEST_INTERNAL_KEY_SCRIPT_ONLY: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
 
 // Expected addresses for mainnet (these should all be different)
 const EXPECTED_TAPROOT_MULTI_LEAF_MAINNET: &str = "bc1pnl34fvwg835tsvrmjjlgwhx9nykvljw3qxp0z49fx94l8m2svtkqep92he";

@@ -149,7 +149,7 @@ pub fn generate_address(input: AddressInput) -> Result<AddressGenerationResult, 
             
             // Determine the taproot mode based on input parameters
             let mode = if let Some(key) = input.internal_key {
-                if key == crate::NUMS_POINT {
+                if key == crate::taproot::utils::NUMS_POINT {
                     console_log!("Using script-path mode (NUMS key provided)");
                     "script-path"
                 } else {
@@ -170,10 +170,10 @@ pub fn generate_address(input: AddressInput) -> Result<AddressGenerationResult, 
                     crate::compile::modes::compile_taproot_multi_leaf(&input.script_or_miniscript, network)
                 },
                 "single-leaf" => {
-                    crate::compile::modes::compile_taproot_single_leaf(&input.script_or_miniscript, crate::NUMS_POINT, network)
+                    crate::compile::modes::compile_taproot_single_leaf(&input.script_or_miniscript, crate::taproot::utils::NUMS_POINT, network)
                 },
                 "script-path" => {
-                    crate::compile::modes::compile_taproot_script_path(&input.script_or_miniscript, crate::NUMS_POINT, network)
+                    crate::compile::modes::compile_taproot_script_path(&input.script_or_miniscript, crate::taproot::utils::NUMS_POINT, network)
                 },
                 _ => return Err(AddressError::DescriptorParse("Invalid taproot mode".to_string()))
             };
@@ -226,115 +226,6 @@ pub(crate) fn generate_address_for_network(script_hex: &str, script_type: &str, 
     serde_wasm_bindgen::to_value(&result).unwrap()
 }
 
-/// Generate taproot address for network switching (JavaScript interface)
-/// 
-/// # Deprecated
-/// This function is deprecated and no longer used by the JavaScript interface.
-/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
-pub(crate) fn generate_taproot_address_for_network(miniscript: &str, network_str: &str) -> JsValue {
-    console_log!("Generating taproot address for network: {} with miniscript: {}", network_str, miniscript);
-    
-    let input = AddressInput {
-        script_or_miniscript: miniscript.to_string(),
-        script_type: "Taproot".to_string(),
-        network: network_str.to_string(),
-        internal_key: None,
-        use_single_leaf: None,
-    };
-    
-    let result = match generate_address(input) {
-        Ok(address_result) => crate::AddressResult {
-            success: true,
-            error: None,
-            address: Some(address_result.address),
-        },
-        Err(e) => crate::AddressResult {
-            success: false,
-            error: Some(e.to_string()),
-            address: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
-}
-
-/// Generate taproot address using descriptor approach (JavaScript interface)
-/// 
-/// # Deprecated
-/// This function is deprecated and no longer used by the JavaScript interface.
-/// The JavaScript now uses `compile_miniscript_with_mode_and_network()` for taproot addresses.
-pub(crate) fn generate_taproot_address_with_builder(miniscript: &str, network_str: &str, _internal_key: Option<String>) -> JsValue {
-    console_log!("Generating taproot address with builder: {} for network: {} with internal_key: {:?}", miniscript, network_str, _internal_key);
-    
-    let input = AddressInput {
-        script_or_miniscript: miniscript.to_string(),
-        script_type: "Taproot".to_string(),
-        network: network_str.to_string(),
-        internal_key: None,
-        use_single_leaf: None,
-    };
-    
-    let result = match generate_address(input) {
-        Ok(address_result) => crate::AddressResult {
-            success: true,
-            error: None,
-            address: Some(address_result.address),
-        },
-        Err(e) => crate::AddressResult {
-            success: false,
-            error: Some(e.to_string()),
-            address: None,
-        }
-    };
-    
-    serde_wasm_bindgen::to_value(&result).unwrap()
-}
-
-
-// Internal function to generate address (legacy - use generate_address() instead)
-fn perform_address_generation(script_hex: &str, script_type: &str, network_str: &str) -> Result<String, String> {
-    let input = AddressInput {
-        script_or_miniscript: script_hex.to_string(),
-        script_type: script_type.to_string(),
-        network: network_str.to_string(),
-        internal_key: None,
-        use_single_leaf: None,
-    };
-    
-    generate_address(input)
-        .map(|result| result.address)
-        .map_err(|e| e.to_string())
-}
-
-// Internal function to generate taproot address using miniscript (legacy)
-fn perform_taproot_address_generation(miniscript: &str, network_str: &str) -> Result<String, String> {
-    let input = AddressInput {
-        script_or_miniscript: miniscript.to_string(),
-        script_type: "Taproot".to_string(),
-        network: network_str.to_string(),
-        internal_key: None,
-        use_single_leaf: None,
-    };
-    
-    generate_address(input)
-        .map(|result| result.address)
-        .map_err(|e| e.to_string())
-}
-
-// Internal function using Descriptor approach (legacy)
-fn perform_descriptor_address_generation(miniscript: &str, network_str: &str, _internal_key: Option<String>) -> Result<String, String> {
-    let input = AddressInput {
-        script_or_miniscript: miniscript.to_string(),
-        script_type: "Taproot".to_string(),
-        network: network_str.to_string(),
-        internal_key: None,
-        use_single_leaf: None,
-    };
-    
-    generate_address(input)
-        .map(|result| result.address)
-        .map_err(|e| e.to_string())
-}
 
 
 /// Generate a Taproot address with a specific internal key and script

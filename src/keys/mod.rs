@@ -5,7 +5,7 @@
 
 use bitcoin::XOnlyPublicKey;
 use crate::console_log;
-use crate::NUMS_POINT;
+use crate::taproot::utils::NUMS_POINT;
 
 /// Extract x-only key from miniscript expression
 pub fn extract_xonly_key_from_miniscript(miniscript: &str) -> Option<XOnlyPublicKey> {
