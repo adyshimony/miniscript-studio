@@ -1,3 +1,12 @@
+/**
+ * @module window-functions
+ * @description Global window functions for HTML event handlers
+ *
+ * This module exports all functions to the global window object
+ * to maintain compatibility with onclick handlers in the HTML.
+ * All 24 window functions are preserved exactly as they were.
+ */
+
 import { MiniscriptCompiler } from './compiler-core.js';
 import { CONSTANTS } from './constants.js';
 

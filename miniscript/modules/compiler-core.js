@@ -1,8 +1,21 @@
 import init, { compile_unified, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights } from '../pkg/miniscript_wasm.js';
 import { CONSTANTS } from './constants.js';
-// Cache buster - updated 2025-01-18 v3
 
+/**
+ * MiniscriptCompiler - Core compiler for Bitcoin Miniscript
+ *
+ * @class MiniscriptCompiler
+ * @description Main compiler class handling policy to miniscript compilation,
+ * miniscript to Bitcoin script conversion, key management, and UI interactions
+ *
+ * @version 1.2.0
+ * @since 2025-01-18
+ */
 export class MiniscriptCompiler {
+    /**
+     * Initialize a new MiniscriptCompiler instance
+     * Sets up default variables, undo/redo stacks, and key pools
+     */
     constructor() {
         this.wasm = null;
         this.keyVariables = new Map();
@@ -29,6 +42,12 @@ export class MiniscriptCompiler {
         this.init();
     }
 
+    /**
+     * Initialize the WASM module and set up event listeners
+     * @async
+     * @returns {Promise<void>}
+     * @throws {Error} If WASM module fails to initialize
+     */
     async init() {
         try {
             this.wasm = await init();
@@ -472,6 +491,11 @@ export class MiniscriptCompiler {
         }
     }
 
+    /**
+     * Compile a miniscript expression to Bitcoin script
+     * Handles both legacy/segwit and taproot contexts
+     * @returns {void}
+     */
     compileExpression() {
         // Prevent concurrent compilations
         if (this.isCompiling) {

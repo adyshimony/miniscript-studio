@@ -1,6 +1,15 @@
-// Constants for the Miniscript Compiler
-// These magic numbers are extracted for better maintainability
+/**
+ * @module constants
+ * @description Application-wide constants for the Miniscript Compiler
+ *
+ * These values are extracted from the codebase to centralize configuration
+ * and eliminate magic numbers throughout the application.
+ */
 
+/**
+ * @constant {Object} CONSTANTS
+ * @description Central configuration object containing all magic numbers and constants
+ */
 export const CONSTANTS = {
     // Timing constants
     HIGHLIGHT_DELAY_MS: 500,          // Delay for syntax highlighting
