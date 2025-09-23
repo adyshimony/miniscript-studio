@@ -2,6 +2,7 @@ pub mod types;
 pub mod parser;
 pub mod processor;
 pub mod utils;
+pub mod compiler;
 
 #[cfg(test)]
 mod tests;

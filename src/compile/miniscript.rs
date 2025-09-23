@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::console_log;
 use crate::taproot::utils::get_taproot_nums_point;
 use crate::NUMS_POINT;
+use crate::descriptors::compiler::compile_parsed_descriptor;
 
 // ============================================================================
 // Miniscript Compilation Functions (moved from lib.rs)
@@ -325,7 +326,7 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
                 match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
                     Ok(descriptor) => {
                         console_log!("Successfully parsed tr() descriptor with tree notation");
-                        return crate::compile_parsed_descriptor(descriptor, network);
+                        return compile_parsed_descriptor(descriptor, network);
                     }
                     Err(_e) => {
                         console_log!("Failed to parse tr() descriptor with tree notation: {}", _e);

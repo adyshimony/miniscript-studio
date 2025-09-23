@@ -34,16 +34,13 @@ pub mod validation;
 // Module functions are accessible via the pub mod declarations above
 
 // Re-exports from modules
-use types::{CompilationResult, LiftResult, AddressResult, ParsedDescriptor};
+use types::{CompilationResult, LiftResult, AddressResult};
 
 // External crate imports
 use wasm_bindgen::prelude::*;
-use miniscript::{Miniscript, Tap, policy::Concrete, Descriptor, DescriptorPublicKey, policy::Liftable};
-use bitcoin::{Network, XOnlyPublicKey, secp256k1::Secp256k1};
-// ... existing code ...
-use bitcoin::bip32::ChildNumber;
+use miniscript::{Miniscript, Tap, policy::Concrete, Descriptor, policy::Liftable};
+use bitcoin::XOnlyPublicKey;
 use std::str::FromStr;
-use std::collections::HashMap;
 
 // Constants
 pub const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
@@ -81,20 +78,6 @@ pub const NUMS_POINT: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547
 // ============================================================================
 
 /// Parse HD wallet descriptors from miniscript expressions
-fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescriptor>, String> {
-    let mut descriptors = HashMap::new();
-    
-    console_log!("Parsing descriptors from expression of length: {}", expression.len());
-    
-    // Create regex patterns for different descriptor formats
-    let patterns = descriptors::parser::create_descriptor_regex_patterns()?;
-    
-    // Process each pattern type
-    descriptors::processor::process_comprehensive_descriptors(expression, &patterns, &mut descriptors)?;
-    
-    console_log!("Found {} descriptors total", descriptors.len());
-    Ok(descriptors)
-}
 
 /// Container for descriptor regex patterns
 
@@ -118,146 +101,7 @@ fn parse_descriptors(expression: &str) -> Result<HashMap<String, ParsedDescripto
 /// Parse child paths from range notation
 
 /// Expand a descriptor at a specific child index
-fn expand_descriptor(descriptor: &ParsedDescriptor, child_index: u32) -> Result<String, String> {
-    let secp = Secp256k1::verification_only();
-    
-    console_log!("Expanding descriptor: {}", descriptor.original);
-    console_log!("Xpub: {}", descriptor.info.xpub);
-    console_log!("Child paths: {:?}", descriptor.info.child_paths);
-    console_log!("Is wildcard: {}", descriptor.info.is_wildcard);
-    
-    // Handle different derivation patterns comprehensively
-    let final_xpub = if !descriptor.info.is_wildcard {
-        // Fixed patterns - no wildcards
-        match descriptor.info.child_paths.len() {
-            0 => {
-                // No derivation: xpub
-                console_log!("No additional derivation");
-                descriptor.info.xpub.clone()
-            },
-            1 => {
-                // Single fixed derivation: xpub/0
-                let child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-                    .map_err(|e| format!("Invalid child number: {}", e))?;
 
-                console_log!("Single derivation: {}", descriptor.info.child_paths[0]);
-                descriptor.info.xpub
-                    .derive_pub(&secp, &[child])
-                    .map_err(|e| format!("Single key derivation failed: {}", e))?
-            },
-            2 => {
-                // Double fixed derivation: xpub/0/1
-                let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-                    .map_err(|e| format!("Invalid first child number: {}", e))?;
-                let second_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[1])
-                    .map_err(|e| format!("Invalid second child number: {}", e))?;
-
-                console_log!("Double derivation: {}/{}", descriptor.info.child_paths[0], descriptor.info.child_paths[1]);
-                descriptor.info.xpub
-                    .derive_pub(&secp, &[first_child, second_child])
-                    .map_err(|e| format!("Double key derivation failed: {}", e))?
-            },
-            _ => return Err("Unsupported fixed derivation path length".to_string()),
-        }
-    } else {
-        // Wildcard patterns - need to substitute wildcards with child_index
-        match descriptor.info.child_paths.len() {
-            0 => {
-                // Single wildcard: xpub/* or xpub/*/*
-                let child = ChildNumber::from_normal_idx(child_index)
-                    .map_err(|e| format!("Invalid child index: {}", e))?;
-
-                console_log!("Single wildcard derivation: {}", child_index);
-                descriptor.info.xpub
-                    .derive_pub(&secp, &[child])
-                    .map_err(|e| format!("Wildcard key derivation failed: {}", e))?
-            },
-            1 => {
-                // Fixed + wildcard: xpub/0/*
-                let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-                    .map_err(|e| format!("Invalid first child number: {}", e))?;
-                let second_child = ChildNumber::from_normal_idx(child_index)
-                    .map_err(|e| format!("Invalid child index: {}", e))?;
-
-                console_log!("Fixed + wildcard derivation: {}/{}", descriptor.info.child_paths[0], child_index);
-                descriptor.info.xpub
-                    .derive_pub(&secp, &[first_child, second_child])
-                    .map_err(|e| format!("Fixed+wildcard key derivation failed: {}", e))?
-            },
-            2 => {
-                // Handle wildcard + fixed pattern: xpub/*/1
-                let first_child = if descriptor.info.child_paths[0] == u32::MAX {
-                    // First position is wildcard
-                    ChildNumber::from_normal_idx(child_index)
-                        .map_err(|e| format!("Invalid child index: {}", e))?
-                } else {
-                    // First position is fixed
-                    ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-                        .map_err(|e| format!("Invalid first child number: {}", e))?
-                };
-
-                let second_child = if descriptor.info.child_paths[1] == u32::MAX {
-                    // Second position is wildcard
-                    ChildNumber::from_normal_idx(child_index)
-                        .map_err(|e| format!("Invalid child index: {}", e))?
-                } else {
-                    // Second position is fixed
-                    ChildNumber::from_normal_idx(descriptor.info.child_paths[1])
-                        .map_err(|e| format!("Invalid second child number: {}", e))?
-                };
-
-                console_log!("Wildcard + fixed derivation: {}/{}",
-                    if descriptor.info.child_paths[0] == u32::MAX { child_index } else { descriptor.info.child_paths[0] },
-                    if descriptor.info.child_paths[1] == u32::MAX { child_index } else { descriptor.info.child_paths[1] }
-                );
-                descriptor.info.xpub
-                    .derive_pub(&secp, &[first_child, second_child])
-                    .map_err(|e| format!("Wildcard+fixed key derivation failed: {}", e))?
-            },
-            _ => {
-                // Multipath pattern: use first path with child_index
-                if !descriptor.info.child_paths.is_empty() {
-                    let first_child = ChildNumber::from_normal_idx(descriptor.info.child_paths[0])
-                        .map_err(|e| format!("Invalid first child number: {}", e))?;
-                    let second_child = ChildNumber::from_normal_idx(child_index)
-                        .map_err(|e| format!("Invalid child index: {}", e))?;
-
-                    console_log!("Multipath derivation: {}/{}", descriptor.info.child_paths[0], child_index);
-                    descriptor.info.xpub
-                        .derive_pub(&secp, &[first_child, second_child])
-                        .map_err(|e| format!("Multipath key derivation failed: {}", e))?
-                } else {
-                    return Err("Invalid multipath descriptor".to_string());
-                }
-            }
-        }
-    };
-
-    // Get the public key and return as hex string
-    let pubkey = final_xpub.public_key;
-    let hex_key = hex::encode(pubkey.serialize());
-    console_log!("Derived key for descriptor: {}", hex_key);
-    Ok(hex_key)
-}
-
-/// Replace descriptors in expression with concrete keys
-fn replace_descriptors_with_keys(expression: &str, descriptors: &HashMap<String, ParsedDescriptor>) -> Result<String, String> {
-    let mut result = expression.to_string();
-    
-    // Sort descriptors by length (longest first) to prevent substring conflicts
-    let mut sorted_descriptors: Vec<_> = descriptors.iter().collect();
-    sorted_descriptors.sort_by_key(|(descriptor_str, _)| std::cmp::Reverse(descriptor_str.len()));
-    
-    console_log!("Replacing {} descriptors in expression", sorted_descriptors.len());
-    for (descriptor_str, parsed) in sorted_descriptors {
-        let replacement = expand_descriptor(parsed, 0)?;
-        console_log!("Replacing '{}' with '{}' (len: {})", descriptor_str, replacement, replacement.len());
-        result = result.replace(descriptor_str, &replacement);
-    }
-    
-    console_log!("Final processed expression: {}", result);
-    Ok(result)
-}
 
 
 // ============================================================================
@@ -328,129 +172,14 @@ pub fn compile_unified(expression: &str, options_js: JsValue) -> JsValue {
 }
 
 
-/// Process descriptors in expression
-fn process_expression_descriptors(expression: &str) -> Result<String, String> {
-    console_log!("Detected descriptor keys in expression, processing...");
-    
-    match parse_descriptors(expression) {
-        Ok(descriptors) => {
-            if descriptors.is_empty() {
-                console_log!("No descriptors found, using original expression");
-                Ok(expression.to_string())
-            } else {
-                // Check if any descriptors have ranges
-                let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
-                
-                if has_range_descriptors {
-                    console_log!("Found {} descriptors with ranges, wrapping in wsh() for descriptor parsing", descriptors.len());
-                    Ok(format!("wsh({})", expression))
-                } else {
-                    console_log!("Found {} fixed descriptors, replacing with concrete keys", descriptors.len());
-                    match replace_descriptors_with_keys(expression, &descriptors) {
-                        Ok(processed) => {
-                            console_log!("Successfully replaced descriptors with keys");
-                            Ok(processed)
-                        },
-                        Err(e) => {
-                            console_log!("Failed to replace descriptors: {}", e);
-                            Err(format!("Descriptor processing failed: {}", e))
-                        }
-                    }
-                }
-            }
-        },
-        Err(e) => {
-            console_log!("Failed to parse descriptors: {}", e);
-            Err(format!("Descriptor parsing failed: {}", e))
-        }
-    }
-}
 
-/// Compile a descriptor wrapper
-fn compile_descriptor(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    console_log!("Detected descriptor format, extracting inner miniscript for proper validation");
-    
-    // Extract inner miniscript from wsh() wrapper
-    let inner_miniscript = if expression.starts_with("wsh(") && expression.ends_with(")") {
-        &expression[4..expression.len()-1]
-    } else {
-        // Parse other descriptor types
-        return parse_non_wsh_descriptor(expression);
-    };
-    
-    console_log!("Parsing inner miniscript with proper validation: {}", inner_miniscript);
-    
-    // Parse and validate the inner miniscript based on context
-    validation::validate_inner_miniscript(inner_miniscript, context)
-}
 
-/// Parse non-WSH descriptors
-fn parse_non_wsh_descriptor(expression: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    match Descriptor::<DescriptorPublicKey>::from_str(expression) {
-        Ok(descriptor) => {
-            let desc_str = descriptor.to_string();
-            console_log!("Successfully parsed non-wsh descriptor: {}", desc_str);
-            
-            Ok((
-                "No single script - this descriptor defines multiple paths".to_string(),
-                "No single script - this descriptor defines multiple paths".to_string(),
-                None,
-                0,
-                "Descriptor".to_string(),
-                None,
-                None,
-                None,
-                None,
-                Some(format!("Valid descriptor: {}", desc_str))
-            ))
-        },
-        Err(e) => Err(format!("Descriptor parsing failed: {}", e))
-    }
-}
 
 /// Validate inner miniscript from descriptor
 // Validation functions moved to src/validation/mod.rs
 
 
 
-/// Compile Taproot context miniscript
-/// Compile a parsed Taproot descriptor
-fn compile_parsed_descriptor(descriptor: Descriptor<XOnlyPublicKey>, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    console_log!("Compiling parsed descriptor");
-    
-    // Get the address from the descriptor
-    let address = descriptor.address(network)
-        .map_err(|e| format!("Failed to derive address: {}", e))?;
-    
-    // Get the script pubkey
-    let script_pubkey = descriptor.script_pubkey();
-    let script_hex = script_pubkey.to_hex_string();
-    let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
-    
-    // Calculate script size
-    let script_size = script_pubkey.len();
-    
-    // Get descriptor string
-    let descriptor_str = descriptor.to_string();
-    
-    // For Taproot, max satisfaction depends on the specific path
-    // This is a simplified estimate
-    let max_satisfaction_size = Some(200); // Estimated
-    let max_weight_to_satisfy = Some(script_size as u64 * 4 + 244); // Script weight + input weight
-    
-    Ok((
-        script_hex,
-        script_asm,
-        Some(address.to_string()),
-        script_size,
-        "Taproot".to_string(),
-        max_satisfaction_size,
-        max_weight_to_satisfy,
-        Some(true), // sanity_check
-        Some(true), // is_non_malleable
-        Some(descriptor_str),
-    ))
-}
 
 /// Transform top-level OR patterns to tree notation for Taproot
 fn transform_or_to_tree(miniscript: &str) -> String {
