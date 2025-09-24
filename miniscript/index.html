@@ -1050,9 +1050,9 @@
                         <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))', 'twofa')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
                         <button onclick="showPolicyDescription('hodl'); loadPolicyExample('or(9@pk(Alice),and(thresh(3,pk(Bob),pk(Charlie),pk(Eva),pk(Frank)),older(52560)))', 'hodl')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">HODL Wallet</button>
                         <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))', 'timelocked_thresh')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
-                        <button onclick="showPolicyDescription('multi_branch'); loadPolicyExample('or(pk(David),or(pk(Helen),pk(Uma)))', 'multi_branch')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Multi-Branch OR (Taproot)</button>
-                        <button onclick="showPolicyDescription('lightning_channel'); loadPolicyExample('or(and(pk(David),pk(Helen)),or(and(pk(DavidTimeout),older(1008)),and(pk(HelenTimeout),older(1008))))', 'lightning_channel')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Lightning Channel (Taproot)</button>
-                        <button onclick="showPolicyDescription('inheritance_vault'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Uma),pk(VaultXOnly1),pk(VaultXOnly2)),older(26280)))', 'inheritance_vault')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Inheritance Vault (Taproot)</button>
+                        <button onclick="showPolicyDescription('multi_branch'); loadPolicyExample('or(pk(David),or(pk(Helen),pk(Uma)))', 'multi_branch', 'taproot-keypath')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Multi-Branch OR (Taproot)</button>
+                        <button onclick="showPolicyDescription('lightning_channel'); loadPolicyExample('or(and(pk(David),pk(Helen)),or(and(pk(DavidTimeout),older(1008)),and(pk(HelenTimeout),older(1008))))', 'lightning_channel', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Lightning Channel (Taproot)</button>
+                        <button onclick="showPolicyDescription('inheritance_vault'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Uma),pk(VaultXOnly1),pk(VaultXOnly2)),older(26280)))', 'inheritance_vault', 'taproot-keypath')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Inheritance Vault (Taproot)</button>
                         <button onclick="showPolicyDescription('atomic_swap'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),sha256(e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317)),older(144)))', 'atomic_swap')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Atomic Swap</button>
                     </div>
                     
@@ -1169,17 +1169,18 @@
                         <button onclick="showMiniscriptDescription('multisig'); loadExample('or_d(pk(Alice),or_d(pk(Bob),pk(Charlie)))', 'multisig')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">1-of-3 Multisig</button>
                         <button onclick="showMiniscriptDescription('recovery'); loadExample('or_d(pk(Alice),and_v(v:pk(Bob),older(1008)))', 'recovery')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Recovery Wallet</button>
                         <button onclick="showMiniscriptDescription('hash'); loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))', 'hash')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Hash + Timelock</button>
-                        <button onclick="showMiniscriptDescription('inheritance'); loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Inheritance (Taproot)</button>
-                        <button onclick="showMiniscriptDescription('liquid_federation'); loadExample('or_d(multi_a(5,Fed1,Fed2,Fed3,Fed4,Fed5,Fed6,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))', 'liquid_federation')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Liquid Federation (Taproot)</button>
                         <button onclick="showMiniscriptDescription('htlc_time'); loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))', 'htlc_time')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Time-based HTLC</button>
                         <button onclick="showMiniscriptDescription('htlc_hash'); loadExample('or_d(pk(Alice),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),and_v(v:pk(Bob),older(144))))', 'htlc_hash')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Hash-based HTLC</button>
-                        <button onclick="showMiniscriptDescription('joint_custody'); loadExample('andor(multi(2,jcKey1,jcKey2,jcKey3),or_i(and_v(v:pkh(saKey),after(1768176000)),thresh(2,pk(jcAg1),s:pk(jcAg2),s:pk(jcAg3),snl:after(1767225600))),and_v(v:thresh(2,pkh(recKey1),a:pkh(recKey2),a:pkh(recKey3)),after(1769817600)))', 'joint_custody')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">3-Key Joint Custody</button>
-                        <button onclick="showMiniscriptDescription('liana_wallet'); loadExample('or_i(and_v(v:thresh(1,pkh(LianaDesc1),a:pkh(LianaDesc2),a:pkh(LianaDesc3)),older(20)),or_i(and_v(v:pkh(LianaDesc4),older(19)),or_d(multi(2,LianaDesc5,LianaDesc6),and_v(v:pkh(LianaDesc7),older(18)))))', 'liana_wallet')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🦎 Liana Wallet</button>
                         <button onclick="showMiniscriptDescription('full_descriptor'); loadExample('pk(MainnetKey)', 'full_descriptor')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Full xpub descriptor</button>
+                        <button onclick="showMiniscriptDescription('hd_derivation'); loadExample('pk([C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/*)', 'hd_derivation')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🗝️ HD Wallet Derivation</button>                                               
                         <button onclick="showMiniscriptDescription('range_descriptor'); loadExample('pk(RangeKey)', 'range_descriptor')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Multipath range <1;0>/*</button>
                         <button onclick="showMiniscriptDescription('vault_complex'); loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(VaultKey4)),after(1753305229)),and_v(or_c(pkh(VaultKey6),v:thresh(2,pkh(VaultKey10),a:pkh(VaultKey15),a:pkh(VaultKey7),a:pkh(VaultKey2),a:pkh(VaultKey5))),after(1753298029))),and_v(or_c(pkh(VaultKey16),v:thresh(2,pkh(VaultKey11),a:pkh(VaultKey17),a:pkh(VaultKey8),a:pkh(VaultKey3))),after(1753290829))),and_v(or_c(pkh(VaultKey12),v:thresh(2,pkh(VaultKey13),a:pkh(VaultKey18),a:pkh(VaultKey9))),after(1753283629))),and_v(v:pk(VaultKey14),pk(VaultKey19)))', 'vault_complex')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🏦 Complex Vault</button>
-                        <button onclick="showMiniscriptDescription('taproot_multibranch'); loadExample('or_d(pk(Julia),and_v(v:pk(Karl),older(144)))', 'taproot_multibranch')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🌳 Taproot Multi-Branch</button>
-                        <button onclick="showMiniscriptDescription('hd_derivation'); loadExample('pk([C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/*)', 'hd_derivation')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🗝️ HD Wallet Derivation</button>
+                        <button onclick="showMiniscriptDescription('joint_custody'); loadExample('andor(multi(2,jcKey1,jcKey2,jcKey3),or_i(and_v(v:pkh(saKey),after(1768176000)),thresh(2,pk(jcAg1),s:pk(jcAg2),s:pk(jcAg3),snl:after(1767225600))),and_v(v:thresh(2,pkh(recKey1),a:pkh(recKey2),a:pkh(recKey3)),after(1769817600)))', 'joint_custody')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">3-Key Joint Custody</button>
+                        <button onclick="showMiniscriptDescription('liana_wallet'); loadExample('or_i(and_v(v:thresh(1,pkh(LianaDesc1),a:pkh(LianaDesc2),a:pkh(LianaDesc3)),older(20)),or_i(and_v(v:pkh(LianaDesc4),older(19)),or_d(multi(2,LianaDesc5,LianaDesc6),and_v(v:pkh(LianaDesc7),older(18)))))', 'liana_wallet')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🦎 Liana Wallet</button>
+                        <button onclick="showMiniscriptDescription('inheritance'); loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Inheritance (Taproot)</button>
+                        <button onclick="showMiniscriptDescription('liquid_federation'); loadExample('or_d(multi_a(5,Fed1,Fed2,Fed3,Fed4,Fed5,Fed6,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))', 'liquid_federation', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Liquid Federation (Taproot)</button>
+                        <button onclick="showMiniscriptDescription('taproot_multibranch'); loadExample('or_d(pk(Julia),and_v(v:pk(Karl),older(144)))', 'taproot_multibranch', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🌳 Multi-Branch (Taproot)</button>
+
                     </div>
                     
                     <!-- Miniscript context section inside the left column -->
@@ -2520,85 +2521,8 @@
             }
         };
 
-        window.loadExample = function(example) {
-            const expressionInput = document.getElementById('expression-input');
-            
-            // Set the content
-            expressionInput.textContent = example;
-            
-            // Clear results
-            document.getElementById('results').innerHTML = '';
-            if (window.compiler && window.compiler.clearMiniscriptMessages) {
-                window.compiler.clearMiniscriptMessages();
-            }
-            
-            // Trigger syntax highlighting
-            if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
-                window.compiler.highlightMiniscriptSyntax();
-            }
-            
-            // ALWAYS save the loaded example to undo stack
-            if (window.compiler && window.compiler.saveState) {
-                window.compiler.saveState('miniscript', true); // Force save the loaded example
-                console.log('Loaded example:', example.substring(0, 30) + '...');
-            }
-            
-            // Auto-detect context based on key formats in the example (only if compiler is ready)
-            if (window.compiler && window.compiler.detectContextFromExpression) {
-                const detectedContext = window.compiler.detectContextFromExpression(example);
-                const context = detectedContext || 'segwit';
-                // Set both policy and miniscript context radio buttons
-                const policyRadio = document.querySelector(`input[name="policy-context"][value="${context}"]`);
-                const miniscriptRadio = document.querySelector(`input[name="context"][value="${context}"]`);
-                if (policyRadio) policyRadio.checked = true;
-                if (miniscriptRadio) miniscriptRadio.checked = true;
-            }
-            
-            // Reset the "Show key names" checkbox
-            const checkbox = document.getElementById('replace-keys-checkbox');
-            if (checkbox) {
-                checkbox.checked = false;
-            }
-        };
-
-        window.loadPolicyExample = function(example) {
-            console.log('🚀 STEP 1: loadPolicyExample called with:', example);
-            
-            try {
-                const policyInput = document.getElementById('policy-input');
-                console.log('🚀 STEP 2: got policyInput element');
-                
-                policyInput.textContent = example;
-                console.log('🚀 STEP 3: set textContent to:', example);
-                
-                if (window.compiler && window.compiler.saveState) {
-                    console.log('🚀 STEP 4: calling saveState');
-                    window.compiler.saveState('policy', true);
-                    console.log('🚀 STEP 5: saveState completed');
-                } else {
-                    console.log('🚀 STEP 4: compiler or saveState not available');
-                }
-            } catch (error) {
-                console.error('🚀 ERROR in loadPolicyExample:', error);
-            }
-            
-            // Auto-detect context based on key formats in the example (only if compiler is ready)
-            if (window.compiler && window.compiler.detectContextFromExpression) {
-                const detectedContext = window.compiler.detectContextFromExpression(example);
-                const context = detectedContext || 'segwit';
-                // Set both policy and miniscript context radio buttons
-                const policyRadio = document.querySelector(`input[name="policy-context"][value="${context}"]`);
-                const miniscriptRadio = document.querySelector(`input[name="context"][value="${context}"]`);
-                if (policyRadio) policyRadio.checked = true;
-                if (miniscriptRadio) miniscriptRadio.checked = true;
-            }
-            
-            // Reset the "Show key names" checkbox since we cleared the miniscript
-            const checkbox = document.getElementById('replace-keys-checkbox');
-            if (checkbox) {
-                checkbox.checked = false;
-            }
-        };
+        // Note: window.loadExample and window.loadPolicyExample are defined in
+        // /miniscript/modules/window-functions.js (loaded via script.js module import)
 
         // Theme switching functionality
         function initTheme() {

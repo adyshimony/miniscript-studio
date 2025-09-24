@@ -27,7 +27,7 @@ window.generateKey = function() {
 };
 
 // Global function to load examples
-window.loadExample = function(example, exampleId) {
+window.loadExample = function(example, exampleId, explicitContext) {
     const expressionInput = document.getElementById('expression-input');
     const isMobile = window.innerWidth <= 768;
     
@@ -192,13 +192,16 @@ window.loadExample = function(example, exampleId) {
         formatBtn.dataset.formatted = 'false';
     }
     
-    // Auto-detect context based on key formats in the example (only if compiler is ready)
-    if (window.compiler && window.compiler.detectContextFromExpression) {
+    // Use explicit context if provided, otherwise auto-detect
+    let context = explicitContext;
+    if (!context && window.compiler && window.compiler.detectContextFromExpression) {
         const detectedContext = window.compiler.detectContextFromExpression(example);
-        const context = detectedContext || 'segwit';
-        console.log(`Loading miniscript example: ${example.substring(0, 30)}... | Detected context: ${context}`);
-        
-        // Set only miniscript context (lower radio buttons)
+        context = detectedContext || 'segwit';
+    }
+    console.log(`Loading miniscript example: ${example.substring(0, 30)}... | Context: ${context} (explicit: ${explicitContext})`);
+
+    // Set only miniscript context (lower radio buttons)
+    if (context) {
         const miniscriptRadio = document.querySelector(`input[name="context"][value="${context}"]`);
         if (miniscriptRadio) {
             miniscriptRadio.checked = true;
@@ -221,8 +224,8 @@ window.loadExample = function(example, exampleId) {
 };
 
 // Global function to load policy examples
-window.loadPolicyExample = function(example, exampleId) {
-    console.log('🚀 loadPolicyExample (from script.js) called with:', example, exampleId);
+window.loadPolicyExample = function(example, exampleId, explicitContext) {
+    console.log('🚀 loadPolicyExample (from script.js) called with:', example, exampleId, explicitContext);
     
     const policyInput = document.getElementById('policy-input');
     const isMobile = window.innerWidth <= 768;
@@ -310,13 +313,16 @@ window.loadPolicyExample = function(example, exampleId) {
         policyFormatBtn.dataset.formatted = 'false';
     }
     
-    // Auto-detect context based on key formats in the example (only if compiler is ready)
-    if (window.compiler && window.compiler.detectContextFromExpression) {
+    // Use explicit context if provided, otherwise auto-detect
+    let context = explicitContext;
+    if (!context && window.compiler && window.compiler.detectContextFromExpression) {
         const detectedContext = window.compiler.detectContextFromExpression(example);
-        const context = detectedContext || 'segwit';
-        console.log(`Loading policy example: ${example.substring(0, 30)}... | Detected context: ${context}`);
-        
-        // Set both policy and miniscript context
+        context = detectedContext || 'segwit';
+    }
+    console.log(`Loading policy example: ${example.substring(0, 30)}... | Context: ${context} (explicit: ${explicitContext})`);
+
+    // Set both policy and miniscript context
+    if (context) {
         const policyRadio = document.querySelector(`input[name="policy-context"][value="${context}"]`);
         if (policyRadio) {
             policyRadio.checked = true;
@@ -1648,7 +1654,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 },
                 'policy-xonly': () => {
                     if (window.showPolicyDescription) window.showPolicyDescription('xonly');
-                    if (window.loadPolicyExample) window.loadPolicyExample('pk(David)', 'xonly');
+                    if (window.loadPolicyExample) window.loadPolicyExample('pk(David)', 'xonly', 'taproot-multi');
                 },
                 'policy-testnet_xpub': () => {
                     if (window.showPolicyDescription) window.showPolicyDescription('testnet_xpub');
@@ -1714,7 +1720,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 },
                 'miniscript-inheritance': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('inheritance');
-                    if (window.loadExample) window.loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance');
+                    if (window.loadExample) window.loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance', 'taproot-multi');
                 },
                 'miniscript-htlc_time': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('htlc_time');
