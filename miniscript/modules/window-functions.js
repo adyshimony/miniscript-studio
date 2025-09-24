@@ -422,14 +422,14 @@ window.showPolicyDescription = function(exampleId) {
             title: '📄 Single Key Policy - Direct Ownership',
             conditions: '🔓 Alice: Immediate spending (no restrictions)',
             useCase: 'Personal wallet with single owner. Simple and efficient for individual use. Compiles to basic pk(key) in miniscript.',
-            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost. Most efficient option: ~73 bytes witness data in Segwit, ~64 bytes in Taproot.'
+            security: '⚠️ Single point of failure - if Alice loses her key, funds are lost. Most efficient option: ~72 bytes witness data in SegWit, ~64 bytes in Taproot.'
         },
         'or': {
             title: '📄 OR Keys Policy - Either Party Access',
             conditions: '🔓 Alice: Can spend immediately\n🔓 Bob: Can spend immediately (independent access)',
             useCase: '**Shared Access Wallet:** Either person can spend independently. Common for couples, business partners, or backup access scenarios. Think "joint checking account" where either person can write checks.',
             examples: '💡 **Real-world examples:** Joint family account, business petty cash, emergency fund shared between spouses, backup key for solo traders',
-            efficiency: '⚡ **Efficiency:** Slightly larger than single key (~105 bytes witness). Spender chooses which key to use, so no coordination needed.',
+            efficiency: '⚡ **Efficiency:** Slightly larger than single key (~105 bytes witness in SegWit). Spender chooses which key to use, so no coordination needed.',
             security: '⚠️ **Security trade-offs:** Weakest-link security - compromise of ANY key results in fund loss. However, provides redundancy against key loss (lose one, still have the other).',
             bestFor: '✅ **Best for:** Trusted partnerships, backup access, situations where convenience matters more than maximum security, emergency access scenarios'
         },
@@ -438,7 +438,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice + Bob: Both signatures required (no unilateral spending)',
             useCase: '**2-of-2 Multisig:** Both parties must agree to every transaction. Perfect for business partnerships, joint investments, or married couples who want shared financial control. Like requiring two signatures on a check.',
             examples: '💡 **Real-world examples:** Business partnership funds, joint investment account, high-value couple\'s savings, parent-child shared control, corporate treasury requiring dual approval',
-            efficiency: '⚡ **Efficiency:** ~137 bytes witness data. Requires coordination between parties for every transaction, but maximum security.',
+            efficiency: '⚡ **Efficiency:** ~144 bytes witness data in SegWit (two signatures). Requires coordination between parties for every transaction, but maximum security.',
             security: '✅ **Security benefits:** Strongest security - requires compromise of BOTH keys to steal funds. Protects against single key compromise, impulsive spending, and unauthorized transactions.',
             bestFor: '✅ **Best for:** High-value storage, business partnerships, situations requiring mutual consent, protection against single-person compromise or coercion'
         },
@@ -447,7 +447,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Any 2 of: Alice, Bob, Charlie (flexible majority control)',
             useCase: '**Majority Multisig:** Any 2 out of 3 parties can approve transactions. Perfect for small boards, family trusts, or adding redundancy while maintaining control. Like corporate voting where majority wins.',
             examples: '💡 **Real-world examples:** Board of directors treasury, family trust with multiple trustees, business with 3 partners, estate planning with beneficiaries, crypto startup founder funds',
-            efficiency: '⚡ **Efficiency:** Variable witness size depending on which 2 keys sign (~170-200 bytes). Good balance of security and usability.',
+            efficiency: '⚡ **Efficiency:** Variable witness size depending on which 2 keys sign (~180-185 bytes in SegWit, varies by which 2 signatures are used). Good balance of security and usability.',
             security: '✅ **Security benefits:** Survives 1 key loss or compromise. Prevents single-person control while allowing majority decisions. More resilient than 2-of-2 but less than single key.',
             bestFor: '✅ **Best for:** Small group control, estate planning, business partnerships with 3+ people, backup scenarios where 1 key might be lost, decision-making that benefits from consensus'
         },
@@ -456,7 +456,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice: Immediate spending (instant access)\n⏰ Bob: After 144 blocks (~1 day) delay',
             useCase: '**Emergency Recovery with Cooling Period:** Alice has daily control, Bob can recover funds but must wait. Prevents rushed decisions and provides time for Alice to intervene if needed. Like a bank account with both owner access and emergency power of attorney.',
             examples: '💡 **Real-world examples:** Personal wallet with family backup, business owner with partner recovery, elderly parent with adult child backup, trader with emergency contact access',
-            efficiency: '⚡ **Efficiency:** Alice\'s path is efficient (~73 bytes), Bob\'s path is larger (~105 bytes) due to timelock verification.',
+            efficiency: '⚡ **Efficiency:** Alice\'s path in SegWit (~72 bytes), Bob\'s path is larger (~105 bytes) due to timelock verification.',
             security: '✅ **Security benefits:** Alice retains full control while providing recovery option. 24-hour delay gives Alice time to move funds if Bob\'s key is compromised. Prevents immediate theft through Bob\'s key.',
             bestFor: '✅ **Best for:** Personal wallets needing backup, elderly users with trusted family, business continuity planning, any scenario where primary user wants emergency recovery with built-in warning time'
         },
@@ -465,7 +465,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice: Immediate spending (instant access)\n⏰ Bob: Can spend after 144 blocks (~1 day) delay',
             useCase: '**Basic Recovery Wallet:** Alice has normal control, Bob can recover funds after waiting 1 day. This or() pattern creates two independent spending paths. Compiles to or_d structure where Alice\'s path uses DUP-IF for efficiency.',
             examples: '💡 **Real-world examples:** Personal wallet with trusted backup, spouse recovery access, business partner emergency key, parent-child shared wallet with safety delay',
-            efficiency: '⚡ **Efficiency:** Alice\'s path is optimized (~73 bytes). Bob\'s path requires both signature and timelock verification (~105 bytes). The or_d pattern allows Alice\'s path to "consume" the condition immediately.',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is optimized in SegWit (~72 bytes). Bob\'s path requires both signature and timelock verification (~105 bytes). The or_d pattern allows Alice\'s path to "consume" the condition immediately.',
             security: '✅ **Security benefits:** Simple two-path design. Alice maintains full daily control. 24-hour delay prevents immediate compromise if Bob\'s key is stolen. Bob cannot spend without waiting the full delay period.',
             bestFor: '✅ **Best for:** Beginners learning timelock concepts, simple backup scenarios, situations requiring straightforward recovery without complex multisig, demonstrating basic or() and older() usage'
         },
@@ -474,7 +474,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 David: Immediate spending (Taproot/Schnorr context)',
             useCase: '**Modern Single Key:** Uses Taproot\'s X-only public keys (32 bytes vs 33 bytes) with Schnorr signatures. More efficient, more private, and enables advanced scripting. The future of single-key Bitcoin wallets.',
             examples: '💡 **Real-world examples:** Modern hardware wallets, Lightning Network wallets, privacy-focused personal wallets, wallets that might later upgrade to complex scripts',
-            efficiency: '⚡ **Efficiency:** Smaller keys (32 vs 33 bytes), smaller signatures (~64 vs 71 bytes), better batch verification, and identical on-chain appearance regardless of underlying complexity.',
+            efficiency: '⚡ **Efficiency:** Smaller keys (32 vs 33 bytes), smaller signatures (~64 vs ~72 bytes), better batch verification, and identical on-chain appearance regardless of underlying complexity.',
             security: '✅ **Security benefits:** Same security as regular pubkeys but with better privacy (all Taproot outputs look identical). Enables "pay-to-contract" and other advanced features.',
             bestFor: '✅ **Best for:** Modern applications, privacy-conscious users, wallets that might later add complex conditions, Lightning Network, applications requiring batch signature verification'
         },
@@ -492,7 +492,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Any 2 of: Alice, Bob, Charlie (board majority)\n⏰ Eva (CEO): After January 1, 2026 (time-delayed executive access)',
             useCase: '**Corporate Treasury:** Daily operations require board majority (2-of-3), but CEO gets emergency access after a specific date. Perfect for businesses with board governance but executive emergency powers.',
             examples: '💡 **Real-world examples:** Startup treasury with founder override, nonprofit with board control plus executive director emergency access, family business with multiple decision-makers',
-            efficiency: '⚡ **Efficiency:** Board path uses threshold efficiency (~170-200 bytes), CEO path adds timelock verification (~105 bytes).',
+            efficiency: '⚡ **Efficiency:** Board path uses threshold efficiency in SegWit (~180-185 bytes), CEO path adds timelock verification (~105 bytes in SegWit).',
             security: '✅ **Security benefits:** Board control prevents single-person decisions, time-delayed CEO access provides emergency recovery without immediate risk, specific date prevents indefinite executive power.',
             bestFor: '✅ **Best for:** Corporate treasuries, nonprofits, family businesses, any organization needing board control with executive emergency access, succession planning'
         },
@@ -501,7 +501,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice: Immediate spending (95% probability weight - primary path)\n⏰ Bob + Charlie + Eva: 2-of-3 after 1008 blocks (~1 week) emergency consensus',
             useCase: '**Personal Wallet with Family Recovery:** Alice controls daily spending, but family/friends can recover funds if Alice is unavailable for a week. The 95@ weight tells the compiler to optimize for Alice\'s path since it\'s used 95% of the time.',
             examples: '💡 **Real-world examples:** Individual with trusted family backup, solo business owner with partner emergency access, crypto enthusiast with friend/family recovery network, elderly user with adult children backup',
-            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized due to probability weight. Recovery path is larger (~200+ bytes) but rarely used.',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized due to probability weight (~72 bytes in SegWit). Recovery path is larger in SegWit (~200+ bytes, 2-of-3 threshold plus timelock) but rarely used.',
             security: '✅ **Security benefits:** Alice retains full control, 1-week delay gives Alice time to respond to unauthorized recovery attempts, requires 2-of-3 consensus prevents single family member compromise.',
             bestFor: '✅ **Best for:** Individual wallets with trusted emergency contacts, estate planning, any scenario where primary user wants family backup without compromising daily control'
         },
@@ -510,7 +510,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice: Immediate spending (95@ probability weight - highly optimized)\n⏰ Bob + Charlie + Eva: 2-of-3 consensus after 1008 blocks (~1 week)',
             useCase: '**Weighted Recovery Wallet:** Alice has complete daily control with 95@ probability weighting for maximum efficiency. Family can recover funds through 2-of-3 consensus after 1 week delay. The high weight ratio (95@) tells the compiler Alice\'s path will be used 95% of the time.',
             examples: '💡 **Real-world examples:** Solo trader with family emergency backup, individual crypto holder with trusted recovery network, business owner with partner emergency access, crypto enthusiast with friend circle recovery',
-            efficiency: '⚡ **Efficiency:** Alice\'s path is extremely optimized (~64-73 bytes) due to 95@ weight. Recovery path is larger (~200+ bytes) with thresh(2,3) logic plus timelock. The @ syntax enables compiler optimization based on expected usage.',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is extremely optimized (~72 bytes in SegWit) due to 95@ weight. Recovery path is larger in SegWit (~200+ bytes, 2-of-3 threshold plus timelock). The @ syntax enables compiler optimization based on expected usage.',
             security: '✅ **Security benefits:** Alice maintains full control with no restrictions. 1-week delay provides substantial protection against unauthorized recovery. Requires 2-of-3 family consensus prevents single compromised key from triggering recovery.',
             bestFor: '✅ **Best for:** Advanced users understanding probability weights, scenarios with clear primary user (95% usage), situations requiring family backup without daily interference, demonstrating @ weight syntax optimization'
         },
@@ -519,7 +519,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice + (Bob + secret OR wait 1 year)',
             useCase: '**Two-Factor Authentication Wallet:** Alice must always sign, plus either Bob (second device/key) with a secret hash, or Alice alone after waiting 1 year. Like 2FA on your crypto wallet - primary key plus second factor, with long-term recovery.',
             examples: '💡 **Real-world examples:** High-security personal wallet, crypto trader with hardware + mobile 2FA, business owner with primary + backup key + secret, paranoid holder with multiple security layers',
-            efficiency: '⚡ **Efficiency:** Alice+Bob path is moderate (~137 bytes), Alice+secret path adds hash verification (~170 bytes), Alice-alone path after 1 year includes timelock (~105 bytes).',
+            efficiency: '⚡ **Efficiency:** Alice+Bob path in SegWit (~144 bytes for two signatures), Alice+secret path adds hash verification (~170 bytes in SegWit), Alice-alone path after 1 year includes timelock (~105 bytes in SegWit).',
             security: '✅ **Security benefits:** Alice always required prevents device compromise, secret hash prevents Bob device compromise, 1-year delay prevents rushed recovery, multiple security factors.',
             bestFor: '✅ **Best for:** High-value wallets, users comfortable with complexity, scenarios requiring strong 2FA, professional traders, anyone wanting multiple security layers with recovery options'
         },
@@ -537,7 +537,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 Alice: Immediate spending (9@ probability weight - optimized for daily use)\n⏰ Bob + Charlie + Eva + Frank: 3-of-4 after 1 year (family consensus for emergency)',
             useCase: '**Long-term Savings with Deterrent:** Alice controls daily spending but faces family oversight for emergency recovery. The 9@ weight optimizes for Alice while the 1-year delay discourages frequent spending and provides substantial family intervention time. Compiles to or_d structure with Alice\'s path prioritized in the DUP-IF pattern.',
             examples: '💡 **Real-world examples:** Retirement savings account, long-term investment fund, addiction recovery wallet with family oversight, high-value HODL strategy with family safety net',
-            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized (~64 bytes) due to 9@ weight, family recovery path is larger (~250+ bytes) but designed for rare use. The @ syntax tells the compiler the probability ratio for optimization.',
+            efficiency: '⚡ **Efficiency:** Alice\'s path is highly optimized in SegWit (~72 bytes) due to 9@ weight, family recovery path is larger in SegWit (~250+ bytes, 3-of-4 threshold plus timelock) but designed for rare use. The @ syntax tells the compiler the probability ratio for optimization.',
             security: '✅ **Security benefits:** Alice maintains control, 1-year delay prevents impulsive family intervention, 3-of-4 consensus prevents single family member compromise, probability weight optimizes for expected usage.',
             bestFor: '✅ **Best for:** Long-term savings, retirement planning, addiction recovery scenarios, high-value HODL strategies, family wealth management, anyone wanting spending deterrents with family backup'
         },
@@ -546,7 +546,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '⏰ Any 2 of: Alice, Bob, Charlie (activated ONLY after January 1, 2026)',
             useCase: '**Scheduled Fund Release:** Funds cannot be spent by anyone until a specific date, then require 2-of-3 consensus. Perfect for vesting schedules, trust fund releases, planned distributions, or any scenario requiring future activation.',
             examples: '💡 **Real-world examples:** Employee vesting schedule, trust fund release to beneficiaries, scheduled charity donations, escrow for future projects, company bonus pool release date',
-            efficiency: '⚡ **Efficiency:** All paths require timelock verification plus threshold logic (~200+ bytes), but prevents any spending before activation date.',
+            efficiency: '⚡ **Efficiency:** All paths require timelock verification plus threshold logic (~200+ bytes in SegWit), but prevents any spending before activation date.',
             security: '✅ **Security benefits:** Absolute prevention of early spending (even with all signatures), requires majority consensus after activation, immutable schedule prevents coercion or impulsive changes.',
             bestFor: '✅ **Best for:** Vesting schedules, trust funds, scheduled distributions, escrow services, any scenario requiring guaranteed future activation with group control, regulatory compliance requiring time delays'
         },
@@ -554,8 +554,8 @@ window.showPolicyDescription = function(exampleId) {
             title: '📄 Multi-Branch OR Policy - Taproot Key-Path Optimization',
             conditions: '🔓 David: Key-path spending (most efficient - just a signature)\n🔓 Helen: Script-path spending (reveal script + signature)\n🔓 Uma: Script-path spending (reveal script + signature)',
             useCase: '**Taproot Smart Optimization:** This policy demonstrates how Taproot automatically optimizes OR conditions. Instead of 3 script leaves, it creates: David as the internal key (key-path spending) + Helen/Uma as script leaves. David gets the most efficient spending path, while Helen/Uma share the script tree.',
-            examples: '💡 **Perfect Optimization:** The miniscript library intelligently chose David for key-path spending (no script revelation needed) and put Helen/Uma in the script tree. This is more efficient than forcing all three into script paths. Switch to "Taproot compilation (multi-leaf TapTree)" mode to see the tr(David,{pk(Helen),pk(Uma)}) structure.',
-            efficiency: '⚡ **Efficiency:** David spends with just 64 bytes (signature only). Helen/Uma each need ~34 bytes script + 64 bytes signature = ~98 bytes. Key-path spending is the most efficient option in Taproot. Total possible: key-path (64B) vs script-path (~98B).',
+            examples: '💡 **Perfect Optimization:** The compiler chooses David for key-path spending (no script revelation needed) and puts Helen/Uma in the script tree. This is more efficient than forcing all three into script paths. Switch to "Taproot compilation (multi-leaf TapTree)" mode to see the tr(David,{pk(Helen),pk(Uma)}) structure.',
+            efficiency: '⚡ **Efficiency:** David spends with just 64 bytes (signature only). Helen/Uma each need ~34 bytes script + 64 bytes signature + control block = ~110 bytes. Key-path spending is the most efficient option in Taproot. Total possible: key-path (64B) vs script-path (~110B).',
             security: '✅ **Security benefits:** David\'s spending reveals no scripts or other participants. Helen/Uma spending only reveals their specific script, not David\'s key or the other person\'s script. Maximum privacy through selective revelation.',
             bestFor: '✅ **Best for:** Scenarios where one party (David) is primary/preferred and others are alternatives, inheritance with preferred heir + backups, business with primary signer + emergency alternatives, demonstrating Taproot\'s intelligent optimization over naive 3-leaf structures'
         },
@@ -573,7 +573,7 @@ window.showPolicyDescription = function(exampleId) {
             conditions: '🔓 David (Owner): Immediate access anytime\n🔓 2-of-3 Heirs: Access after 6 months (26,280 blocks)\n🔓 Heirs: Uma, VaultXOnly1, VaultXOnly2',
             useCase: '**Family Inheritance Planning:** David maintains full control during his lifetime with immediate spending rights. If David becomes incapacitated or passes away, a 2-of-3 threshold of heirs (Uma, VaultXOnly1, VaultXOnly2) can access the funds after a substantial 6-month waiting period. All keys are X-only format for optimal Taproot usage.',
             examples: '💡 **Estate Planning with X-only Keys:** The 6-month timelock serves multiple purposes: gives David time to recover lost keys, prevents immediate family disputes during emotional periods, allows legal processes to unfold, and ensures David can always override heir attempts during his lifetime. All heir keys (VaultXOnly1, VaultXOnly2) are X-only format, perfect for Taproot scripts.',
-            efficiency: '⚡ **Taproot Optimization:** Perfect use case for Taproot! David\'s normal spending (99.9% of transactions) uses key-path spending - just 64 bytes, maximum privacy, reveals nothing about heirs or inheritance structure. All keys are X-only format for optimal Taproot efficiency. **Switch to "Taproot (Key + script path)" to see how David\'s key becomes the internal key, with the complex inheritance logic hidden until needed.**',
+            efficiency: '⚡ **Taproot Optimization:** Perfect use case for Taproot! David\'s normal spending uses key-path spending - just 64 bytes, maximum privacy, reveals nothing about heirs or inheritance structure. All keys are X-only format for optimal Taproot efficiency. **Switch to "Taproot (Key + script path)" to see how David\'s key becomes the internal key, with the complex inheritance logic hidden until needed.**',
             security: '✅ **Long-term Security:** 26,280 blocks ≈ 26 weeks provides substantial buffer against attacks, accidents, or family conflicts. David cannot be locked out by heirs. Heirs cannot be disinherited by single key loss (2-of-3 redundancy with Uma, VaultXOnly1, VaultXOnly2). Time delay prevents emotional or fraudulent inheritance attempts.',
             bestFor: '✅ **Best for:** Family wealth preservation with Taproot optimization, estate planning using X-only keys, long-term savings with inheritance provisions, business succession planning, any scenario where immediate control is desired but eventual family access is crucial, showcasing Taproot\'s privacy benefits with proper X-only key usage'
         },
