@@ -662,13 +662,13 @@ export class MiniscriptCompiler {
                             successMsg += `<br>`;
                         }
                         
-                        successMsg += `Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${displayDescriptor}</span><br>`;
+                        successMsg += `Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
                         
                         // Add Data field for all Taproot contexts
                         if (result.script) {
                             // Remove OP_1 (51) + push32 (20) prefix to show just the tweaked key
                             const tweakedKey = result.script.substring(4);
-                            successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${tweakedKey}</span><br>`;
+                            successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${tweakedKey}</span><br>`;
                         }
                     } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         // Different calculation for Legacy vs Segwit contexts
@@ -740,10 +740,10 @@ export class MiniscriptCompiler {
                     if (result.script) {
                         if (isTaprootContext) {
                             // For Taproot contexts, show complete scriptPubKey as-is
-                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
+                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.script}</span><br>`;
                         } else {
                             // For non-Taproot contexts, show original script in HEX
-                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
+                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.script}</span><br>`;
                         }
                     }
                     if (result.script_asm) {
@@ -772,16 +772,16 @@ export class MiniscriptCompiler {
                             }
                             
                             if (leafAsm) {
-                                successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${leafAsm}</span><br>`;
+                                successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${leafAsm}</span><br>`;
                             }
-                            successMsg += `ASM (scriptPubKey):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
+                            successMsg += `ASM (scriptPubKey):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
                         } else {
                             // For other contexts, show normal ASM
-                            successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
+                            successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
                         }
                     }
                     if (result.address) {
-                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.address}</span>`;
+                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.address}</span>`;
                         
                     }
                 }
@@ -1090,7 +1090,7 @@ export class MiniscriptCompiler {
                     
                     // Add hex, asm, and address
                     if (result.script) {
-                        successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
+                        successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.script}</span><br>`;
                     }
                     if (result.script_asm) {
                         // Create simplified version with key names (same as script field)
@@ -1101,10 +1101,10 @@ export class MiniscriptCompiler {
                         if (showKeyNames && this.keyVariables.size > 0) {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
-                        successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
+                        successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
                     }
                     if (result.address) {
-                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.address}</span>`;
+                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.address}</span>`;
                     }
                 }
                 
@@ -1250,9 +1250,9 @@ export class MiniscriptCompiler {
         } else {
             // Standard miniscript display
             return `
-                <div style="margin-top: 10px; text-align: left;">
+                <div style="margin-top: 10px; text-align: left; font-size: 13px;">
                     Generated Miniscript:
-                    <code style="display: block; margin: 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace;">${miniscript}</code>
+                    <code style="display: block; margin: 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace; font-size: 12px;">${miniscript}</code>
                     <div style="color: var(--text-secondary); font-size: 13px; margin-top: 10px;">
                         ${miniscript.match(/^\s*\{.*\}\s*$/) ? 
                             '💡 Policy compiled into multiple miniscript expressions. Cannot load into miniscript editor. Switch to Taproot compilation (multi-leaf TapTree) mode to select your miniscript expression.' :
@@ -1315,9 +1315,9 @@ export class MiniscriptCompiler {
         
         // Multi-leaf mode: full taproot information
         content += `
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; font-size: 13px;">
                     Descriptor:<br>
-                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px; word-break: break-all; overflow-wrap: anywhere;">
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 12px; word-break: break-all; overflow-wrap: anywhere;">
                         ${descriptor}
                     </div>
                 </div>`;
@@ -1332,9 +1332,9 @@ export class MiniscriptCompiler {
                 const inputWeight = totalWeight - scriptWeight;
                 
                 content += `
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; font-size: 13px;">
                     <strong>Weight Information:</strong><br>
-                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 12px;">
                         Script: ${scriptWeight} WU<br>
                         Input: ${inputWeight}.000000 WU<br>
                         Total: ${totalWeight}.000000 WU
@@ -1342,9 +1342,9 @@ export class MiniscriptCompiler {
                 </div>`;
             } else if (result.max_satisfaction_size) {
                 content += `
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; font-size: 13px;">
                     <strong>Weight Information:</strong><br>
-                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 12px;">
                         Input: ${result.max_satisfaction_size}.000000 WU<br>
                         Total: ${result.script_size + result.max_satisfaction_size}.000000 WU
                     </div>
@@ -1363,9 +1363,9 @@ export class MiniscriptCompiler {
         const isNUMSKey = internalKey && (internalKey.includes('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0') || displayInternalKey === 'NUMS');
         
         content += `
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; font-size: 13px;">
                     Taproot Structure:<br>
-                    <div style="margin: 4px 0; font-family: monospace; font-size: 13px;">
+                    <div style="margin: 4px 0; font-family: monospace; font-size: 12px;">
                         • Internal Key: ${displayInternalKey}${isNUMSKey ? ' ("Nothing Up My Sleeve") - unspendable key, disables key-path spending' : ' (key-path spending)'}
         `;
         
@@ -4303,7 +4303,7 @@ export class MiniscriptCompiler {
                     </button>
                 </div>
             </div>
-            <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted); font-style: italic;">
+            <div id="address-display" style="word-break: break-all; font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted); font-style: italic;">
                 Address will appear here after compilation
             </div>
         `;
@@ -4589,7 +4589,7 @@ export class MiniscriptCompiler {
                         </button>
                     </div>
                 </div>
-                <div id="address-display" style="word-break: break-all; font-family: monospace; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);" data-placeholder="Address will appear here after compilation">
+                <div id="address-display" style="word-break: break-all; font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; background: var(--input-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);" data-placeholder="Address will appear here after compilation">
                     ${result.address}
                 </div>
             `;
@@ -5784,7 +5784,7 @@ export class MiniscriptCompiler {
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></h4>
-                <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto;">${message}</div>
+                <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">${message}</div>
                 ${treeHtml}
                 ${taprootInfoHtml}
             </div>
@@ -5938,9 +5938,9 @@ export class MiniscriptCompiler {
                                         <div style="margin-top: 12px;">
                                             Script path #${idx + 1}
                                             <div style="margin-top: 6px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${branchMiniscript}</span><br>
-                                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${branchAsm}</span><br>
-                                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${branchHex}</span><br>
+                                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${branchMiniscript}</span><br>
+                                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${branchAsm}</span><br>
+                                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${branchHex}</span><br>
                                                 Spending cost analysis:<br>
                                                 Sig: ${branch.sig_wu || 'N/A'} WU<br>
                                                 Script: ${branch.script_wu || 'N/A'} WU<br>
@@ -5962,9 +5962,9 @@ export class MiniscriptCompiler {
                         branchesContent = `
                             <div style="margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                                 Script path #1<br>
-                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">pk(David)</span><br>
-                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">script asm placeholder</span><br>
-                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">hex placeholder</span>
+                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">pk(David)</span><br>
+                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">script asm placeholder</span><br>
+                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">hex placeholder</span>
                             </div>
                         `;
                     }

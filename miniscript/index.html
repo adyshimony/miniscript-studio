@@ -62,7 +62,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             margin: 0;
             padding: 0;
             background: var(--bg-gradient);
@@ -135,7 +135,8 @@
             padding: 10px;
             border: 2px solid var(--border-color) !important;
             border-radius: 4px;
-            font-family: monospace;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
             resize: vertical;
             background: var(--container-bg);
             color: var(--text-color);
@@ -357,7 +358,6 @@
             font-size: 11px !important;
             padding: 4px 8px !important;
             min-width: 60px;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
         }
         
         code {
@@ -458,7 +458,7 @@
         }
         
         .expression-preview {
-            font-family: monospace;
+            font-family: 'Consolas', 'Courier New', monospace;
             color: var(--text-muted);
             font-size: 10px;
             word-break: break-all;
@@ -473,7 +473,7 @@
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 15px;
-            font-family: monospace;
+            font-family: 'Consolas', 'Courier New', monospace;
         }
         
         .error {
@@ -482,6 +482,7 @@
             color: var(--error-text);
             word-wrap: break-word;
             overflow-wrap: break-word;
+            font-size: 13px;
             white-space: pre-wrap;
         }
         
@@ -489,12 +490,20 @@
             background: var(--success-bg);
             border: 1px solid var(--success-border);
             color: var(--text-color);
+            font-size: 13px;
+        }
+
+        .success h4 {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 0;
         }
         
         .info {
             background: var(--info-bg);
             border: 1px solid var(--border-color);
             color: var(--text-color);
+            font-size: 13px;
         }
         
         .loading {
@@ -557,11 +566,11 @@
         .key-name {
             font-weight: 600;
             color: var(--text-secondary);
-            font-family: monospace;
+            font-family: 'Consolas', 'Courier New', monospace;
         }
 
         .key-value {
-            font-family: monospace;
+            font-family: 'Consolas', 'Courier New', monospace;
             color: var(--text-muted);
             font-size: 10px;
             word-break: break-all;
@@ -633,10 +642,6 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .tip-item {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-        }
-        
         @media (max-width: 768px) {
             .main-content {
                 padding: 10px;
@@ -974,7 +979,7 @@
                 height: 24px;
                 min-width: 24px;
                 min-height: 24px;
-                font-size: 12px;
+                font-size: 13px;
                 top: 15px;
                 right: 20px;
             }
@@ -1043,27 +1048,27 @@
             <!-- Policy description panel aligned with examples -->
             <div style="display: flex; gap: 20px; align-items: flex-start; margin-top: 15px;">
                 <div style="flex: 1;">
-                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="policy-examples-title">Basic examples:</h4>
+                    <h4 style="margin-bottom: 10px; color: var(--text-secondary); font-weight: 600; font-size: inherit;">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="policy-buttons-start">
-                        <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)', 'single')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Single key</button>
-                        <button onclick="showPolicyDescription('or'); loadPolicyExample('or(pk(Alice),pk(Bob))', 'or')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR keys</button>
-                        <button onclick="showPolicyDescription('and'); loadPolicyExample('and(pk(Alice),pk(Bob))', 'and')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">AND keys</button>
-                        <button onclick="showPolicyDescription('threshold'); loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))', 'threshold')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2-of-3 Threshold</button>
-                        <button onclick="showPolicyDescription('alice_or_bob_timelock'); loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))', 'alice_or_bob_timelock')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
-                        <button onclick="showPolicyDescription('testnet_xpub'); loadPolicyExample('pk(TestnetKey)', 'testnet_xpub')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Testnet xpub</button>
+                        <button onclick="showPolicyDescription('single'); loadPolicyExample('pk(Alice)', 'single')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Single key</button>
+                        <button onclick="showPolicyDescription('or'); loadPolicyExample('or(pk(Alice),pk(Bob))', 'or')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">OR keys</button>
+                        <button onclick="showPolicyDescription('and'); loadPolicyExample('and(pk(Alice),pk(Bob))', 'and')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">AND keys</button>
+                        <button onclick="showPolicyDescription('threshold'); loadPolicyExample('thresh(2,pk(Alice),pk(Bob),pk(Charlie))', 'threshold')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">2-of-3 Threshold</button>
+                        <button onclick="showPolicyDescription('alice_or_bob_timelock'); loadPolicyExample('or(pk(Alice),and(pk(Bob),older(144)))', 'alice_or_bob_timelock')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Alice OR (Bob + 1 day)</button>
+                        <button onclick="showPolicyDescription('testnet_xpub'); loadPolicyExample('pk(TestnetKey)', 'testnet_xpub')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Testnet xpub</button>
                     </div>
-                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
+                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary); font-weight: 600; font-size: inherit;">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
-                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eva),after(1767225600)))', 'corporate')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Corporate Wallet</button>
-                        <button onclick="showPolicyDescription('emergency_recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eva)),older(1008)))', 'emergency_recovery')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Emergency Recovery</button>
-                        <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))', 'twofa')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">2FA + Backup</button>
-                        <button onclick="showPolicyDescription('hodl'); loadPolicyExample('or(9@pk(Alice),and(thresh(3,pk(Bob),pk(Charlie),pk(Eva),pk(Frank)),older(52560)))', 'hodl')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">HODL Wallet</button>
-                        <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))', 'timelocked_thresh')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelocked Multisig</button>
-                        <button onclick="showPolicyDescription('atomic_swap'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),sha256(e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317)),older(144)))', 'atomic_swap')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Atomic Swap</button>                       
-                        <button onclick="showPolicyDescription('xonly'); loadPolicyExample('pk(David)', 'xonly')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">David (Taproot)</button>                        
-                        <button onclick="showPolicyDescription('multi_branch'); loadPolicyExample('or(pk(David),or(pk(Helen),pk(Uma)))', 'multi_branch', 'taproot-keypath')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Multi-Branch OR (Taproot)</button>
-                        <button onclick="showPolicyDescription('lightning_channel'); loadPolicyExample('or(and(pk(David),pk(Helen)),or(and(pk(DavidTimeout),older(1008)),and(pk(HelenTimeout),older(1008))))', 'lightning_channel', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Lightning Channel (Taproot)</button>
-                        <button onclick="showPolicyDescription('inheritance_vault'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Uma),pk(VaultXOnly1),pk(VaultXOnly2)),older(26280)))', 'inheritance_vault', 'taproot-keypath')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Inheritance Vault (Taproot)</button>
+                        <button onclick="showPolicyDescription('corporate'); loadPolicyExample('or(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),and(pk(Eva),after(1767225600)))', 'corporate')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Corporate Wallet</button>
+                        <button onclick="showPolicyDescription('emergency_recovery'); loadPolicyExample('or(95@pk(Alice),and(thresh(2,pk(Bob),pk(Charlie),pk(Eva)),older(1008)))', 'emergency_recovery')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Emergency Recovery</button>
+                        <button onclick="showPolicyDescription('twofa'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8)),older(52560)))', 'twofa')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">2FA + Backup</button>
+                        <button onclick="showPolicyDescription('hodl'); loadPolicyExample('or(9@pk(Alice),and(thresh(3,pk(Bob),pk(Charlie),pk(Eva),pk(Frank)),older(52560)))', 'hodl')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">HODL Wallet</button>
+                        <button onclick="showPolicyDescription('timelocked_thresh'); loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))', 'timelocked_thresh')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Timelocked Multisig</button>
+                        <button onclick="showPolicyDescription('atomic_swap'); loadPolicyExample('and(pk(Alice),or(and(pk(Bob),sha256(e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317)),older(144)))', 'atomic_swap')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Atomic Swap</button>                       
+                        <button onclick="showPolicyDescription('xonly'); loadPolicyExample('pk(David)', 'xonly')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">David (Taproot)</button>                        
+                        <button onclick="showPolicyDescription('multi_branch'); loadPolicyExample('or(pk(David),or(pk(Helen),pk(Uma)))', 'multi_branch', 'taproot-keypath')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Multi-Branch OR (Taproot)</button>
+                        <button onclick="showPolicyDescription('lightning_channel'); loadPolicyExample('or(and(pk(David),pk(Helen)),or(and(pk(DavidTimeout),older(1008)),and(pk(HelenTimeout),older(1008))))', 'lightning_channel', 'taproot-multi')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Lightning Channel (Taproot)</button>
+                        <button onclick="showPolicyDescription('inheritance_vault'); loadPolicyExample('or(pk(David),and(thresh(2,pk(Uma),pk(VaultXOnly1),pk(VaultXOnly2)),older(26280)))', 'inheritance_vault', 'taproot-keypath')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Inheritance Vault (Taproot)</button>
 
                     </div>
                     
@@ -1073,23 +1078,23 @@
                         <div class="radio-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="policy-context" value="legacy" style="margin: 0;">
-                                <span>Legacy (p2SH)</span>
+                                <span style="font-size: 13px;">Legacy (p2SH)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="policy-context" value="segwit" checked style="margin: 0;">
-                                <span>Segwit v0 (p2WSH)</span>
+                                <span style="font-size: 13px;">Segwit v0 (p2WSH)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="policy-context" value="taproot" style="margin: 0;">
-                                <span>Taproot (Single leaf)</span>
+                                <span style="font-size: 13px;">Taproot (Single leaf)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="policy-context" value="taproot-multi" style="margin: 0;">
-                                <span>Taproot (Script path)</span>
+                                <span style="font-size: 13px;">Taproot (Script path)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="policy-context" value="taproot-keypath" style="margin: 0;">
-                                <span>Taproot (Key path + script path)</span>
+                                <span style="font-size: 13px;">Taproot (Key path + script path)</span>
                             </label>
                         </div>
                     </div>
@@ -1100,7 +1105,7 @@
                             <h5 style="margin: 0; color: var(--accent-color); font-size: 14px;" id="policy-title">📄 Single Key Policy NEW</h5>
                             <span style="cursor: pointer; font-family: monospace; font-size: 14px; color: var(--text-secondary); user-select: none;" onclick="togglePolicyDescription()" id="policy-toggle">[-]</span>
                         </div>
-                        <div id="policy-expand-hint" style="display: none; color: var(--text-muted); font-size: 12px; font-style: italic; margin-bottom: 8px;">expand to see description</div>
+                        <div id="policy-expand-hint" style="display: none; color: var(--text-muted); font-size: 13px; font-style: italic; margin-bottom: 8px;">expand to see description</div>
                         <div id="policy-content">
                             <p style="margin: 0; color: var(--secondary-text); font-size: 13px; line-height: 1.4;">Click any policy example button to learn about its spending conditions and use cases.</p>
                         </div>
@@ -1112,7 +1117,7 @@
         
         <div class="input-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <label for="expression-input">Miniscript:</label>
+                <label for="expression-input" style="font-weight: 600; color: var(--text-secondary);">Miniscript:</label>
                 <div style="display: flex; align-items: center; gap: 0px;">
                     <button id="key-names-toggle" onclick="toggleKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🏷️
@@ -1166,31 +1171,31 @@
             <!-- Miniscript description panel aligned with examples -->
             <div style="display: flex; gap: 20px; align-items: flex-start; margin-top: 15px;">
                 <div style="flex: 1;">
-                    <h4 style="margin-bottom: 10px; color: var(--text-secondary);" id="miniscript-examples-title">Basic examples:</h4>
+                    <h4 style="margin-bottom: 10px; color: var(--text-secondary); font-weight: 600; font-size: inherit;">Basic examples:</h4>
                     <div class="button-group" style="align-items: flex-start;" id="miniscript-buttons-start">
-                        <button onclick="showMiniscriptDescription('pkh'); loadExample('pkh(Alice)', 'pkh')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Pay-to-pubkey-hash</button>
-                        <button onclick="showMiniscriptDescription('wrap'); loadExample('c:pk_k(Alice)', 'wrap')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Wrapped key</button>
-                        <button onclick="showMiniscriptDescription('or_i'); loadExample('or_i(pk(Alice),pk(Bob))', 'or_i')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">OR with if-else</button>
-                        <button onclick="showMiniscriptDescription('complex'); loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))', 'complex')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Alice AND (Bob OR Charlie)</button>
-                        <button onclick="showMiniscriptDescription('timelock'); loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))', 'timelock')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
-                        <button onclick="showMiniscriptDescription('after'); loadExample('and_v(v:pk(Alice),after(1767225600))', 'after')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Absolute timelock</button>
+                        <button onclick="showMiniscriptDescription('pkh'); loadExample('pkh(Alice)', 'pkh')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Pay-to-pubkey-hash</button>
+                        <button onclick="showMiniscriptDescription('wrap'); loadExample('c:pk_k(Alice)', 'wrap')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Wrapped key</button>
+                        <button onclick="showMiniscriptDescription('or_i'); loadExample('or_i(pk(Alice),pk(Bob))', 'or_i')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">OR with if-else</button>
+                        <button onclick="showMiniscriptDescription('complex'); loadExample('and_v(v:pk(Alice),or_b(pk(Bob),s:pk(Charlie)))', 'complex')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Alice AND (Bob OR Charlie)</button>
+                        <button onclick="showMiniscriptDescription('timelock'); loadExample('and_v(v:pk(Alice),and_v(v:older(144),pk(Bob)))', 'timelock')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Timelock: Alice AND (1 day + Bob)</button>
+                        <button onclick="showMiniscriptDescription('after'); loadExample('and_v(v:pk(Alice),after(1767225600))', 'after')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Absolute timelock</button>
                     </div>
-                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary);">Complex examples:</h4>
+                    <h4 style="margin: 20px 0 10px 0; color: var(--text-secondary); font-weight: 600; font-size: inherit;">Complex examples:</h4>
                     <div class="button-group" style="align-items: flex-start;">
-                        <button onclick="showMiniscriptDescription('multisig'); loadExample('or_d(pk(Alice),or_d(pk(Bob),pk(Charlie)))', 'multisig')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">1-of-3 Multisig</button>
-                        <button onclick="showMiniscriptDescription('recovery'); loadExample('or_d(pk(Alice),and_v(v:pk(Bob),older(1008)))', 'recovery')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Recovery Wallet</button>
-                        <button onclick="showMiniscriptDescription('hash'); loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))', 'hash')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Hash + Timelock</button>
-                        <button onclick="showMiniscriptDescription('htlc_time'); loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))', 'htlc_time')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Time-based HTLC</button>
-                        <button onclick="showMiniscriptDescription('htlc_hash'); loadExample('or_d(pk(Alice),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),and_v(v:pk(Bob),older(144))))', 'htlc_hash')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Hash-based HTLC</button>
-                        <button onclick="showMiniscriptDescription('full_descriptor'); loadExample('pk(MainnetKey)', 'full_descriptor')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Full xpub descriptor</button>
-                        <button onclick="showMiniscriptDescription('hd_derivation'); loadExample('pk([C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/*)', 'hd_derivation')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🗝️ HD Wallet Derivation</button>                                               
-                        <button onclick="showMiniscriptDescription('range_descriptor'); loadExample('pk(RangeKey)', 'range_descriptor')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Multipath range <1;0>/*</button>
-                        <button onclick="showMiniscriptDescription('vault_complex'); loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(VaultKey4)),after(1753305229)),and_v(or_c(pkh(VaultKey6),v:thresh(2,pkh(VaultKey10),a:pkh(VaultKey15),a:pkh(VaultKey7),a:pkh(VaultKey2),a:pkh(VaultKey5))),after(1753298029))),and_v(or_c(pkh(VaultKey16),v:thresh(2,pkh(VaultKey11),a:pkh(VaultKey17),a:pkh(VaultKey8),a:pkh(VaultKey3))),after(1753290829))),and_v(or_c(pkh(VaultKey12),v:thresh(2,pkh(VaultKey13),a:pkh(VaultKey18),a:pkh(VaultKey9))),after(1753283629))),and_v(v:pk(VaultKey14),pk(VaultKey19)))', 'vault_complex')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🏦 Complex Vault</button>
-                        <button onclick="showMiniscriptDescription('joint_custody'); loadExample('andor(multi(2,jcKey1,jcKey2,jcKey3),or_i(and_v(v:pkh(saKey),after(1768176000)),thresh(2,pk(jcAg1),s:pk(jcAg2),s:pk(jcAg3),snl:after(1767225600))),and_v(v:thresh(2,pkh(recKey1),a:pkh(recKey2),a:pkh(recKey3)),after(1769817600)))', 'joint_custody')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">3-Key Joint Custody</button>
-                        <button onclick="showMiniscriptDescription('liana_wallet'); loadExample('or_i(and_v(v:thresh(1,pkh(LianaDesc1),a:pkh(LianaDesc2),a:pkh(LianaDesc3)),older(20)),or_i(and_v(v:pkh(LianaDesc4),older(19)),or_d(multi(2,LianaDesc5,LianaDesc6),and_v(v:pkh(LianaDesc7),older(18)))))', 'liana_wallet')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🦎 Liana Wallet</button>
-                        <button onclick="showMiniscriptDescription('inheritance'); loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Inheritance (Taproot)</button>
-                        <button onclick="showMiniscriptDescription('liquid_federation'); loadExample('or_d(multi_a(5,Fed1,Fed2,Fed3,Fed4,Fed5,Fed6,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))', 'liquid_federation', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">Liquid Federation (Taproot)</button>
-                        <button onclick="showMiniscriptDescription('taproot_multibranch'); loadExample('or_d(pk(Julia),and_v(v:pk(Karl),older(144)))', 'taproot_multibranch', 'taproot-multi')" class="secondary-btn" style="font-size: 12px; padding: 6px 12px;">🌳 Multi-Branch (Taproot)</button>
+                        <button onclick="showMiniscriptDescription('multisig'); loadExample('or_d(pk(Alice),or_d(pk(Bob),pk(Charlie)))', 'multisig')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">1-of-3 Multisig</button>
+                        <button onclick="showMiniscriptDescription('recovery'); loadExample('or_d(pk(Alice),and_v(v:pk(Bob),older(1008)))', 'recovery')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Recovery Wallet</button>
+                        <button onclick="showMiniscriptDescription('hash'); loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))', 'hash')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Hash + Timelock</button>
+                        <button onclick="showMiniscriptDescription('htlc_time'); loadExample('and_v(v:pk(Alice),or_d(pk(Bob),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),older(144))))', 'htlc_time')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Time-based HTLC</button>
+                        <button onclick="showMiniscriptDescription('htlc_hash'); loadExample('or_d(pk(Alice),and_v(v:hash160(6c60f404f8167a38fc70eaf8aa17ac351023bef8),and_v(v:pk(Bob),older(144))))', 'htlc_hash')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Hash-based HTLC</button>
+                        <button onclick="showMiniscriptDescription('full_descriptor'); loadExample('pk(MainnetKey)', 'full_descriptor')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Full xpub descriptor</button>
+                        <button onclick="showMiniscriptDescription('hd_derivation'); loadExample('pk([C8FE8D4F/48h/1h/123h/2h]tpubDDEe6Dc3LW1JEUzExDRZ3XBzcAzYxMTfVU5KojsTwXoJ4st6LzqgbFZ1HhDBdTptjXH9MwgdYG4K7MNJBfQktc6AoS8WeAWFDHwDTu99bZa/1/*)', 'hd_derivation')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">🗝️ HD Wallet Derivation</button>                                               
+                        <button onclick="showMiniscriptDescription('range_descriptor'); loadExample('pk(RangeKey)', 'range_descriptor')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Multipath range <1;0>/*</button>
+                        <button onclick="showMiniscriptDescription('vault_complex'); loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(VaultKey4)),after(1753305229)),and_v(or_c(pkh(VaultKey6),v:thresh(2,pkh(VaultKey10),a:pkh(VaultKey15),a:pkh(VaultKey7),a:pkh(VaultKey2),a:pkh(VaultKey5))),after(1753298029))),and_v(or_c(pkh(VaultKey16),v:thresh(2,pkh(VaultKey11),a:pkh(VaultKey17),a:pkh(VaultKey8),a:pkh(VaultKey3))),after(1753290829))),and_v(or_c(pkh(VaultKey12),v:thresh(2,pkh(VaultKey13),a:pkh(VaultKey18),a:pkh(VaultKey9))),after(1753283629))),and_v(v:pk(VaultKey14),pk(VaultKey19)))', 'vault_complex')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">🏦 Complex Vault</button>
+                        <button onclick="showMiniscriptDescription('joint_custody'); loadExample('andor(multi(2,jcKey1,jcKey2,jcKey3),or_i(and_v(v:pkh(saKey),after(1768176000)),thresh(2,pk(jcAg1),s:pk(jcAg2),s:pk(jcAg3),snl:after(1767225600))),and_v(v:thresh(2,pkh(recKey1),a:pkh(recKey2),a:pkh(recKey3)),after(1769817600)))', 'joint_custody')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">3-Key Joint Custody</button>
+                        <button onclick="showMiniscriptDescription('liana_wallet'); loadExample('or_i(and_v(v:thresh(1,pkh(LianaDesc1),a:pkh(LianaDesc2),a:pkh(LianaDesc3)),older(20)),or_i(and_v(v:pkh(LianaDesc4),older(19)),or_d(multi(2,LianaDesc5,LianaDesc6),and_v(v:pkh(LianaDesc7),older(18)))))', 'liana_wallet')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">🦎 Liana Wallet</button>
+                        <button onclick="showMiniscriptDescription('inheritance'); loadExample('and_v(v:pk(David),or_d(pk(Helen),and_v(v:pk(Ivan),older(52560))))', 'inheritance', 'taproot-multi')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Inheritance (Taproot)</button>
+                        <button onclick="showMiniscriptDescription('liquid_federation'); loadExample('or_d(multi_a(5,Fed1,Fed2,Fed3,Fed4,Fed5,Fed6,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))', 'liquid_federation', 'taproot-multi')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">Liquid Federation (Taproot)</button>
+                        <button onclick="showMiniscriptDescription('taproot_multibranch'); loadExample('or_d(pk(Julia),and_v(v:pk(Karl),older(144)))', 'taproot_multibranch', 'taproot-multi')" class="secondary-btn" style="font-size: 13px; padding: 6px 12px;">🌳 Multi-Branch (Taproot)</button>
 
                     </div>
                     
@@ -1200,23 +1205,23 @@
                         <div class="radio-group" style="display: flex; gap: 20px; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="context" value="legacy" style="margin: 0;">
-                                <span>Legacy (p2SH)</span>
+                                <span style="font-size: 13px;">Legacy (p2SH)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="context" value="segwit" checked style="margin: 0;">
-                                <span>Segwit v0 (p2WSH)</span>
+                                <span style="font-size: 13px;">Segwit v0 (p2WSH)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="context" value="taproot" style="margin: 0;">
-                                <span>Taproot (Single leaf)</span>
+                                <span style="font-size: 13px;">Taproot (Single leaf)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="context" value="taproot-multi" style="margin: 0;">
-                                <span>Taproot (Script path)</span>
+                                <span style="font-size: 13px;">Taproot (Script path)</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
                                 <input type="radio" name="context" value="taproot-keypath" style="margin: 0;">
-                                <span>Taproot (Key path + script path)</span>
+                                <span style="font-size: 13px;">Taproot (Key path + script path)</span>
                             </label>
                         </div>
                     </div>
@@ -1228,7 +1233,7 @@
                             <h5 style="margin: 0; color: var(--accent-color); font-size: 14px;" id="miniscript-title">⚙️ Single Key Miniscript</h5>
                             <span style="cursor: pointer; font-family: monospace; font-size: 14px; color: var(--text-secondary); user-select: none;" onclick="toggleMiniscriptDescription()" id="miniscript-toggle">[-]</span>
                         </div>
-                        <div id="miniscript-expand-hint" style="display: none; color: var(--text-muted); font-size: 12px; font-style: italic; margin-bottom: 8px;">expand to see description</div>
+                        <div id="miniscript-expand-hint" style="display: none; color: var(--text-muted); font-size: 13px; font-style: italic; margin-bottom: 8px;">expand to see description</div>
                         <div id="miniscript-content">
                             <p style="margin: 0; color: var(--secondary-text); font-size: 13px; line-height: 1.4;">Click any miniscript example button to learn about its structure and Bitcoin Script patterns.</p>
                         </div>
@@ -1243,12 +1248,12 @@
         
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">🔑 Key variables</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                     <p style="margin: 0; color: var(--text-muted); flex: 1;">Define key variables to use names like "Alice" and "Bob". Use public keys only!</p>
                     <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 10px; flex-shrink: 0;">
-                        <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 8px 12px; font-size: 12px;">🔄 Restore defaults</button>
-                        <button onclick="compiler.clearAllKeys()" class="danger-btn" style="padding: 8px 12px; font-size: 12px;">🗑️ Clear all</button>
+                        <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 8px 12px; font-size: 13px;">🔄 Restore defaults</button>
+                        <button onclick="compiler.clearAllKeys()" class="danger-btn" style="padding: 8px 12px; font-size: 13px;">🗑️ Clear all</button>
                     </div>
                 </div>
                 
@@ -1256,8 +1261,8 @@
                     <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">
                     <input type="text" id="key-value-input" placeholder="Key value (any format)">
                     <div style="display: flex; gap: 10px;">
-                        <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">➕ Add key</button>
-                        <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 12px; flex: 1;">🎲 Generate</button>
+                        <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 13px; flex: 1;">➕ Add key</button>
+                        <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 13px; flex: 1;">🎲 Generate</button>
                     </div>
                 </div>
                 
@@ -1291,7 +1296,7 @@
 
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">💾 Saved policies</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div id="policies-list">
                     <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved policies yet.</p>
                 </div>
@@ -1300,7 +1305,7 @@
 
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">📝 Saved miniscript</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div id="expressions-list">
                     <p style="color: var(--text-muted); font-style: italic; font-size: 14px;">No saved expressions yet.</p>
                 </div>
@@ -1308,8 +1313,8 @@
         </details>
         
         <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">📘 Policy reference</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">📘 Policy reference</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 
                 <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; font-size: 18px;">📖 What is Policy Language?</h3>
                 
@@ -1499,15 +1504,15 @@
                     </ul>
                 </div>
 
-                <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
+                <p style="margin: 10px 0; font-size: 13px; color: var(--text-muted);">
                     <strong>Reference:</strong> <a href="https://bitcoin.sipa.be/miniscript/" target="_blank" style="color: var(--border-focus); text-decoration: none;">https://bitcoin.sipa.be/miniscript/</a>
                 </p>
             </div>
         </details>
 
         <details style="margin-bottom: 20px;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">📚 Miniscript reference</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">📚 Miniscript reference</summary>
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 
                 <h3 style="color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px; font-size: 18px;">⚙️ What is Miniscript?</h3>
                 
@@ -1970,7 +1975,7 @@
                     The compiler supports Legacy (p2SH), Segwit v0 (p2WSH), and Taproot contexts.
                 </p>
 
-                <p style="margin: 10px 0; font-size: 12px; color: var(--text-muted);">
+                <p style="margin: 10px 0; font-size: 13px; color: var(--text-muted);">
                     <strong>Reference:</strong> <a href="https://bitcoin.sipa.be/miniscript/" target="_blank" style="color: var(--border-focus); text-decoration: none;">https://bitcoin.sipa.be/miniscript/</a>
                 </p>
             </div>
@@ -1978,7 +1983,7 @@
 
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">💡 Tips & Quick Help</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div style="display: grid; gap: 15px;">
                     <div class="tip-item">
                         <strong style="color: var(--text-color); font-size: 16px;">🏷️ Show key names:</strong>
@@ -2077,7 +2082,7 @@
 
         <details style="margin-bottom: 20px;">
             <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; font-size: 16px;">⚙️ Settings</summary>
-            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color); font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+            <div style="background: var(--info-bg); padding: 20px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border-color);">
                 <div style="display: grid; gap: 15px;">
                     <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
                         <div>
@@ -2177,10 +2182,10 @@
         <!-- Mobile-only icons section -->
         <div class="mobile-icons" style="display: none; height: 20px; align-items: center; justify-content: center; margin-top: 5px; border-top: 1px solid var(--border-color);">
             <div style="margin-top: 7px;">
-                <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="display: inline-block; margin: 0 6px; padding: 2px 6px; background: var(--container-bg); border: none; border-radius: 3px; color: var(--text-color); text-decoration: none; font-size: 12px; line-height: 1; transition: all 0.2s;" title="View source on GitHub">
+                <a href="https://github.com/adyshimony/miniscript-compiler" target="_blank" style="display: inline-block; margin: 0 6px; padding: 2px 6px; background: var(--container-bg); border: none; border-radius: 3px; color: var(--text-color); text-decoration: none; font-size: 13px; line-height: 1; transition: all 0.2s;" title="View source on GitHub">
                     🐙 View source
                 </a>
-                <a href="https://coinos.io/adys/receive" target="_blank" style="display: inline-block; margin: 0 6px; padding: 2px 6px; background: var(--container-bg); border: none; border-radius: 3px; color: var(--text-color); text-decoration: none; font-size: 12px; line-height: 1; transition: all 0.2s;" title="Buy me a beer 🍺">
+                <a href="https://coinos.io/adys/receive" target="_blank" style="display: inline-block; margin: 0 6px; padding: 2px 6px; background: var(--container-bg); border: none; border-radius: 3px; color: var(--text-color); text-decoration: none; font-size: 13px; line-height: 1; transition: all 0.2s;" title="Buy me a beer 🍺">
                     🍺 Buy me a beer
                 </a>
             </div>
@@ -2220,8 +2225,8 @@
             <p style="color: var(--text-secondary); margin-bottom: 10px;">Found keys in your expression. Select which ones to extract:</p>
             <div id="extract-error-message" style="display: none; background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); padding: 10px; border-radius: 4px; margin-bottom: 10px; font-size: 14px;"></div>
             <div class="button-group" style="margin-bottom: 10px; justify-content: flex-start;">
-                <button id="select-all-keys" class="secondary-btn" style="font-size: 12px; padding: 4px 10px;">Select All</button>
-                <button id="deselect-all-keys" class="secondary-btn" style="font-size: 12px; padding: 4px 10px;">Deselect All</button>
+                <button id="select-all-keys" class="secondary-btn" style="font-size: 13px; padding: 4px 10px;">Select All</button>
+                <button id="deselect-all-keys" class="secondary-btn" style="font-size: 13px; padding: 4px 10px;">Deselect All</button>
             </div>
             <div id="extract-keys-list" style="max-height: 400px; overflow-y: auto;">
                 <!-- Key extraction items will be added here dynamically -->
@@ -2338,16 +2343,16 @@
                 contentDiv.innerHTML = `
                     <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
                     <div style="margin-bottom: 10px;">
-                        <strong style="color: var(--text-color); font-size: 12px;">Spending Conditions:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); white-space: pre-line;">${desc.conditions}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Spending Conditions:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); white-space: pre-line;">${desc.conditions}</div>
                     </div>
                     <div style="margin-bottom: 10px;">
-                        <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Use Case:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
                     </div>
                     <div>
-                        <strong style="color: var(--text-color); font-size: 12px;">Security Notes:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Security Notes:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); line-height: 1.4;">${desc.security}</div>
                     </div>
                 `;
                 panel.style.display = 'block';
@@ -2512,20 +2517,20 @@
                 contentDiv.innerHTML = `
                     <h5 style="margin: 0 0 12px 0; color: var(--accent-color); font-size: 14px;">${desc.title}</h5>
                     <div style="margin-bottom: 10px;">
-                        <strong style="color: var(--text-color); font-size: 12px;">Structure:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Structure:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); line-height: 1.4; font-family: monospace; background: var(--hover-bg); padding: 6px; border-radius: 4px;">${desc.structure}</div>
                     </div>
                     <div style="margin-bottom: 10px;">
-                        <strong style="color: var(--text-color); font-size: 12px;">Bitcoin Script:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.bitcoinScript}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Bitcoin Script:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); line-height: 1.4;">${desc.bitcoinScript}</div>
                     </div>
                     <div style="margin-bottom: 10px;">
-                        <strong style="color: var(--text-color); font-size: 12px;">Use Case:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Use Case:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); line-height: 1.4;">${desc.useCase}</div>
                     </div>
                     <div>
-                        <strong style="color: var(--text-color); font-size: 12px;">Technical Notes:</strong>
-                        <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text); line-height: 1.4;">${desc.technical}</div>
+                        <strong style="color: var(--text-color); font-size: 13px;">Technical Notes:</strong>
+                        <div style="margin-top: 4px; font-size: 13px; color: var(--secondary-text); line-height: 1.4;">${desc.technical}</div>
                     </div>
                 `;
                 panel.style.display = 'block';
