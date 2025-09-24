@@ -984,6 +984,32 @@
                 right: 20px;
             }
         }
+
+        /* Fix Windows dropdown styling in dark theme */
+        select {
+            background: var(--container-bg) !important;
+            color: var(--text-color) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        select option {
+            background: var(--container-bg) !important;
+            color: var(--text-color) !important;
+        }
+
+        /* Ensure dropdowns work properly on Windows */
+        @media screen and (-ms-high-contrast: active), (-ms-high-contrast: none) {
+            select {
+                background: var(--container-bg) !important;
+                color: var(--text-color) !important;
+                border: 1px solid var(--border-color) !important;
+            }
+
+            select option {
+                background: var(--container-bg) !important;
+                color: var(--text-color) !important;
+            }
+        }
     </style>
     
     <div class="main-content">
