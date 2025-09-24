@@ -5001,7 +5001,7 @@ export class MiniscriptCompiler {
     showMiniscriptError(message) {
         const messagesDiv = document.getElementById('miniscript-messages');
         let additionalHelp = '';
-        
+
         // Check if this is a missing key variable error (same logic as policy errors)
         const keyLengthMatch = message.match(/pubkey string should be (?:66|130) (?:or \d+ )?digits(?: long)?, got: (\d+)/);
         if (keyLengthMatch) {
@@ -5013,7 +5013,7 @@ export class MiniscriptCompiler {
                 // Common key names that match this length
                 const commonKeys = ['Alice', 'Bob', 'Charlie', 'David', 'Eva', 'Frank', 'Lara', 'Helen', 'Ivan', 'Julia', 'Karl', 'TestnetKey', 'MainnetKey', 'jcKey1', 'jcKey2', 'jcKey3', 'saKey', 'jcAg1', 'jcAg2', 'jcAg3', 'recKey1', 'recKey2', 'recKey3'];
                 const missingKey = commonKeys.find(key => key.length === gotLength && expressionText.includes(key));
-                
+
                 if (missingKey) {
                     additionalHelp = `
 <div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
@@ -5021,12 +5021,12 @@ export class MiniscriptCompiler {
 <br><br>
 <strong>Your options:</strong>
 <br><br>
-<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your policy and lets you assign key variables to them</div>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your miniscript and lets you assign key variables to them</div>
 <div>→ <strong>Check Key variables section:</strong> Look below to see if "${missingKey}" already exists with a different value</div>
 <div>→ <strong>Add manually:</strong> Define "${missingKey}" yourself in the Key variables section with any valid key type</div>
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
-<button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
+<button onclick="compiler.extractKeysFromMiniscript()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your miniscript expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
 <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 60 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors, VaultXOnly1-2 X-only keys, and DavidTimeout/HelenTimeout timeout keys with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
@@ -5039,12 +5039,12 @@ export class MiniscriptCompiler {
 <br><br>
 <strong>Your options:</strong>
 <br><br>
-<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your policy and lets you assign key variables to them</div>
+<div>→ <strong>Extract keys:</strong> Auto-detects all undefined variables/keys in your miniscript and lets you assign key variables to them</div>
 <div>→ <strong>Check Key variables section:</strong> Look below to see if this variable exists or needs to be added</div>
 <div>→ <strong>Add manually:</strong> Define your custom variable in the Key variables section with any valid key type</div>
 <div>→ <strong>Restore defaults:</strong> Restore common test keys (Alice, Bob, Charlie, etc.) with pre-generated public keys.<br>&nbsp;&nbsp;Useful for examples that stopped working, usually due to a key deletion</div>
 <div style="margin-top: 10px; display: flex; gap: 10px;">
-<button onclick="compiler.extractKeysFromPolicy()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your policy expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
+<button onclick="compiler.extractKeysFromMiniscript()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Automatically scan your miniscript expression to find undefined variables and convert them to reusable key variables. Select which variables to extract and choose the appropriate key type for each.">🔑 Extract keys</button>
 <button onclick="compiler.restoreDefaultKeys()" class="secondary-btn" style="padding: 4px 8px; font-size: 12px; min-width: 120px;" title="Add 60 commonly used test keys (Alice, Bob, Charlie, David, Eva, Frank, NUMS, etc.) plus VaultKey1-19 range descriptors, VaultXOnly1-2 X-only keys, and DavidTimeout/HelenTimeout timeout keys with pre-generated public keys for each type. This won't overwrite existing keys with the same names.">🔄 Restore defaults</button>
 </div>
 </div>
