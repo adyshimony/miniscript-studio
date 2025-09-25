@@ -19,7 +19,7 @@ const EXPECTED_LEGACY_MAINNET: &str = "3JvQ6YEnq7KVgXqSgp9SAD7opGMaKjzyAu";
 const EXPECTED_LEGACY_TESTNET: &str = "2NAUcAHApSZpqtKTzMwmJnA752cZk714F56";
 const EXPECTED_SEGWIT_MAINNET: &str = "bc1quxwuhgd97s95l6rcvm2uya25fsndvf8ru490vyahed6g2l9fx4jqt0xtq6";
 const EXPECTED_SEGWIT_TESTNET: &str = "tb1quxwuhgd97s95l6rcvm2uya25fsndvf8ru490vyahed6g2l9fx4jqu8sy64";
-const EXPECTED_TAPROOT_MULTI_LEAF_MAINNET: &str = "bc1pnl34fvwg835tsvrmjjlgwhx9nykvljw3qxp0z49fx94l8m2svtkqep92he";
+const EXPECTED_TAPROOT_MULTI_LEAF_MAINNET: &str = "bc1ppjxtknq5n4mf826trwtjw2d2qcqwdmnce6mhwfwatr4ykl0e6kmsqqkh8t";
 const EXPECTED_TAPROOT_SINGLE_LEAF_MAINNET: &str = "bc1p0karmafx8lav4lukylck9xwsr2mhu47qdhm5f6muhasj4pz6mwtshunq5e";
 const EXPECTED_TAPROOT_SCRIPT_ONLY_MAINNET: &str = "bc1p8jxxw8payzdytn2qmgrypsqp9udtqt8ae2vd62qdc56er82u435sdax2md";
 

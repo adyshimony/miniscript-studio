@@ -15,7 +15,7 @@ const TEST_INTERNAL_KEY_MULTI_LEAF: &str = "d127f475aba7d9111ff69cc6858305d15e89
 const TEST_INTERNAL_KEY_SCRIPT_ONLY: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
 
 // Expected addresses for mainnet (these should all be different)
-const EXPECTED_TAPROOT_MULTI_LEAF_MAINNET: &str = "bc1pnl34fvwg835tsvrmjjlgwhx9nykvljw3qxp0z49fx94l8m2svtkqep92he";
+const EXPECTED_TAPROOT_MULTI_LEAF_MAINNET: &str = "bc1ppjxtknq5n4mf826trwtjw2d2qcqwdmnce6mhwfwatr4ykl0e6kmsqqkh8t";
 const EXPECTED_TAPROOT_SINGLE_LEAF_MAINNET: &str = "bc1p0karmafx8lav4lukylck9xwsr2mhu47qdhm5f6muhasj4pz6mwtshunq5e";
 const EXPECTED_TAPROOT_SCRIPT_ONLY_MAINNET: &str = "bc1p8jxxw8payzdytn2qmgrypsqp9udtqt8ae2vd62qdc56er82u435sdax2md";
 

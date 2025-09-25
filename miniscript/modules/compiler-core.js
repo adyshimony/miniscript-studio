@@ -795,6 +795,7 @@ export class MiniscriptCompiler {
                 // For taproot contexts, also store the descriptor for branch extraction
                 if (result.miniscript_type === 'Taproot' && result.compiled_miniscript) {
                     window.lastCompiledDescriptor = result.compiled_miniscript;
+                    window.lastCompiledResult = result;  // Store the full result for later use
                 }
                 
                 this.showMiniscriptSuccess(successMsg, treeExpression);
@@ -5915,7 +5916,13 @@ export class MiniscriptCompiler {
                     
                     // Get the descriptor from the compilation result
                     // It's stored when we compile taproot
-                    const descriptor = window.lastCompiledDescriptor;
+                    let descriptor = window.lastCompiledDescriptor;
+
+                    // If not available, try to get it from the compilation result directly
+                    // This happens in Taproot (Key path + script path) context
+                    if (!descriptor && window.lastCompiledResult) {
+                        descriptor = window.lastCompiledResult.compiled_miniscript;
+                    }
                     
                     if (typeof get_taproot_miniscript_branches !== 'undefined' && descriptor) {
                         try {
@@ -5956,25 +5963,39 @@ export class MiniscriptCompiler {
                         }
                     }
                     
-                    // Fallback if no branches found
+                    // Fallback if no branches found - don't show placeholder, show error message
                     if (!branchesContent) {
-                        branchCount = 1;
+                        branchCount = 0;
                         branchesContent = `
-                            <div style="margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
-                                Script path #1<br>
-                                Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">pk(David)</span><br>
-                                ASM: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">script asm placeholder</span><br>
-                                HEX: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">hex placeholder</span>
+                            <div style="margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-secondary);">
+                                Unable to extract branch information. Compile the expression to see branch details.
                             </div>
                         `;
+                    }
+
+                    // Show the descriptor if available
+                    let descriptorLine = '';
+                    if (descriptor && descriptor.startsWith('tr(')) {
+                        // Clean the descriptor by removing |LEAF_ASM: suffix if present
+                        if (descriptor.includes('|LEAF_ASM:')) {
+                            descriptor = descriptor.split('|LEAF_ASM:')[0];
+                        }
+                        // Replace keys with names if toggle is active
+                        let displayDescriptor = descriptor;
+                        const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                        if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+                            displayDescriptor = this.replaceKeysWithNames(descriptor);
+                        }
+                        descriptorLine = `<div style="margin-bottom: 8px;">Descriptor: <span style="font-family: monospace; word-break: break-all;">${displayDescriptor}</span></div>`;
                     }
 
                     return `
                         🌿 Taproot Structure
                         <div class="taproot-info" style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                             <div style="font-size: 12px; line-height: 1.6;">
+                                ${descriptorLine}
                                 <div>Internal Key: ${actualInternalKey} (key-path spending)</div>
-                                <div>Script Tree: ${branchCount} spending script path${branchCount !== 1 ? 's' : ''}</div>
+                                <div>Script Tree: ${branchCount > 0 ? branchCount + ' spending script path' + (branchCount !== 1 ? 's' : '') : 'No branches available'}</div>
                                 ${branchesContent}
                             </div>
                         </div>
