@@ -645,24 +645,55 @@ export class MiniscriptCompiler {
                             displayDescriptor = this.replaceKeysWithNames(rawDescriptor);
                         }
                         
-                        // Add weight info for Taproot Simplified only (before descriptor)
-                        if (currentMode === 'single-leaf' && result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                            // Calculate Taproot witness weight breakdown
-                            const sigWU = CONSTANTS.SIGNATURE_WEIGHT_UNITS; // Bitcoin signature weight units
-                            const scriptWU = result.script_size + 1; // Script size + 1
-                            const controlWU = 34; // Always 34 WU
-                            const totalWU = sigWU + scriptWU + controlWU + 1; // + 1 additional
-                            
-                            successMsg += `<br>Spending cost analysis:<br>`;
-                            successMsg += `Sig: ${sigWU} WU<br>`;
-                            successMsg += `Script: ${scriptWU} WU<br>`;
-                            successMsg += `Control: ${controlWU} WU<br>`;
-                            successMsg += `Total: ${totalWU} WU<br><br>`;
+                        // Special handling for Single leaf / Key mode
+                        if (currentMode === 'single-leaf') {
+                            // Check if the miniscript is exactly pk(KEY)
+                            const isPureKey = /^pk\([^)]+\)$/.test(expression.trim());
+
+                            if (isPureKey) {
+                                // Simple pk(KEY) - optimized to key-only Taproot
+                                // Extract key and checksum from tr(NUMS,pk(KEY))#checksum to tr(KEY)#checksum
+                                const keyOnlyDescriptor = displayDescriptor.replace(/^tr\([^,]+,pk\(([^)]+)\)\)(#[a-z0-9]+)?$/, 'tr($1)$2');
+                                successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${keyOnlyDescriptor}</span><br>`;
+                                successMsg += `Optimized to key-only Taproot. Most efficient spend (66 WU, no script revealed).<br><br>`;
+                            } else {
+                                // More complex miniscript - single script leaf
+                                successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
+                                successMsg += `Compiled as a single script leaf. Entire policy is revealed when spending (~136 WU).<br>`;
+
+                                // Add weight info for complex scripts
+                                if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
+                                    const sigWU = CONSTANTS.SIGNATURE_WEIGHT_UNITS;
+                                    const scriptWU = result.script_size + 1;
+                                    const controlWU = 34;
+                                    const totalWU = sigWU + scriptWU + controlWU + 1;
+
+                                    successMsg += `<br>Spending cost analysis:<br>`;
+                                    successMsg += `Sig: ${sigWU} WU<br>`;
+                                    successMsg += `Script: ${scriptWU} WU<br>`;
+                                    successMsg += `Control: ${controlWU} WU<br>`;
+                                    successMsg += `Total: ${totalWU} WU<br><br>`;
+                                }
+                            }
                         } else {
-                            successMsg += `<br>`;
+                            // Other Taproot modes - keep existing logic
+                            if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
+                                const sigWU = CONSTANTS.SIGNATURE_WEIGHT_UNITS;
+                                const scriptWU = result.script_size + 1;
+                                const controlWU = 34;
+                                const totalWU = sigWU + scriptWU + controlWU + 1;
+
+                                successMsg += `<br>Spending cost analysis:<br>`;
+                                successMsg += `Sig: ${sigWU} WU<br>`;
+                                successMsg += `Script: ${scriptWU} WU<br>`;
+                                successMsg += `Control: ${controlWU} WU<br>`;
+                                successMsg += `Total: ${totalWU} WU<br><br>`;
+                            } else {
+                                successMsg += `<br>`;
+                            }
+
+                            successMsg += `Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
                         }
-                        
-                        successMsg += `Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
                         
                         // Add Data field for all Taproot contexts
                         if (result.script) {
@@ -757,23 +788,29 @@ export class MiniscriptCompiler {
                         }
                         
                         if (isTaprootContext && currentMode === 'single-leaf') {
-                            // For Taproot Simplified, show both leaf and scriptPubKey ASM
-                            // Parse leaf ASM from compiled_miniscript if available
-                            let leafAsm = '';
-                            if (result.compiled_miniscript && result.compiled_miniscript.includes('|LEAF_ASM:')) {
-                                const parts = result.compiled_miniscript.split('|LEAF_ASM:');
-                                if (parts.length > 1) {
-                                    leafAsm = parts[1];
-                                    // Replace keys with names in leaf ASM if toggle is active
-                                    if (showKeyNames && this.keyVariables.size > 0) {
-                                        leafAsm = this.replaceKeysWithNames(leafAsm);
+                            // Check if this is a pure key case (pk(KEY))
+                            const isPureKey = /^pk\([^)]+\)$/.test(expression.trim());
+
+                            if (!isPureKey) {
+                                // For complex scripts, show both leaf and scriptPubKey ASM
+                                // Parse leaf ASM from compiled_miniscript if available
+                                let leafAsm = '';
+                                if (result.compiled_miniscript && result.compiled_miniscript.includes('|LEAF_ASM:')) {
+                                    const parts = result.compiled_miniscript.split('|LEAF_ASM:');
+                                    if (parts.length > 1) {
+                                        leafAsm = parts[1];
+                                        // Replace keys with names in leaf ASM if toggle is active
+                                        if (showKeyNames && this.keyVariables.size > 0) {
+                                            leafAsm = this.replaceKeysWithNames(leafAsm);
+                                        }
                                     }
                                 }
+
+                                if (leafAsm) {
+                                    successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${leafAsm}</span><br>`;
+                                }
                             }
-                            
-                            if (leafAsm) {
-                                successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${leafAsm}</span><br>`;
-                            }
+
                             successMsg += `ASM (scriptPubKey):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
                         } else {
                             // For other contexts, show normal ASM
@@ -5796,7 +5833,7 @@ export class MiniscriptCompiler {
         const contextMap = {
             'legacy': 'Legacy (p2SH)',
             'segwit': 'Segwit v0 (p2WSH)',  
-            'taproot': 'Taproot (Single leaf)',
+            'taproot': 'Taproot (Single leaf / Key)',
             'taproot-multi': 'Taproot (Script path)',
             'taproot-keypath': 'Taproot (Key + script path)'
         };
