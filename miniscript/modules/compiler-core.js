@@ -5994,7 +5994,8 @@ export class MiniscriptCompiler {
                         <div class="taproot-info" style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                             <div style="font-size: 12px; line-height: 1.6;">
                                 ${descriptorLine}
-                                <div>Internal Key: ${actualInternalKey} (key-path spending)</div>
+                                <div>Internal Key: ${actualInternalKey}</div>
+                                ${currentMode === 'multi-leaf' ? '<div>Key path spending total cost: ~57.5 WU</div>' : ''}
                                 <div>Script Tree: ${branchCount > 0 ? branchCount + ' spending script path' + (branchCount !== 1 ? 's' : '') : 'No branches available'}</div>
                                 ${branchesContent}
                             </div>
@@ -6050,7 +6051,7 @@ export class MiniscriptCompiler {
                 <strong>🌿 Taproot Structure</strong>
                 <div class="taproot-info" style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                     <div style="font-size: 12px; line-height: 1.6;">
-                        <div><strong>Internal Key:</strong> ${keyType} (key-path spending)</div>
+                        <div><strong>Internal Key:</strong> ${keyType}${isNUMS ? '' : ' (key-path spending)'}</div>
                         <div><strong>Script Tree:</strong> 2 branches (script-path spending)</div>
                         
                         <div style="margin-top: 12px;">
