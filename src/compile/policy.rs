@@ -7,7 +7,7 @@ use crate::console_log;
 use miniscript::descriptor::DescriptorPublicKey;
 use crate::descriptors::parser::parse_descriptors;
 use crate::descriptors::utils::replace_descriptors_with_keys;
-use crate::translators::DescriptorKeyTranslator;
+use crate::translators::{DescriptorKeyTranslator, XOnlyDescriptorKeyTranslator};
 use crate::taproot::utils::NUMS_POINT;
 
 /// Compile policy to miniscript
@@ -167,21 +167,35 @@ pub fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode:
         }
     }
     
-    // First try parsing with DescriptorPublicKey to support xpub descriptors  
+    // First try parsing with DescriptorPublicKey to support xpub descriptors
     match processed_policy.parse::<Concrete<DescriptorPublicKey>>() {
         Ok(descriptor_policy) => {
-            // Translate DescriptorPublicKey to PublicKey using our translator
-            let mut translator = DescriptorKeyTranslator::new();
-            let concrete_policy = match descriptor_policy.translate_pk(&mut translator) {
-                Ok(policy) => policy,
-                Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
-            };
-            
-            
+            // Use context-appropriate translator
             match context {
-                "legacy" => compile_legacy_policy(concrete_policy, network),
-                "taproot" => compile_taproot_policy_with_mode(concrete_policy, network, mode),
-                _ => compile_segwit_policy(concrete_policy, network),
+                "taproot" => {
+                    // For Taproot, translate to XOnlyPublicKey
+                    let mut xonly_translator = XOnlyDescriptorKeyTranslator::new();
+                    match descriptor_policy.translate_pk(&mut xonly_translator) {
+                        Ok(xonly_policy) => {
+                            console_log!("Successfully translated descriptor policy to x-only keys for Taproot");
+                            return compile_taproot_policy_xonly_with_mode(xonly_policy, network, mode);
+                        },
+                        Err(_) => return Err("Failed to translate descriptor keys to x-only keys for Taproot".to_string())
+                    }
+                },
+                _ => {
+                    // For Legacy/Segwit, translate to PublicKey
+                    let mut translator = DescriptorKeyTranslator::new();
+                    let concrete_policy = match descriptor_policy.translate_pk(&mut translator) {
+                        Ok(policy) => policy,
+                        Err(_) => return Err("Failed to translate descriptor keys to concrete keys".to_string())
+                    };
+
+                    match context {
+                        "legacy" => compile_legacy_policy(concrete_policy, network),
+                        _ => compile_segwit_policy(concrete_policy, network),
+                    }
+                }
             }
         },
         Err(_) => {

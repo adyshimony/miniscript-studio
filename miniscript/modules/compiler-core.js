@@ -5942,7 +5942,7 @@ export class MiniscriptCompiler {
                                     }
                                     
                                     branchesContent += `
-                                        <div style="margin-top: 12px;">
+                                        <div>
                                             Script path #${idx + 1}
                                             <div style="margin-top: 6px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: transparent;">
                                                 Miniscript: <span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${branchMiniscript}</span><br>
@@ -5986,7 +5986,7 @@ export class MiniscriptCompiler {
                         if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
                             displayDescriptor = this.replaceKeysWithNames(descriptor);
                         }
-                        descriptorLine = `<div style="margin-bottom: 8px;">Descriptor: <span style="font-family: monospace; word-break: break-all;">${displayDescriptor}</span></div>`;
+                        descriptorLine = `<div>Descriptor: <span style="font-family: monospace; word-break: break-all;">${displayDescriptor}</span></div>`;
                     }
 
                     return `

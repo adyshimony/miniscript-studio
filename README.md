@@ -1,203 +1,151 @@
 # Miniscript Studio
 
-A WebAssembly-powered miniscript compiler that runs in the browser. This tool allows you to compile Bitcoin policies and miniscripts to Bitcoin Script bytecode, supporting Legacy (P2SH), Segwit v0 (P2WSH), and Taproot contexts.
+A WebAssembly-powered Bitcoin Miniscript compiler that runs in the browser. What started as a 2-hour hackathon experiment evolved into a comprehensive learning tool packed with every feature needed for mastering Miniscript.
 
 ## Features
 
-- **Policy Compilation**: Convert high-level Bitcoin policies to miniscript expressions
-- **Miniscript Compilation**: Compile miniscript expressions to Bitcoin Script bytecode
-- **Reverse Engineering (Lift)**: Convert Bitcoin Script bytecode back to miniscript, and miniscript back to policy
-- **Multiple Script Contexts**: Support for Legacy, Segwit v0, and Taproot script contexts
-- **Address Generation**: Generate Bitcoin addresses for compiled scripts with mainnet/testnet toggle
-- **Key Variable Management**: Define and reuse named public keys across expressions with auto-extraction
-- **Expression Storage**: Save and load frequently used policies and expressions
-- **Copy & Export**: One-click copying of expressions and policies to clipboard
-- **Interactive Web Interface**: User-friendly browser-based interface with examples
-- **Mobile Responsive**: Works seamlessly on desktop, tablet, and mobile devices
-- **Local Storage**: All data persists locally in your browser - no server required
+- **Policy Editor**: Write spending conditions with syntax highlighting and auto-compilation
+- **Miniscript Editor**: Work with raw miniscript or compile from policies
+- **Lift**: Convert back Bitcoin Script → Miniscript → Policy
+- **Taproot Support**: Full support with branch selection and script path analysis
+- **HD Wallet Descriptors**: Range descriptors with index field and multipath support
+- **Spending Analysis**: Detailed cost analysis and satisfaction paths
+- **Context Switching**: Legacy, Segwit v0, and Taproot with automatic detection
+- **Address Generation**: Bitcoin addresses with mainnet/testnet toggle
+- **Key Management**: Auto-extract, generate, and manage key variables
+- **Save & Share**: Local storage and shareable URLs
+- **Rich Examples**: 20+ examples with educational descriptions
+- **Local-First**: All data stays in your browser - no server required
+
+## Policy Editor
+
+- Write high-level spending conditions with syntax highlighting
+- Auto-compilation on load (configurable)
+- Example descriptions (collapsible in settings)
+- Indent expressions for readability
+- Auto-clean invalid characters before compiling
+
+## Miniscript Editor
+
+- Works standalone or with Policy editor
+- Detailed compilation messages with spending analysis
+- Branch selection for Taproot OR conditions
+- Shows satisfaction paths and weight units
+- Load examples with rich educational descriptions
+
+## Script Output
+
+- Bitcoin Script in HEX and ASM formats
+- **Editable fields** for lifting operations
+- Bitcoin addresses with network toggle (mainnet/testnet)
+- Show/hide pushbytes operations
+- Show/hide key names to see actual values
 
 ## Key Variables
 
-The studio allows you to define reusable key variables instead of typing full public keys repeatedly:
+Manage public keys with friendly names:
 
-### How to Use Key Variables
+### Extract Keys 🔑
+- **Missing variables**: Write `or(pk(Nadav),pk(Aviv))` → auto-generate keys for undefined variables
+- **Hex to variables**: Convert long hex keys to named variables automatically
+- **From errors**: Generate missing keys directly from error messages
 
-1. **Add Variables**: In the "Key variables" section, enter a name (e.g., `Alice`) and corresponding public key
-2. **Auto-Extract Keys**: Use the "🔑 Extract keys to variables" button to automatically detect and convert keys in your expressions to named variables
-3. **Generate Keys**: Use the "🎲 Generate" button to create random test keys appropriate for the current script context
-4. **Use in Expressions**: Reference keys by name in policies: `pk(Alice)` instead of `pk(03a34b99...)`
-5. **Toggle Display**: Use "Show key names" checkbox to switch between showing full keys or variable names
-6. **Restore Defaults**: Use "Restore defaults" button to reset to Alice, Bob, Charlie, and David
-7. **Clear All**: Use "Clear all" button to remove all key variables (with confirmation)
+### Key Management
+- **Add/Edit/Delete**: Full control over key variables
+- **Generate**: 🎲 creates context-appropriate test keys
+- **Toggle Display**: Show names or actual key values
+- **Restore Defaults**: Reset to default keys anytime
+- **Key Types**: Compressed (66 chars) for Legacy/Segwit, X-only (64 chars) for Taproot
+- **Local Storage**: Keys saved in browser, never sent to server
 
-### Auto-Extract Keys to Variables
+## Lift (Reverse Engineering) 
 
-The "🔑 Extract keys to variables" feature automatically converts long hex keys to named variables:
+The **Script HEX and ASM fields are editable** - paste any Bitcoin Script to reverse engineer it:
 
-- **Detection**: Automatically finds public keys, xpubs, tpubs, and x-only keys in your expressions
-- **Variable Generation**: Suggests meaningful names for detected keys (Alice, Bob, Charlie, etc.)
-- **Key Type Selection**: For each detected key, choose the appropriate type:
-  - **Compressed** (66 chars): For Legacy and Segwit v0 contexts
-  - **X-only** (64 chars): For Taproot context
-  - **xpub/tpub**: For extended public keys and derivation paths
-- **Duplicate Prevention**: Avoids creating duplicate variables for keys that already exist
-- **Batch Processing**: Handles multiple keys in complex expressions like `thresh(2,pk(Alice),pk(Bob),pk(Charlie))`
+### Bitcoin Script → Miniscript
+- **Input**: Paste hex or ASM format into the editable script fields
+- **Output**: Automatically lifts to readable miniscript
+- **Example**: `21022f...ac` → `pk(022f...)`
 
-### Key Types and Context Detection
+### Miniscript → Policy
+- **Input**: Any miniscript expression
+- **Output**: High-level policy representation
+- **Example**: `or_d(pk(Alice),older(144))` → `or(pk(Alice),older(144))`
 
-The compiler automatically detects the appropriate script context based on the key types used:
+**Note**: Not all scripts can be lifted (e.g., scripts with public key hashes)
 
-- **Compressed Keys** (66 characters, starting with 02/03): Used for Legacy and Segwit v0 contexts
-  - Example: `02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
-  - Visual indicator: Blue color with "compressed" badge
-- **X-only Keys** (64 characters): Used for Taproot context
-  - Example: `f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
-  - Visual indicator: Purple color with "x-only" badge
 
-### Context-Aware Features
+## Script Contexts
 
-- **Smart Key Generation**: The "🎲 Generate" button creates keys appropriate for the selected script context
-- **Auto-Context Detection**: When loading saved expressions, policies, or examples, the script context automatically switches based on the key types detected
-- **Duplicate Prevention**: Generated keys avoid duplicates with existing key variables
-- **Visual Differentiation**: Key variables are color-coded and badged to easily distinguish between compressed and X-only keys
+- **Legacy (P2SH)**: Traditional Bitcoin scripts, max compatibility
+- **Segwit v0 (P2WSH)**: Native witness scripts, lower fees
+- **Taproot**: Privacy-enhanced scripts with multiple sub-contexts:
+  - **Single Leaf**: Simple script in taproot tree
+  - **Script Path**: Multiple branches with cost analysis
+  - **Script + Key Path**: Combined key and script spending paths
 
-### Benefits
+## Taproot Features
 
-- **Readability**: `or(pk(Alice),pk(Bob))` is clearer than hex strings
-- **Reusability**: Define once, use in multiple expressions
-- **Error Reduction**: Avoid typos in long hex keys
-- **Testing**: Generate random keys for experimentation
-- **Context Awareness**: Automatic detection and switching of script contexts based on key formats
+### Branch Selection
+- **OR Conditions**: Choose which branch to compile from policy
+- **Script Paths**: Visualize different spending paths with costs
+- **Context Options**:
+  - Single Leaf: Simple script in taproot tree
+  - Script Path: Multiple branches with analysis
+  - Script + Key Path: Combined spending options
 
-## Reverse Engineering (Lift Features)
+### Spending Analysis
+- **Weight Units**: Fee estimation for each path
+- **Satisfaction Paths**: All ways to spend the script
+- **Descriptors**: Full taproot descriptor display
+- **Cost Comparison**: Compare different contexts
 
-The compiler supports "lifting" - reverse engineering Bitcoin scripts back to higher-level representations:
 
-### Lift Bitcoin Script to Miniscript
+## HD Wallet Descriptors
 
-Convert raw Bitcoin Script bytecode (hex or ASM format) back to miniscript expressions:
+Full support for xpub/tpub descriptors with range patterns:
 
-- **Input**: Bitcoin Script in hex format (e.g., `21022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501ac`)
-- **Input**: Bitcoin Script in ASM format (e.g., `022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501 OP_CHECKSIG`)
-- **Output**: Miniscript expression (e.g., `pk(022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4501)`)
-- **Usage**: Paste script into the "Script HEX" or "Script ASM" fields and they will automatically lift to miniscript
+### Derivation Index Field
+- **Auto-appears**: When using wildcard patterns (`/*`)
+- **Index input**: Enter 0-2147483647 for specific derivations
+- **No expression editing**: Change index without modifying the descriptor
+- **Real-time**: Instant address generation on index change
 
-### Lift Miniscript to Policy
+### Multipath Support
+- **Range descriptors**: `<0;1>/*` for external/change branches
+- **Path selector**: Dropdown to choose External or Change
+- **BIP389 Compliant**: Modern HD wallet patterns
+- **All contexts**: Works in Legacy, Segwit, and Taproot
 
-Convert miniscript expressions back to high-level policy language:
 
-- **Input**: Miniscript expression (e.g., `or_d(pk(Alice),and_v(v:pk(Bob),older(144)))`)
-- **Output**: Policy expression (e.g., `or(pk(Alice),and(pk(Bob),older(144)))`)
-- **Usage**: Compile any miniscript to see its policy equivalent in the results
+## Save & Load
 
-### Benefits of Lifting
+Persistent local storage for your work:
 
-- **Script Analysis**: Understand what existing Bitcoin scripts do
-- **Policy Recovery**: Extract the policy logic from deployed scripts
-- **Educational**: Learn by reverse-engineering real Bitcoin scripts
-- **Migration**: Convert legacy scripts to modern miniscript format
-- **Debugging**: Verify scripts compile to expected bytecode
+- **Save Policies**: 💾 button stores policy expressions (up to 20)
+- **Save Expressions**: 💾 button stores compiled miniscript (up to 20)
+- **Load**: Click "Load" to restore saved items with context preserved
+- **Local Storage**: All data stays in your browser
+- **Export**: 📋 button copies expressions to clipboard
 
-### Example Workflow
+## Share
 
-1. **Start with Script**: Paste hex script: `21022f...ac`
-2. **Auto-Lift**: Script automatically converts to miniscript: `pk(022f...)`
-3. **Extract Keys**: Use 🔑 button to convert keys to variables: `pk(Alice)`
-4. **Compile to Policy**: See the high-level policy: `pk(Alice)`
+Create shareable URLs for collaboration:
 
-## Save & Load System
-
-The compiler provides persistent storage for your work:
-
-### Saved Policies
-
-- **Save**: Enter a policy, click "💾 Save" next to the compile button
-- **Load**: Click "Load" on any saved policy to restore it
-- **Manage**: Use "Del" to remove policies you no longer need
-- **Auto-compile**: Loaded policies automatically populate the policy field
-
-### Saved Expressions
-
-- **Save**: After compiling, click "💾 Save" to store the miniscript expression
-- **Load**: Click "Load" on saved expressions to restore them
-- **Context Preserved**: Script context (Legacy/Segwit/Taproot) is saved with expressions
-- **Quick Access**: Reuse complex expressions without retyping
-
-### Storage Features
-
-- **Local Storage**: All data stays in your browser (no server required)
-- **Persistent**: Survives browser restarts and page refreshes
-- **Limit**: Up to 20 saved policies and 20 saved expressions
-- **Export**: Use the copy buttons (📋) to export expressions to external tools
-
-## Share Feature
-
-Share your work with colleagues or save it for later using shareable URLs:
-
-### How to Share
-
-- **Create Share Link**: Click the 🔗 button next to any policy or miniscript expression
-- **What's Included**: The URL contains only your policy or miniscript expression
-- **Automatic Loading**: When someone opens your link, the expression is loaded into the appropriate input field
-- **Format Options**: Choose between URL encoding or compact JSON format in Settings
-
-### Share URL Formats
-
-- **URL Encoded**: Human-readable format that preserves special characters
-
-  - Example: `?policy=or(pk(Alice),pk(Bob))`
-  - Best for: Simple expressions, readability in URL bar
-- **JSON (Compact)**: Base64-encoded format for complex expressions
-
-  - Example: `?state=eyJwb2xpY3kiOiJvcihwa...`
-  - Best for: Complex expressions, shorter URLs
-
-### Use Cases
-
-- **Collaboration**: Share your work with team members
-- **Documentation**: Include links in documentation or tutorials
-- **Backup**: Save URLs as bookmarks for important expressions
-- **Templates**: Create reusable template URLs for common patterns
+- **Create Link**: 🔗 button generates shareable URL
+- **Formats**: URL encoded (`?policy=...`) or compact JSON (`?state=...`)
+- **Auto-load**: Links automatically load expressions when opened
+- **Use Cases**: Team collaboration, documentation, bookmarking templates
 
 ## Settings
 
-Configure the compiler's behavior through the Settings section:
-
-### Auto-compile on Load
-
-Control whether expressions compile automatically when loaded:
-
-- **Enabled** (default): When you load an example or saved expression, it automatically compiles to show results immediately
-- **Disabled**: Expressions load into the input fields but wait for manual compilation
-- **Applies to**: Example buttons, saved expressions, saved policies
-- **Does NOT apply to**: Shared URLs (never auto-compile)
-
-## Interface Guide
-
-### Main Sections
-
-The compiler interface is organized into collapsible sections for easy navigation:
-
-- **🔑 Key variables**: Define and manage reusable public key names
-- **💾 Saved policies**: Store and reload frequently used policy expressions
-- **📝 Saved expressions**: Store and reload compiled miniscript expressions
-- **📘 Policy reference**: Complete policy language documentation
-- **📚 Miniscript reference**: Detailed miniscript syntax guide
-- **💡 Tips & Quick Help**: Usage tips and feature explanations
-- **⚙️ Settings**: Configure auto-compile and share format preferences
-
-### Input Areas
-
-- **Policy (optional)**: Enter high-level policy expressions that compile to miniscript
-- **Miniscript expression**: Enter or view miniscript expressions for compilation
-- **Script context**: Choose between Legacy (P2SH), Segwit v0 (P2WSH), or Taproot
-
-### Interactive Features
-
-- **Example buttons**: Quick-load common patterns for both policies and miniscripts
-- **Show key names**: Toggle between displaying full public keys or variable names
-- **Copy buttons**: One-click copying of expressions to clipboard with visual feedback
-- **Real-time compilation**: Immediate feedback on compilation success or errors
+- **🎨 Theme**: Dark/Light mode switcher
+- **🏃 Auto-compile**: Automatically compile when loading examples or saved expressions
+- **📖 Show descriptions**: Display helpful descriptions for example buttons
+- **💡 Editor tips**: Show/hide helpful placeholder text in empty editors
+- **🔗 Share format**: Choose between URL encoded or JSON format for share links
+- **👁️ Hide corner buttons**: Hide GitHub and donation buttons (web only)
+- **🌳 Tree display**: Script Compilation, Visual Hierarchy, or Hidden
 
 ## Building from Source
 
@@ -224,31 +172,34 @@ python -m http.server 8000
 
 ```
 miniscript-compiler/
+├── miniscript/
+│   ├── index.html          # Main web interface
+│   ├── script.js           # Entry point, imports modules
+│   ├── modules/
+│   │   ├── compiler-core.js     # MiniscriptCompiler class
+│   │   ├── window-functions.js  # Global window functions
+│   │   └── constants.js         # Shared constants
+│   └── pkg/                # Generated WASM bindings
 ├── src/
-│   └── lib.rs              # Main Rust WASM module
-├── pkg/                    # Generated WASM bindings (after build)
+│   ├── lib.rs              # WASM exports
+│   ├── compile/            # Compilation logic
+│   ├── descriptors/        # HD wallet descriptors
+│   ├── taproot/            # Taproot-specific logic
+│   ├── lift/               # Script lifting
+│   ├── keys/               # Key management
+│   ├── address/            # Address generation
+│   └── validation/         # Input validation
+├── tests/                  # Rust tests
 ├── Cargo.toml              # Rust dependencies
-├── index.html              # Web interface
-└── script.js              # JavaScript frontend logic
+└── README.md               # This file
 ```
 
-## Script Contexts
-
-The compiler supports three Bitcoin script contexts:
-
-- **Legacy**: Traditional Bitcoin scripts using P2SH addresses
-- **Segwit v0**: Native Segwit scripts using P2WSH addresses
-- **Taproot**: Next-generation scripts for Bitcoin's Taproot upgrade
-
 ## Dependencies
-
-This project uses the following Rust crates:
 
 - [`miniscript`](https://crates.io/crates/miniscript) - Bitcoin miniscript library
 - [`bitcoin`](https://crates.io/crates/bitcoin) - Bitcoin protocol implementation
 - [`wasm-bindgen`](https://crates.io/crates/wasm-bindgen) - WebAssembly bindings
 - [`serde`](https://crates.io/crates/serde) - Serialization framework
-- [`hex`](https://crates.io/crates/hex) - Hex encoding utilities
 
 ## License
 

@@ -316,6 +316,44 @@ fn process_expression_descriptors(expression: &str) -> Result<String, String> {
     }
 }
 
+// Process descriptors for taproot context (converts to x-only keys)
+pub(crate) fn process_expression_descriptors_taproot(expression: &str) -> Result<String, String> {
+    console_log!("Detected descriptor keys in taproot expression, processing with x-only conversion...");
+
+    match parse_descriptors(expression) {
+        Ok(descriptors) => {
+            if descriptors.is_empty() {
+                console_log!("No descriptors found, using original expression");
+                Ok(expression.to_string())
+            } else {
+                let has_range_descriptors = descriptors.values().any(|desc| desc.info.is_wildcard);
+
+                if has_range_descriptors {
+                    console_log!("Found {} descriptors with ranges, wrapping in tr() for taproot descriptor parsing", descriptors.len());
+                    // For taproot, we don't use wsh() wrapper, we'll handle this differently
+                    Ok(format!("tr(NUMS_PLACEHOLDER,{})", expression))
+                } else {
+                    console_log!("Found {} fixed descriptors, replacing with x-only keys for taproot", descriptors.len());
+                    match crate::descriptors::utils::replace_descriptors_with_xonly_keys(expression, &descriptors) {
+                        Ok(processed) => {
+                            console_log!("Successfully replaced descriptors with x-only keys for taproot");
+                            Ok(processed)
+                        },
+                        Err(e) => {
+                            console_log!("Failed to replace descriptors with x-only keys: {}", e);
+                            Err(format!("Taproot descriptor processing failed: {}", e))
+                        }
+                    }
+                }
+            }
+        },
+        Err(e) => {
+            console_log!("Failed to parse descriptors: {}", e);
+            Err(format!("Taproot descriptor parsing failed: {}", e))
+        }
+    }
+}
+
 // Compile descriptor expressions
 fn compile_descriptor(expression: &str, context: &str) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
     console_log!("Detected descriptor format, extracting inner miniscript for proper validation");

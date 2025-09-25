@@ -8,6 +8,7 @@ use crate::console_log;
 use bitcoin::{Network, XOnlyPublicKey};
 use miniscript::{Miniscript, Tap, Descriptor};
 use std::str::FromStr;
+use crate::parse::helpers::needs_descriptor_processing;
 
 /// Compile taproot multi-leaf mode (uses extracted key instead of NUMS - same logic as script_path)
 pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<CompileResponse, String> {
@@ -17,7 +18,14 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
     console_log!("=== COMPILE_TAPROOT_KEYPATH_DESCRIPTOR ===");
     console_log!("Expression: {}", expression);
     console_log!("Network: {:?}", network);
-    let processed_expr = expression.trim();
+    let trimmed = expression.trim();
+
+    // Process descriptors if needed for taproot
+    let processed_expr = if needs_descriptor_processing(trimmed) {
+        crate::compile::engine::process_expression_descriptors_taproot(trimmed)?
+    } else {
+        trimmed.to_string()
+    };
 
     // Parse as XOnlyPublicKey miniscript for Taproot
     match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
@@ -161,7 +169,14 @@ pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Ne
     console_log!("Expression: {}", expression);
     console_log!("NUMS key: {}", nums_key);
     console_log!("Network: {:?}", network);
-    let processed_expr = expression.trim();
+    let trimmed = expression.trim();
+
+    // Process descriptors if needed for taproot
+    let processed_expr = if needs_descriptor_processing(trimmed) {
+        crate::compile::engine::process_expression_descriptors_taproot(trimmed)?
+    } else {
+        trimmed.to_string()
+    };
     
     // Parse as XOnlyPublicKey miniscript for Taproot
     match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
@@ -245,7 +260,14 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
     console_log!("Expression: {}", expression);
     console_log!("NUMS key: {}", nums_key);
     console_log!("Network: {:?}", network);
-    let processed_expr = expression.trim();
+    let trimmed = expression.trim();
+
+    // Process descriptors if needed for taproot
+    let processed_expr = if needs_descriptor_processing(trimmed) {
+        crate::compile::engine::process_expression_descriptors_taproot(trimmed)?
+    } else {
+        trimmed.to_string()
+    };
     
     // Parse as XOnlyPublicKey miniscript for Taproot
     match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
