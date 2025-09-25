@@ -1,6 +1,8 @@
 # Miniscript Studio
 
-A WebAssembly-powered Bitcoin Miniscript compiler that runs in the browser. What started as a 2-hour hackathon experiment evolved into a comprehensive learning tool packed with every feature needed for mastering Miniscript.
+A WebAssembly Miniscript Studio that runs entirely in the browser, powered by the Rust Miniscript crate. Compile Bitcoin policies to Miniscript and Bitcoin Script, lift scripts, generate addresses across Legacy, Segwit, and Taproot contexts, HD wallet descriptor support, key managment, educational examples and more.
+
+🌐 **Live Site:** https://adys.dev/miniscript
 
 ## Features
 
@@ -46,11 +48,13 @@ A WebAssembly-powered Bitcoin Miniscript compiler that runs in the browser. What
 Manage public keys with friendly names:
 
 ### Extract Keys 🔑
+
 - **Missing variables**: Write `or(pk(Nadav),pk(Aviv))` → auto-generate keys for undefined variables
 - **Hex to variables**: Convert long hex keys to named variables automatically
 - **From errors**: Generate missing keys directly from error messages
 
 ### Key Management
+
 - **Add/Edit/Delete**: Full control over key variables
 - **Generate**: 🎲 creates context-appropriate test keys
 - **Toggle Display**: Show names or actual key values
@@ -58,65 +62,61 @@ Manage public keys with friendly names:
 - **Key Types**: Compressed (66 chars) for Legacy/Segwit, X-only (64 chars) for Taproot
 - **Local Storage**: Keys saved in browser, never sent to server
 
-## Lift (Reverse Engineering) 
+## Lift
 
-The **Script HEX and ASM fields are editable** - paste any Bitcoin Script to reverse engineer it:
+The **Script HEX and ASM fields are editable** - paste any Bitcoin Script to reverse it:
 
 ### Bitcoin Script → Miniscript
+
 - **Input**: Paste hex or ASM format into the editable script fields
 - **Output**: Automatically lifts to readable miniscript
-- **Example**: `21022f...ac` → `pk(022f...)`
 
 ### Miniscript → Policy
+
 - **Input**: Any miniscript expression
 - **Output**: High-level policy representation
-- **Example**: `or_d(pk(Alice),older(144))` → `or(pk(Alice),older(144))`
 
 **Note**: Not all scripts can be lifted (e.g., scripts with public key hashes)
-
 
 ## Script Contexts
 
 - **Legacy (P2SH)**: Traditional Bitcoin scripts, max compatibility
 - **Segwit v0 (P2WSH)**: Native witness scripts, lower fees
 - **Taproot**: Privacy-enhanced scripts with multiple sub-contexts:
-  - **Single Leaf**: Simple script in taproot tree
+  - **Single Leaf / key**: A single script leaf, or key only when no script
   - **Script Path**: Multiple branches with cost analysis
   - **Script + Key Path**: Combined key and script spending paths
 
 ## Taproot Features
 
 ### Branch Selection
+
 - **OR Conditions**: Choose which branch to compile from policy
 - **Script Paths**: Visualize different spending paths with costs
-- **Context Options**:
-  - Single Leaf: Simple script in taproot tree
-  - Script Path: Multiple branches with analysis
-  - Script + Key Path: Combined spending options
 
 ### Spending Analysis
+
 - **Weight Units**: Fee estimation for each path
 - **Satisfaction Paths**: All ways to spend the script
 - **Descriptors**: Full taproot descriptor display
 - **Cost Comparison**: Compare different contexts
-
 
 ## HD Wallet Descriptors
 
 Full support for xpub/tpub descriptors with range patterns:
 
 ### Derivation Index Field
+
 - **Auto-appears**: When using wildcard patterns (`/*`)
 - **Index input**: Enter 0-2147483647 for specific derivations
 - **No expression editing**: Change index without modifying the descriptor
-- **Real-time**: Instant address generation on index change
 
 ### Multipath Support
+
 - **Range descriptors**: `<0;1>/*` for external/change branches
 - **Path selector**: Dropdown to choose External or Change
 - **BIP389 Compliant**: Modern HD wallet patterns
 - **All contexts**: Works in Legacy, Segwit, and Taproot
-
 
 ## Save & Load
 
@@ -135,7 +135,6 @@ Create shareable URLs for collaboration:
 - **Create Link**: 🔗 button generates shareable URL
 - **Formats**: URL encoded (`?policy=...`) or compact JSON (`?state=...`)
 - **Auto-load**: Links automatically load expressions when opened
-- **Use Cases**: Team collaboration, documentation, bookmarking templates
 
 ## Settings
 
