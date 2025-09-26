@@ -53,7 +53,7 @@ pub fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(
         Err(e) => {
             let error_msg = format!("{}", e);
             if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                Err(format!("Legacy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters).", e))
+                Err(format!("Legacy parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Legacy requires compressed public keys (66 characters). Please check your compile context selection.", e))
             } else {
                 Err(format!("Legacy parsing failed: {}", e))
             }
@@ -103,7 +103,7 @@ pub fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(
         Err(e) => {
             let error_msg = format!("{}", e);
             if error_msg.contains("pubkey string should be 66 or 130") && error_msg.contains("got: 64") {
-                Err(format!("Segwit v0 parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters).", e))
+                Err(format!("Segwit v0 parsing failed: {}. Note: You may be using an X-only key (64 characters) which is for Taproot context. Segwit v0 requires compressed public keys (66 characters). Please check your compile context selection.", e))
             } else {
                 Err(format!("Segwit v0 parsing failed: {}", e))
             }
@@ -435,7 +435,7 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
         Err(e) => {
             let error_msg = format!("{}", e);
             if error_msg.contains("malformed public key") {
-                Err(format!("Taproot parsing failed: {}. Note: Taproot requires X-only public keys (64 characters, no 02/03 prefix).", e))
+                Err(format!("Taproot parsing failed: {}. Note: You may be using a compressed public key (66 characters with 02/03 prefix) which is for Legacy/Segwit contexts. Taproot requires X-only public keys (64 characters, no prefix). Please check your compile context selection.", e))
             } else {
                 Err(format!("Taproot parsing failed: {}", e))
             }

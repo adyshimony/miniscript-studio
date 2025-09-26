@@ -156,7 +156,14 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
                 Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
             }
         },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("malformed public key") {
+                Err(format!("Miniscript parsing failed: {}. Note: You may be using a compressed public key (66 characters with 02/03 prefix) which is for Legacy/Segwit contexts. Taproot requires X-only public keys (64 characters, no prefix). Please check your compile context selection.", e))
+            } else {
+                Err(format!("Miniscript parsing failed: {}", e))
+            }
+        }
     }
 }
 
@@ -247,7 +254,14 @@ pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Ne
                 Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
             }
         },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("malformed public key") {
+                Err(format!("Miniscript parsing failed: {}. Note: You may be using a compressed public key (66 characters with 02/03 prefix) which is for Legacy/Segwit contexts. Taproot requires X-only public keys (64 characters, no prefix). Please check your compile context selection.", e))
+            } else {
+                Err(format!("Miniscript parsing failed: {}", e))
+            }
+        }
     }
 }
 
@@ -394,6 +408,13 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
                 Err(e) => Err(format!("Descriptor creation failed: {:?}", e))
             }
         },
-        Err(e) => Err(format!("Miniscript parsing failed: {}", e))
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            if error_msg.contains("malformed public key") {
+                Err(format!("Miniscript parsing failed: {}. Note: You may be using a compressed public key (66 characters with 02/03 prefix) which is for Legacy/Segwit contexts. Taproot requires X-only public keys (64 characters, no prefix). Please check your compile context selection.", e))
+            } else {
+                Err(format!("Miniscript parsing failed: {}", e))
+            }
+        }
     }
 }

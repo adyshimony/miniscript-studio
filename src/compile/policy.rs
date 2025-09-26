@@ -31,7 +31,7 @@ pub fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode:
             // Check if it's not an xpub/tpub, descriptor, or SHA256 hash
             if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") && !trimmed.contains("sha256(") {
                 return Err(format!(
-                    "{} context requires compressed public keys (66 characters starting with 02/03). Found x-only key (64 characters).",
+                    "{} context requires compressed public keys (66 characters starting with 02/03). Found x-only key (64 characters). Please check your compile context selection.",
                     if context == "legacy" { "Legacy" } else { "Segwit v0" }
                 ));
             }
@@ -42,7 +42,7 @@ pub fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode:
         if compressed_key_regex.is_match(trimmed) {
             // Check if it's not part of a descriptor
             if !trimmed.contains("xpub") && !trimmed.contains("tpub") && !trimmed.contains("[") {
-                return Err("Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03).".to_string());
+                return Err("Taproot context requires x-only keys (64 characters). Found compressed key (66 characters starting with 02/03). Please check your compile context selection.".to_string());
             }
         }
     }
@@ -581,7 +581,7 @@ pub fn compile_taproot_policy(
     _network: Network
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     // Don't do automatic conversion - fail with proper error message
-    Err("Taproot context requires x-only keys (32 bytes). Found compressed keys (33 bytes).".to_string())
+    Err("Taproot context requires x-only keys (32 bytes). Found compressed keys (33 bytes). Please check your compile context selection.".to_string())
 }
 
 /// Compile policy for Taproot context with mode (should fail for compressed keys)
