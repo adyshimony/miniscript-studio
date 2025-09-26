@@ -1680,7 +1680,23 @@ window.addEventListener('DOMContentLoaded', function() {
                     if (window.showPolicyDescription) window.showPolicyDescription('timelocked_thresh');
                     if (window.loadPolicyExample) window.loadPolicyExample('and(thresh(2,pk(Alice),pk(Bob),pk(Charlie)),after(1767225600))', 'timelocked_thresh');
                 },
-                
+                'policy-multi_branch': () => {
+                    if (window.showPolicyDescription) window.showPolicyDescription('multi_branch');
+                    if (window.loadPolicyExample) window.loadPolicyExample('or(pk(David),or(pk(Helen),pk(Uma)))', 'multi_branch', 'taproot-multi');
+                },
+                'policy-lightning_channel': () => {
+                    if (window.showPolicyDescription) window.showPolicyDescription('lightning_channel');
+                    if (window.loadPolicyExample) window.loadPolicyExample('or(and(pk(David),pk(Helen)),or(and(pk(DavidTimeout),older(1008)),and(pk(HelenTimeout),older(1008))))', 'lightning_channel', 'taproot-multi');
+                },
+                'policy-inheritance_vault': () => {
+                    if (window.showPolicyDescription) window.showPolicyDescription('inheritance_vault');
+                    if (window.loadPolicyExample) window.loadPolicyExample('or(pk(David),and(thresh(2,pk(Uma),pk(VaultXOnly1),pk(VaultXOnly2)),older(26280)))', 'inheritance_vault', 'taproot-multi');
+                },
+                'policy-atomic_swap': () => {
+                    if (window.showPolicyDescription) window.showPolicyDescription('atomic_swap');
+                    if (window.loadPolicyExample) window.loadPolicyExample('and(pk(Alice),or(and(pk(Bob),sha256(2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae)),older(144)))', 'atomic_swap');
+                },
+
                 // Miniscript examples
                 'miniscript-pkh': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('pkh');
@@ -1749,6 +1765,10 @@ window.addEventListener('DOMContentLoaded', function() {
                 'miniscript-vault_complex': () => {
                     if (window.showMiniscriptDescription) window.showMiniscriptDescription('vault_complex');
                     if (window.loadExample) window.loadExample('or_i(or_i(or_i(or_i(and_v(vc:or_i(pk_h(VaultKey1),pk_h(VaultKey4)),after(1753305229)),and_v(or_c(pkh(VaultKey6),v:thresh(2,pkh(VaultKey10),a:pkh(VaultKey15),a:pkh(VaultKey7),a:pkh(VaultKey2),a:pkh(VaultKey5))),after(1753298029))),and_v(or_c(pkh(VaultKey16),v:thresh(2,pkh(VaultKey11),a:pkh(VaultKey17),a:pkh(VaultKey8),a:pkh(VaultKey3))),after(1753290829))),and_v(or_c(pkh(VaultKey12),v:thresh(2,pkh(VaultKey13),a:pkh(VaultKey18),a:pkh(VaultKey9))),after(1753283629))),and_v(v:pk(VaultKey14),pk(VaultKey19)))', 'vault_complex');
+                },
+                'miniscript-liquid_federation': () => {
+                    if (window.showMiniscriptDescription) window.showMiniscriptDescription('liquid_federation');
+                    if (window.loadExample) window.loadExample('or_d(multi_a(5,Fed1,Fed2,Fed3,Fed4,Fed5,Fed6,Fed7),and_v(v:multi_a(2,Emergency1,Emergency2,Emergency3),older(4032)))', 'liquid_federation', 'taproot-multi');
                 }
             };
             
