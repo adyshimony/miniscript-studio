@@ -106,3 +106,26 @@ pub fn lift_to_policy(miniscript: &str) -> JsValue {
 pub fn generate_address_for_network(script_hex: &str, script_type: &str, network: &str) -> JsValue {
     address::generate_address_for_network(script_hex, script_type, network)
 }
+
+// Get build information for debugging deployment issues
+#[wasm_bindgen]
+pub fn get_wasm_build_info() -> JsValue {
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct BuildInfo {
+        version: &'static str,
+        has_descriptor_support: bool,
+        has_xonly_conversion: bool,
+        build_id: &'static str,
+    }
+
+    let info = BuildInfo {
+        version: env!("CARGO_PKG_VERSION"),
+        has_descriptor_support: true,  // This indicates the new version with descriptor support
+        has_xonly_conversion: true,    // Indicates x-only key conversion support for taproot
+        build_id: "2025-01-29-xonly",  // Manual build identifier
+    };
+
+    serde_wasm_bindgen::to_value(&info).unwrap()
+}

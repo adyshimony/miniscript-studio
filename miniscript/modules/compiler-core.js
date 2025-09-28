@@ -1,4 +1,4 @@
-import init, { compile_unified, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights } from '../pkg/miniscript_wasm.js';
+import init, { compile_unified, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights, get_wasm_build_info } from '../pkg/miniscript_wasm.js';
 import { CONSTANTS } from './constants.js';
 
 /**
@@ -52,6 +52,22 @@ export class MiniscriptCompiler {
         try {
             this.wasm = await init();
             console.log('WASM module initialized');
+
+            // Print WASM build info on page load
+            try {
+                const buildInfo = get_wasm_build_info();
+                console.log('=== WASM BUILD INFO ===');
+                console.log('Version:', buildInfo.version);
+                console.log('Has descriptor support:', buildInfo.has_descriptor_support);
+                console.log('Has x-only conversion:', buildInfo.has_xonly_conversion);
+                console.log('Build ID:', buildInfo.build_id);
+                console.log('=======================');
+            } catch (e) {
+                console.error('Error calling get_wasm_build_info:', e);
+                console.error('Error message:', e.message);
+                console.error('Error stack:', e.stack);
+            }
+
             this.setupEventListeners();
             this.loadSavedExpressions();
             this.loadSavedPolicies();
@@ -59,7 +75,7 @@ export class MiniscriptCompiler {
             // Initialize empty results sections on page load
             this.initializeEmptyResults();
             this.setupReplaceKeysCheckbox();
-            
+
             // Initialize undo stacks with initial state
             setTimeout(() => {
                 console.log('Initializing undo stacks');
