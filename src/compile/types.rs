@@ -49,4 +49,6 @@ pub struct CompileResponse {
     pub max_weight_to_satisfy: Option<u64>,
     pub sanity_check: Option<bool>,
     pub is_non_malleable: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_info: Option<crate::types::DebugInfo>,
 }

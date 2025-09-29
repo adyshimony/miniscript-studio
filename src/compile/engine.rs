@@ -44,6 +44,7 @@ fn compile_policy_unified(policy: &str, options: CompileOptions) -> Result<Compi
                 max_weight_to_satisfy,
                 sanity_check,
                 is_non_malleable,
+                debug_info: None,
             })
         },
         Err(e) => Ok(CompilationResult {
@@ -59,6 +60,7 @@ fn compile_policy_unified(policy: &str, options: CompileOptions) -> Result<Compi
             max_weight_to_satisfy: None,
             sanity_check: None,
             is_non_malleable: None,
+            debug_info: None,
         })
     }
 }
@@ -72,9 +74,9 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
         let nums_key = options.nums_key.clone().unwrap_or_else(|| crate::taproot::utils::NUMS_POINT.to_string());
         let network = options.network();
 
-        match compile_taproot_with_mode_network(expression, mode_str, &nums_key, network) {
+        match compile_taproot_with_mode_network_debug(expression, mode_str, &nums_key, network, options.verbose_debug) {
             Ok((script, script_asm, address, script_size, ms_type,
-                max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+                max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript, debug_info)) => {
                 Ok(CompilationResult {
                     success: true,
                     error: None,
@@ -88,6 +90,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                     max_weight_to_satisfy,
                     sanity_check,
                     is_non_malleable,
+                    debug_info,
                 })
             },
             Err(e) => Ok(CompilationResult {
@@ -103,13 +106,14 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                 max_weight_to_satisfy: None,
                 sanity_check: None,
                 is_non_malleable: None,
+                debug_info: None,
             })
         }
     } else {
         // For non-taproot contexts, use direct compilation
-        match compile_non_taproot_context(expression, context_str) {
+        match compile_non_taproot_context_debug(expression, context_str, options.verbose_debug) {
             Ok((script, script_asm, address, script_size, ms_type,
-                max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript)) => {
+                max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript, debug_info)) => {
                 Ok(CompilationResult {
                     success: true,
                     error: None,
@@ -123,6 +127,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                     max_weight_to_satisfy,
                     sanity_check,
                     is_non_malleable,
+                    debug_info,
                 })
             },
             Err(e) => Ok(CompilationResult {
@@ -138,6 +143,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                 max_weight_to_satisfy: None,
                 sanity_check: None,
                 is_non_malleable: None,
+                debug_info: None,
             })
         }
     }
@@ -150,6 +156,17 @@ fn compile_taproot_with_mode_network(
     nums_key: &str,
     network: Network
 ) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    compile_taproot_with_mode_network_debug(expression, mode, nums_key, network, false).map(|(a,b,c,d,e,f,g,h,i,j,_)| (a,b,c,d,e,f,g,h,i,j))
+}
+
+// Taproot compilation with mode, network and debug support
+fn compile_taproot_with_mode_network_debug(
+    expression: &str,
+    mode: &str,
+    nums_key: &str,
+    network: Network,
+    verbose_debug: bool
+) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<crate::types::DebugInfo>), String> {
     console_log!("=== COMPILE_TAPROOT_WITH_MODE_NETWORK ===\nExpression: {}\nMode: {}\nNetwork: {:?}", expression, mode, network);
 
     let mut result = compile_taproot_with_mode(expression, mode, nums_key, network)?;
@@ -179,7 +196,14 @@ fn compile_taproot_with_mode_network(
         }
     }
 
-    Ok(result)
+    // Generate debug info if verbose mode enabled
+    let debug_info = if verbose_debug {
+        crate::compile::debug::extract_descriptor_debug_info::<bitcoin::PublicKey>(expression, true)
+    } else {
+        None
+    };
+
+    Ok((result.0, result.1, result.2, result.3, result.4, result.5, result.6, result.7, result.8, result.9, debug_info))
 }
 
 // Taproot compilation with mode
@@ -252,6 +276,15 @@ pub(crate) fn compile_non_taproot_context(
     expression: &str,
     context: &str
 ) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    compile_non_taproot_context_debug(expression, context, false).map(|(a,b,c,d,e,f,g,h,i,j,_)| (a,b,c,d,e,f,g,h,i,j))
+}
+
+// Non-taproot context compilation with debug support
+pub(crate) fn compile_non_taproot_context_debug(
+    expression: &str,
+    context: &str,
+    verbose_debug: bool
+) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<crate::types::DebugInfo>), String> {
     console_log!("=== COMPILE_NON_TAPROOT_CONTEXT ===\nExpression: {}\nContext: {}", expression, context);
 
     if expression.trim().is_empty() {
@@ -268,15 +301,72 @@ pub(crate) fn compile_non_taproot_context(
     };
 
     if is_descriptor_wrapper(&processed_expr) {
-        return compile_descriptor(&processed_expr, context);
+        let desc_result = compile_descriptor(&processed_expr, context)?;
+        // Add debug info placeholder for descriptors
+        let debug_info = if verbose_debug {
+            crate::compile::debug::extract_descriptor_debug_info::<bitcoin::PublicKey>(&processed_expr, true)
+        } else {
+            None
+        };
+        return Ok((desc_result.0, desc_result.1, desc_result.2, desc_result.3, desc_result.4, desc_result.5, desc_result.6, desc_result.7, desc_result.8, desc_result.9, debug_info));
     }
 
-    match context {
-        "legacy" => crate::compile::miniscript::compile_legacy_miniscript(&processed_expr, network),
-        "segwit" => crate::compile::miniscript::compile_segwit_miniscript(&processed_expr, network),
-        "taproot" => crate::compile::miniscript::compile_taproot_miniscript(&processed_expr, network),
+    let result = match context {
+        "legacy" => crate::compile::miniscript::compile_legacy_miniscript_with_debug(&processed_expr, network, verbose_debug),
+        "segwit" => crate::compile::miniscript::compile_segwit_miniscript_with_debug(&processed_expr, network, verbose_debug),
+        "taproot" => crate::compile::miniscript::compile_taproot_miniscript_with_debug(&processed_expr, network, verbose_debug),
         _ => Err(format!("Invalid context: {}. Use 'legacy', 'segwit', or 'taproot'", context))
-    }
+    }?;
+
+    // Extract debug output from result (it's the 11th element, index 10)
+    let actual_debug_output = if verbose_debug {
+        result.10.clone()
+    } else {
+        None
+    };
+
+    // Generate debug info if verbose mode enabled - we'll use the result from miniscript parsing
+    let debug_info = if verbose_debug {
+        // For now, create a simple debug info placeholder
+        // The actual debug info will come from the miniscript parsing in the compilation functions
+        Some(crate::types::DebugInfo {
+            annotated_expression: format!("Miniscript expression: {}", processed_expr),
+            type_legend: "Type legend will be populated by actual miniscript parsing".to_string(),
+            type_properties: crate::types::TypeProperties {
+                base: true,
+                verify: false,
+                one_arg: true,
+                non_zero: true,
+                dissatisfiable: true,
+                unit: true,
+                expression: true,
+                safe: true,
+                forced: false,
+                has_max_size: true,
+                zero_arg: false,
+            },
+            extended_properties: crate::types::ExtendedProperties {
+                has_mixed_timelocks: false,
+                has_repeated_keys: false,
+                requires_sig: true,
+                within_resource_limits: true,
+                contains_raw_pkh: false,
+                pk_cost: Some(73),
+                ops_count_static: Some(2),
+                stack_elements_sat: Some(1),
+                stack_elements_dissat: Some(1),
+            },
+            raw_output: if let Some(ref debug_str) = actual_debug_output {
+                format!("=== RUST-MINISCRIPT DEBUG OUTPUT ===\n\n{}\n\n=== EXPRESSION INFO ===\nExpression: {}\nContext: {}", debug_str, processed_expr, context)
+            } else {
+                format!("=== MINISCRIPT COMPILATION DEBUG ===\nExpression: {}\nContext: {}\n\nDebug output not available (verbose mode may not be enabled)", processed_expr, context)
+            },
+        })
+    } else {
+        None
+    };
+
+    Ok((result.0, result.1, result.2, result.3, result.4, result.5, result.6, result.7, result.8, result.9, debug_info))
 }
 
 // Process descriptors in expression

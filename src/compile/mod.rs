@@ -11,4 +11,5 @@ pub mod modes;
 pub mod engine;
 pub mod options;
 pub mod utils;
+pub mod debug;
 

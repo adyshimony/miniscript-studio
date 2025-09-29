@@ -20,6 +20,9 @@ pub struct CompileOptions {
     pub network_str: String,
     // Optional NUMS key for taproot
     pub nums_key: Option<String>,
+    // Enable verbose debug output
+    #[serde(default)]
+    pub verbose_debug: bool,
 }
 
 fn default_network_string() -> String {
@@ -46,6 +49,7 @@ impl Default for CompileOptions {
             mode: CompileMode::Default,
             network_str: "bitcoin".to_string(),
             nums_key: None,
+            verbose_debug: false,
         }
     }
 }
@@ -134,6 +138,7 @@ impl CompileOptions {
             mode: mode.map(CompileMode::from_str).transpose()?.unwrap_or(CompileMode::Default),
             network_str,
             nums_key: None,
+            verbose_debug: false,
         })
     }
 
@@ -152,6 +157,7 @@ impl CompileOptions {
             mode: mode.map(CompileMode::from_str).transpose()?.unwrap_or(CompileMode::Default),
             network_str,
             nums_key,
+            verbose_debug: false,
         })
     }
 }

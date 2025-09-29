@@ -236,6 +236,9 @@ pub fn compile_legacy_policy(
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     match policy.compile::<Legacy>() {
         Ok(ms) => {
+            // Add verbose debug logging
+            console_log!("=== VERBOSE LEGACY POLICY -> MINISCRIPT DEBUG ===");
+            console_log!("{:#?}", ms);
             let script = ms.encode();
             let script_hex = hex::encode(script.as_bytes());
             let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
@@ -277,6 +280,9 @@ pub fn compile_segwit_policy(
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     match policy.compile::<Segwitv0>() {
         Ok(ms) => {
+            // Add verbose debug logging
+            console_log!("=== VERBOSE SEGWIT POLICY -> MINISCRIPT DEBUG ===");
+            console_log!("{:#?}", ms);
             let script = ms.encode();
             let script_hex = hex::encode(script.as_bytes());
             let script_asm = format!("{:?}", script).replace("Script(", "").trim_end_matches(')').to_string();
@@ -514,6 +520,9 @@ pub fn compile_taproot_policy_xonly_single_leaf(
 ) -> Result<(String, String, Option<String>, usize, String, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>), String> {
     match policy.compile::<Tap>() {
         Ok(ms) => {
+            // Add verbose debug logging
+            console_log!("=== VERBOSE TAPROOT POLICY -> MINISCRIPT DEBUG ===");
+            console_log!("{:#?}", ms);
             let compiled_miniscript = ms.to_string();
             console_log!("Policy compiled to single-leaf miniscript: {}", compiled_miniscript);
             

@@ -100,6 +100,7 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
                             max_weight_to_satisfy,
                             sanity_check: Some(true),
                             is_non_malleable: Some(true),
+                            debug_info: None,
                         });
                     }
                     Err(_e) => {
@@ -148,6 +149,7 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
                                 max_weight_to_satisfy,
                                 sanity_check: Some(true),
                                 is_non_malleable: Some(true),
+                                debug_info: None,
                             })
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))
@@ -246,6 +248,7 @@ pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Ne
                                 max_weight_to_satisfy,
                                 sanity_check: Some(true),
                                 is_non_malleable: Some(true),
+                                debug_info: None,
                             })
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))
@@ -352,6 +355,7 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
                             max_weight_to_satisfy,
                             sanity_check: Some(true),
                             is_non_malleable: Some(true),
+                            debug_info: None,
                         });
                     }
                     Err(_e) => {
@@ -400,6 +404,7 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
                                 max_weight_to_satisfy,
                                 sanity_check: Some(true),
                                 is_non_malleable: Some(true),
+                                debug_info: None,
                             })
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))

@@ -9,6 +9,7 @@
 
 import { MiniscriptCompiler } from './compiler-core.js';
 import { CONSTANTS } from './constants.js';
+import { compile_unified } from '../pkg/miniscript_wasm.js';
 
 // Initialize the compiler
 const compiler = new MiniscriptCompiler();
@@ -2187,3 +2188,92 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Taproot Structure clearing on context change initialized');
     }
 });
+
+// Global function to toggle miniscript debug info
+window.toggleMiniscriptDebugInfo = function(button) {
+    const resultBox = button.closest('.result-box');
+    if (!resultBox) return;
+
+    // Check if debug info already exists
+    let debugDiv = resultBox.querySelector('.debug-info-container');
+
+    if (debugDiv) {
+        // Debug info exists, toggle visibility
+        if (debugDiv.style.display === 'none') {
+            debugDiv.style.display = 'block';
+            button.style.backgroundColor = 'var(--success-bg)';
+        } else {
+            debugDiv.style.display = 'none';
+            button.style.backgroundColor = 'transparent';
+        }
+    } else {
+        // Debug info doesn't exist, create it
+        button.style.backgroundColor = 'var(--success-bg)';
+
+        // Get the current expression and context to recompile with debug info
+        const expressionEditor = document.querySelector('.miniscript-editor');
+        const expression = expressionEditor ? expressionEditor.textContent.trim() : '';
+        const context = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
+
+        if (expression) {
+            try {
+                // Process the expression the same way as regular compilation
+                const cleanedExpression = compiler.cleanExpression(expression);
+                const processedExpression = compiler.replaceKeyVariables(cleanedExpression, context);
+
+                // Determine the correct mode, especially for Taproot
+                let mode = "Default";
+                if (context === 'taproot') {
+                    // Check current taproot mode from global variable or detect from expression
+                    const currentMode = window.currentTaprootMode || 'single-leaf';
+                    if (currentMode === 'single-leaf') {
+                        mode = "SingleLeaf";
+                    } else if (currentMode === 'multi-leaf') {
+                        mode = "MultiLeaf";
+                    } else if (currentMode === 'script-path') {
+                        mode = "ScriptPath";
+                    }
+                }
+
+                // Use the NUMS key from compiler's default variables
+                const numsKey = compiler.defaultVariables.get('NUMS') || '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
+
+                // Just recompile with verbose_debug enabled using the same logic as before
+                const options = {
+                    input_type: "Miniscript",
+                    context: context === 'legacy' ? "Legacy" : context === 'segwit' ? "Segwit" : "Taproot",
+                    mode: mode,
+                    network_str: "bitcoin",
+                    nums_key: numsKey,
+                    verbose_debug: true
+                };
+
+                const result = compile_unified(processedExpression, options);
+
+                if (result.success) {
+                    // Create debug info container
+                    debugDiv = document.createElement('div');
+                    debugDiv.className = 'debug-info-container';
+                    debugDiv.style.marginTop = '15px';
+
+                    const debugText = compiler.formatDebugInfo(result);
+                    debugDiv.innerHTML = `
+                        <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">🔍 Debug Info</div>
+                        <div class="debug-text-display" style="margin-top: 8px;">
+                            <pre>${debugText}</pre>
+                        </div>
+                    `;
+
+                    // Insert after the last child of result-box
+                    resultBox.appendChild(debugDiv);
+                } else {
+                    console.error('Debug compilation failed:', result.error);
+                    button.style.backgroundColor = 'transparent';
+                }
+            } catch (error) {
+                console.error('Failed to compile with debug info:', error);
+                button.style.backgroundColor = 'transparent';
+            }
+        }
+    }
+};

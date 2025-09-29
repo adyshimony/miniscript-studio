@@ -13,8 +13,21 @@ use crate::descriptors::compiler::compile_parsed_descriptor;
 
 /// Compile Legacy context miniscript
 pub fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    compile_legacy_miniscript_with_debug(expression, network, false).map(|(a,b,c,d,e,f,g,h,i,j,_)| (a,b,c,d,e,f,g,h,i,j))
+}
+
+pub fn compile_legacy_miniscript_with_debug(expression: &str, network: Network, verbose_debug: bool) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<String>), String> {
     match expression.parse::<Miniscript<PublicKey, Legacy>>() {
         Ok(ms) => {
+            // Capture debug info if verbose mode enabled
+            let debug_output = if verbose_debug {
+                console_log!("=== VERBOSE LEGACY MINISCRIPT DEBUG ===");
+                let debug_str = format!("{:#?}", ms);
+                console_log!("{}", debug_str);
+                Some(debug_str)
+            } else {
+                None
+            };
             let normalized_miniscript = ms.to_string();
             let script = ms.encode();
             let script_hex = hex::encode(script.as_bytes());
@@ -47,7 +60,8 @@ pub fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(
                 max_weight_to_satisfy,
                 Some(sanity_check),
                 Some(is_non_malleable),
-                Some(normalized_miniscript)
+                Some(normalized_miniscript),
+                debug_output
             ))
         }
         Err(e) => {
@@ -63,8 +77,21 @@ pub fn compile_legacy_miniscript(expression: &str, network: Network) -> Result<(
 
 /// Compile Segwit v0 context miniscript
 pub fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    compile_segwit_miniscript_with_debug(expression, network, false).map(|(a,b,c,d,e,f,g,h,i,j,_)| (a,b,c,d,e,f,g,h,i,j))
+}
+
+pub fn compile_segwit_miniscript_with_debug(expression: &str, network: Network, verbose_debug: bool) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<String>), String> {
     match expression.parse::<Miniscript<PublicKey, Segwitv0>>() {
         Ok(ms) => {
+            // Capture debug info if verbose mode enabled
+            let debug_output = if verbose_debug {
+                console_log!("=== VERBOSE SEGWIT MINISCRIPT DEBUG ===");
+                let debug_str = format!("{:#?}", ms);
+                console_log!("{}", debug_str);
+                Some(debug_str)
+            } else {
+                None
+            };
             let normalized_miniscript = ms.to_string();
             let script = ms.encode();
             let script_hex = hex::encode(script.as_bytes());
@@ -97,7 +124,8 @@ pub fn compile_segwit_miniscript(expression: &str, network: Network) -> Result<(
                 max_weight_to_satisfy,
                 Some(sanity_check),
                 Some(is_non_malleable),
-                Some(normalized_miniscript)
+                Some(normalized_miniscript),
+                debug_output
             ))
         }
         Err(e) => {
@@ -292,6 +320,10 @@ pub fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Opti
 }
 /// Compile Taproot context miniscript
 pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+    compile_taproot_miniscript_with_debug(expression, network, false).map(|(a,b,c,d,e,f,g,h,i,j,_)| (a,b,c,d,e,f,g,h,i,j))
+}
+
+pub fn compile_taproot_miniscript_with_debug(expression: &str, network: Network, verbose_debug: bool) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<String>), String> {
     // New approach: wrap miniscript in tr() descriptor with extracted internal key
     console_log!("Compiling Taproot miniscript using tr() descriptor approach");
     console_log!("Original expression: {}", expression);
@@ -299,6 +331,25 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
     // First validate that we can parse the miniscript
     match expression.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         Ok(ms) => {
+            // Capture debug info if verbose mode enabled
+            let debug_output = if verbose_debug {
+                console_log!("=== VERBOSE TAPROOT MINISCRIPT DEBUG ===");
+
+                // Get the type information
+                let ms_type = ms.ty;
+                let type_str = format!("{:?}", ms_type);
+
+                // Format the miniscript with debug
+                let debug_str = format!("{:#?}", ms);
+                console_log!("Miniscript Debug: {}", debug_str);
+                console_log!("Miniscript Type: {}", type_str);
+
+                // Try to create a more informative output
+                let annotated_str = format!("Miniscript[{}]: {:#?}", type_str, ms);
+                Some(annotated_str)
+            } else {
+                None
+            };
             let normalized_miniscript = ms.to_string();
             console_log!("Normalized miniscript: {}", normalized_miniscript);
             
@@ -325,7 +376,37 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
                 match tr_descriptor_str.parse::<Descriptor<XOnlyPublicKey>>() {
                     Ok(descriptor) => {
                         console_log!("Successfully parsed tr() descriptor with tree notation");
-                        return compile_parsed_descriptor(descriptor, network);
+
+                        // Capture the descriptor's debug output if verbose mode enabled
+                        let final_debug_output = if verbose_debug {
+                            console_log!("=== VERBOSE TAPROOT DESCRIPTOR DEBUG ===");
+
+                            // The original debug_output has the miniscript with type annotations
+                            // We'll combine it with descriptor info
+                            let mut combined_debug = String::new();
+
+                            // Add the typed miniscript if we have it
+                            if let Some(ref ms_debug) = debug_output {
+                                combined_debug.push_str("=== MINISCRIPT WITH TYPE ANNOTATIONS ===\n");
+                                combined_debug.push_str(ms_debug);
+                                combined_debug.push_str("\n\n");
+                            }
+
+                            // Add the descriptor debug
+                            combined_debug.push_str("=== DESCRIPTOR DEBUG ===\n");
+                            let desc_debug_str = format!("{:#?}", descriptor);
+                            console_log!("Tree notation - Descriptor Debug Format Output: {}", desc_debug_str);
+                            combined_debug.push_str(&desc_debug_str);
+
+                            console_log!("Combined debug output:\n{}", combined_debug);
+                            Some(combined_debug)
+                        } else {
+                            debug_output
+                        };
+
+                        let desc_result = compile_parsed_descriptor(descriptor, network)?;
+                        // Add debug output for descriptor path
+                        return Ok((desc_result.0, desc_result.1, desc_result.2, desc_result.3, desc_result.4, desc_result.5, desc_result.6, desc_result.7, desc_result.8, desc_result.9, final_debug_output));
                     }
                     Err(_e) => {
                         console_log!("Failed to parse tr() descriptor with tree notation: {}", _e);
@@ -371,7 +452,34 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
                     match Descriptor::new_tr(internal_key, Some(tap_tree)) {
                 Ok(descriptor) => {
                     console_log!("Successfully parsed tr() descriptor");
-                    
+
+                    // Capture the descriptor's debug output if verbose mode enabled
+                    let final_debug_output = if verbose_debug {
+                        console_log!("=== VERBOSE TAPROOT DESCRIPTOR DEBUG ===");
+
+                        // The original debug_output has the miniscript with type annotations
+                        // We'll combine it with descriptor info
+                        let mut combined_debug = String::new();
+
+                        // Add the typed miniscript if we have it
+                        if let Some(ref ms_debug) = debug_output {
+                            combined_debug.push_str("=== MINISCRIPT WITH TYPE ANNOTATIONS ===\n");
+                            combined_debug.push_str(ms_debug);
+                            combined_debug.push_str("\n\n");
+                        }
+
+                        // Add the descriptor debug
+                        combined_debug.push_str("=== DESCRIPTOR DEBUG ===\n");
+                        let desc_debug_str = format!("{:#?}", descriptor);
+                        console_log!("Descriptor Debug Format Output: {}", desc_debug_str);
+                        combined_debug.push_str(&desc_debug_str);
+
+                        console_log!("Combined debug output:\n{}", combined_debug);
+                        Some(combined_debug)
+                    } else {
+                        debug_output
+                    };
+
                     // For taproot, we need the output script (scriptPubKey), not the leaf script
                     // This is OP_1 (0x51) followed by 32 bytes of the taproot output key
                     let script = descriptor.script_pubkey();
@@ -420,7 +528,8 @@ pub fn compile_taproot_miniscript(expression: &str, network: Network) -> Result<
                         max_weight_to_satisfy,
                         Some(sanity_check),
                         Some(is_non_malleable),
-                        Some(descriptor_string)
+                        Some(descriptor_string),
+                        final_debug_output
                     ))
                 }
                 Err(e) => {

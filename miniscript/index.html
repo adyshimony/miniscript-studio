@@ -893,6 +893,114 @@
             overflow-wrap: break-word !important;
             word-break: normal !important;
         }
+
+        /* Debug info display styling */
+        .debug-info-container {
+            margin: 15px 0;
+        }
+
+        .basic-debug-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .basic-debug-section:last-child {
+            border-bottom: none;
+        }
+
+        .basic-debug-section h5 {
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .property-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+        }
+
+        .property-item {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+
+        .property-item.true {
+            background: var(--success-bg);
+            border-color: var(--success-border);
+            color: var(--text-color);
+        }
+
+        .property-item.false {
+            background: var(--error-bg);
+            border-color: var(--error-border);
+            color: var(--error-text);
+        }
+
+        .miniscript-expression-section {
+            background: var(--code-bg);
+            border-radius: 4px;
+            margin: 0;
+        }
+
+        .expression-display {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            padding: 12px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .debug-console-notice {
+            background: var(--info-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .debug-console-notice strong {
+            color: var(--text-color);
+        }
+
+        /* Simple debug text display */
+        .debug-text-display {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 12px;
+            margin: 0;
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        .debug-text-display pre {
+            margin: 0;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            color: inherit;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
@@ -1059,6 +1167,8 @@
                 class="policy-editor"
             ></div>
             
+            <!-- Debug mode toggle for Policy tab -->
+
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
                 <div class="button-group">
                     <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
@@ -1182,6 +1292,8 @@
                 class="miniscript-editor"
             ></div>
             
+            <!-- Debug mode toggle for Miniscript tab -->
+
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
                 <div class="button-group">
                     <button id="compile-btn" class="primary-btn">🔨 Compile</button>

@@ -45,6 +45,7 @@ pub fn compile_unified(expression: &str, options_js: JsValue) -> JsValue {
                 max_weight_to_satisfy: None,
                 sanity_check: None,
                 is_non_malleable: None,
+                debug_info: None,
             };
             return serde_wasm_bindgen::to_value(&result).unwrap();
         }
@@ -64,6 +65,7 @@ pub fn compile_unified(expression: &str, options_js: JsValue) -> JsValue {
             max_weight_to_satisfy: None,
             sanity_check: None,
             is_non_malleable: None,
+            debug_info: None,
         });
 
     serde_wasm_bindgen::to_value(&result).unwrap()

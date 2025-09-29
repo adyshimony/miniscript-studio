@@ -19,6 +19,48 @@ pub struct CompilationResult {
     pub max_weight_to_satisfy: Option<u64>,
     pub sanity_check: Option<bool>,
     pub is_non_malleable: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_info: Option<DebugInfo>,
+}
+
+/// Debug information for verbose mode
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebugInfo {
+    pub annotated_expression: String,  // Expression with type annotations
+    pub type_legend: String,           // Explanation of type codes
+    pub type_properties: TypeProperties,
+    pub extended_properties: ExtendedProperties,
+    pub raw_output: String,            // Full Debug output
+}
+
+/// Type properties extracted from miniscript
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeProperties {
+    pub base: bool,
+    pub verify: bool,
+    pub one_arg: bool,
+    pub non_zero: bool,
+    pub dissatisfiable: bool,
+    pub unit: bool,
+    pub expression: bool,
+    pub safe: bool,
+    pub forced: bool,
+    pub has_max_size: bool,
+    pub zero_arg: bool,
+}
+
+/// Extended properties from miniscript analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtendedProperties {
+    pub has_mixed_timelocks: bool,
+    pub has_repeated_keys: bool,
+    pub requires_sig: bool,
+    pub within_resource_limits: bool,
+    pub contains_raw_pkh: bool,
+    pub pk_cost: Option<usize>,
+    pub ops_count_static: Option<usize>,
+    pub stack_elements_sat: Option<usize>,
+    pub stack_elements_dissat: Option<usize>,
 }
 
 /// Result structure for lift operations

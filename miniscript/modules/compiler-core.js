@@ -563,6 +563,9 @@ export class MiniscriptCompiler {
                 window.currentTaprootMode = currentMode; // Update the global mode
                 console.log(`Compiling miniscript in taproot context, mode: ${currentMode}`);
 
+                // Check debug mode
+                const debugMode = document.getElementById('miniscript-debug-mode')?.checked || false;
+
                 // Use unified compile with options
                 const options = {
                     input_type: "Miniscript",
@@ -570,7 +573,8 @@ export class MiniscriptCompiler {
                     mode: currentMode === 'multi-leaf' ? "MultiLeaf" :
                           currentMode === 'script-path' ? "ScriptPath" : "SingleLeaf",
                     network_str: "bitcoin",
-                    nums_key: numsKey
+                    nums_key: numsKey,
+                    verbose_debug: debugMode
                 };
                 result = compile_unified(processedExpression, options);
                 if (result.success) {
@@ -579,12 +583,15 @@ export class MiniscriptCompiler {
             } else {
                 // Non-taproot contexts: use unified compile
                 const contextStr = context === 'legacy' ? "Legacy" : "Segwit";
+                const debugMode = document.getElementById('miniscript-debug-mode')?.checked || false;
+
                 const options = {
                     input_type: "Miniscript",
                     context: contextStr,
                     mode: "Default",
                     network_str: "bitcoin",
-                    nums_key: numsKey
+                    nums_key: numsKey,
+                    verbose_debug: debugMode
                 };
                 result = compile_unified(processedExpression, options);
             }
@@ -929,6 +936,9 @@ export class MiniscriptCompiler {
                 window.currentTaprootMode = mode; // Update the global mode
                 console.log('Compiling policy with mode:', mode);
 
+                // Check debug mode
+                const debugMode = document.getElementById('policy-debug-mode')?.checked || false;
+
                 // Use unified compile with options
                 const options = {
                     input_type: "Policy",
@@ -936,18 +946,22 @@ export class MiniscriptCompiler {
                     mode: mode === 'multi-leaf' ? "MultiLeaf" :
                           mode === 'script-path' ? "ScriptPath" : "SingleLeaf",
                     network_str: "bitcoin",
-                    nums_key: null
+                    nums_key: null,
+                    verbose_debug: debugMode
                 };
                 result = compile_unified(processedPolicy, options);
             } else {
                 // Non-taproot contexts: use unified compile
                 const contextStr = context === 'legacy' ? "Legacy" : "Segwit";
+                const debugMode = document.getElementById('policy-debug-mode')?.checked || false;
+
                 const options = {
                     input_type: "Policy",
                     context: contextStr,
                     mode: "Default",
                     network_str: "bitcoin",
-                    nums_key: null
+                    nums_key: null,
+                    verbose_debug: debugMode
                 };
                 result = compile_unified(processedPolicy, options);
             }
@@ -4697,6 +4711,235 @@ export class MiniscriptCompiler {
             if (scriptAsm) this.enforceElementStyling(scriptAsm);
             if (addressDisplay) this.enforceElementStyling(addressDisplay);
         }
+
+    }
+
+    // Method to compile miniscript with debug info enabled
+    compileMiniscriptWithDebug(expression, context) {
+        try {
+            // Capitalize context to match WASM expectations
+            const capitalizedContext = context.charAt(0).toUpperCase() + context.slice(1);
+
+            const options = {
+                input_type: 'Miniscript',
+                context: capitalizedContext,
+                mode: capitalizedContext === 'Taproot' ? 'SingleLeaf' : 'Default',
+                network_str: 'bitcoin',
+                nums_key: '',
+                verbose_debug: true  // Always enable debug for this method
+            };
+
+            const result = compile_unified(expression, options);
+            return result;
+        } catch (error) {
+            console.error('Debug compilation failed:', error);
+            throw error;
+        }
+    }
+
+    formatDebugInfo(result) {
+        let debugText = '';
+
+        // Compilation Overview
+        debugText += '=== COMPILATION OVERVIEW ===\n\n';
+        debugText += `Compiled Miniscript: ${result.compiled_miniscript || 'N/A'}\n`;
+        debugText += `Sanity Check: ${result.sanity_check ? 'PASS' : 'FAIL'}\n`;
+        debugText += `Malleability: ${result.is_non_malleable ? 'Non-malleable' : 'Malleable'}\n`;
+        debugText += `Miniscript Type: ${result.miniscript_type || 'N/A'}\n\n`;
+
+        // Script Metrics
+        debugText += '=== SCRIPT METRICS ===\n\n';
+        debugText += `Script Size: ${result.script_size || 'N/A'} bytes\n`;
+        debugText += `Max Satisfaction Size: ${result.max_satisfaction_size || 'N/A'} bytes\n`;
+        debugText += `Max Weight to Satisfy: ${result.max_weight_to_satisfy || 'N/A'} WU\n`;
+
+        // Add efficiency analysis
+        if (result.script_size && result.max_satisfaction_size) {
+            const scriptSize = parseInt(result.script_size);
+            const satSize = parseInt(result.max_satisfaction_size);
+            const totalSize = scriptSize + satSize;
+            debugText += `Total Size (script + satisfaction): ${totalSize} bytes\n`;
+
+            if (scriptSize < 100) {
+                debugText += `Efficiency: Compact script (${scriptSize} bytes)\n`;
+            } else if (scriptSize < 200) {
+                debugText += `Efficiency: Medium script (${scriptSize} bytes)\n`;
+            } else {
+                debugText += `Efficiency: Large script (${scriptSize} bytes) - consider optimization\n`;
+            }
+        }
+        debugText += '\n';
+
+        // Script Output
+        if (result.script) {
+            debugText += '=== SCRIPT OUTPUT ===\n\n';
+            debugText += `Script (hex): ${result.script}\n`;
+            if (result.script_asm) {
+                debugText += `Script ASM: ${result.script_asm}\n`;
+            }
+            if (result.address) {
+                debugText += `Address: ${result.address}\n`;
+            }
+            debugText += '\n';
+        }
+
+        // AST Structure with enhanced parsing
+        debugText += '=== AST STRUCTURE & TYPE ANALYSIS ===\n\n';
+        if (result.debug_info && result.debug_info.raw_output) {
+            // Extract the meaningful parts of the debug output
+            const rawOutput = result.debug_info.raw_output;
+
+            // First check for DESCRIPTOR DEBUG section which contains the type-annotated output
+            const descriptorDebugSection = rawOutput.match(/=== DESCRIPTOR DEBUG ===\n([\s\S]*?)(?:$)/);
+
+            if (descriptorDebugSection) {
+                // Extract the type-annotated descriptor output
+                const descriptorDebug = descriptorDebugSection[1].trim();
+
+                // For Taproot descriptors, extract the tree part with annotations
+                // Look for tr(XOnlyPublicKey(...), [type annotations]tree)
+                const trMatch = descriptorDebug.match(/[Tt]r\([^,]+,\s*((?:\[[^\]]+\])?[\s\S]+)\)/);
+                if (trMatch) {
+                    // Found the annotated tree part of the descriptor
+                    debugText += `Annotated Miniscript Expression:\n${trMatch[1].trim()}\n\n`;
+                } else {
+                    // Use the full descriptor debug if not Taproot
+                    debugText += `Annotated Expression:\n${descriptorDebug}\n\n`;
+                }
+            } else if (rawOutput.match(/=== MINISCRIPT WITH TYPE ANNOTATIONS ===\n([\s\S]*?)(?:\n\n|$)/)) {
+                // Fallback: check for MINISCRIPT WITH TYPE ANNOTATIONS section
+                const typeAnnotationSection = rawOutput.match(/=== MINISCRIPT WITH TYPE ANNOTATIONS ===\n([\s\S]*?)(?:\n\n|$)/);
+                const typedMiniscript = typeAnnotationSection[1].trim();
+                debugText += `Annotated Miniscript Expression:\n${typedMiniscript}\n\n`;
+            } else {
+                // Check for Miniscript[type]: format
+                const miniscriptTypeMatch = rawOutput.match(/Miniscript\[([^\]]+)\]:\s*([\s\S]+?)(?:\n\n|$)/);
+                if (miniscriptTypeMatch) {
+                    debugText += `Miniscript Type: [${miniscriptTypeMatch[1]}]\n`;
+                    debugText += `Annotated Expression:\n${miniscriptTypeMatch[2].trim()}\n\n`;
+                } else {
+                    // Fallback to previous parsing methods
+                    // Check if this is a Taproot descriptor with the {:#?} format output
+                    const trDescriptorMatch = rawOutput.match(/Tr\(\s*XOnlyPublicKey\([^)]+\),\s*([\s\S]+?)\s*\)(?:\s*$|\n)/);
+
+                    if (trDescriptorMatch) {
+                        // Found a Taproot descriptor with type annotations from Rust {:#?} format
+                        debugText += `Annotated Miniscript Expression:\n${trDescriptorMatch[1].trim()}\n\n`;
+                    } else {
+                        // Try to find typed miniscript expressions directly
+                        // Look for patterns like [B/fsm]or_d(...) with type annotations
+                        const typedExpressionPattern = /\[[BVWKonduesfmz/]+\][\w_]+\([^)]*(?:\([^)]*\)[^)]*)*\)/g;
+                        const typedMatches = rawOutput.match(typedExpressionPattern);
+
+                        if (typedMatches && typedMatches.length > 0) {
+                            // Found typed expressions, use the first substantial one
+                            const mainExpression = typedMatches.find(match => match.includes('or_') || match.includes('and_') || match.includes('thresh')) || typedMatches[0];
+                            debugText += `Annotated Miniscript Expression:\n${mainExpression}\n\n`;
+                        } else {
+                            // Fallback: look for any miniscript expression
+                            const simpleMatch = rawOutput.match(/(?:or_d|and_v|pk|pkh|thresh|multi)\([^)]+\)/);
+                            if (simpleMatch) {
+                                debugText += `AST Root: ${simpleMatch[0]}\n\n`;
+                            } else if (result.compiled_miniscript) {
+                                // Use the compiled_miniscript field as last resort
+                                const msMatch = result.compiled_miniscript.match(/(?:tr\([^,]+,)?([^)]+)\)?/);
+                                if (msMatch) {
+                                    debugText += `AST Root: ${msMatch[1]}\n\n`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Look for "Named:" line which shows the human-readable version
+            const namedMatch = rawOutput.match(/Named:\s*([^\n]+)/);
+            if (namedMatch) {
+                debugText += `Human-Readable Form: ${namedMatch[1].trim()}\n\n`;
+            }
+
+            // Extract type annotations with better parsing
+            const typeMatches = rawOutput.match(/\[([BVWKonduesfmz/]+)\]/g);
+            if (typeMatches) {
+                const uniqueTypes = [...new Set(typeMatches)];
+                debugText += `Type Annotations Found: ${uniqueTypes.join(', ')}\n\n`;
+
+                // Analyze the types for insights
+                const hasBaseType = uniqueTypes.some(t => t.includes('B'));
+                const hasVerifyType = uniqueTypes.some(t => t.includes('V'));
+                const hasKeyType = uniqueTypes.some(t => t.includes('K'));
+                const isSafe = uniqueTypes.some(t => t.includes('s'));
+                const isNonMalleable = uniqueTypes.some(t => t.includes('m'));
+                const isForced = uniqueTypes.some(t => t.includes('f'));
+
+                debugText += `Type Analysis:\n`;
+                debugText += `   Base type (B): ${hasBaseType ? 'Present' : 'Not present'}\n`;
+                debugText += `   Verify type (V): ${hasVerifyType ? 'Present' : 'Not present'}\n`;
+                debugText += `   Key type (K): ${hasKeyType ? 'Present' : 'Not present'}\n`;
+                debugText += `   Safe (s): ${isSafe ? 'Yes' : 'No'}\n`;
+                debugText += `   Forced (f): ${isForced ? 'Yes' : 'No'}\n`;
+                debugText += `   Bounded satisfaction (m): ${isNonMalleable ? 'Yes' : 'No'}\n\n`;
+            }
+
+            // Include relevant raw debug output sections
+            if (rawOutput.length > 100) {
+                debugText += '=== DETAILED RUST-MINISCRIPT OUTPUT ===\n\n';
+                // Clean up the raw output for better readability
+                const cleanedOutput = rawOutput
+                    .replace(/=+/g, '') // Remove separator lines
+                    .replace(/\n\s*\n\s*\n/g, '\n\n') // Normalize multiple newlines
+                    .replace(/XOnlyPublicKey\([a-f0-9]+\)/g, 'XOnlyPublicKey(...)') // Shorten long keys for readability
+                    .replace(/RelLockTime\(Sequence\([^\)]+\)\)/g, match => match) // Keep RelLockTime info
+                    .trim();
+                debugText += cleanedOutput + '\n\n';
+            }
+        } else {
+            debugText += `AST Root: ${result.compiled_miniscript || 'N/A'}\n`;
+            debugText += `Note: Compile with verbose debug mode for detailed AST analysis.\n\n`;
+        }
+
+        // Type System Reference
+        debugText += '=== TYPE SYSTEM REFERENCE ===\n\n';
+        debugText += `Miniscript uses a sophisticated type system to ensure script correctness:\n\n`;
+        debugText += `Core Types:\n`;
+        debugText += `   [B] Base - Complete script fragment\n`;
+        debugText += `   [V] Verify - Always leaves 1 on stack or fails\n`;
+        debugText += `   [W] Wrapper - Must be wrapped to be used\n\n`;
+        debugText += `Properties:\n`;
+        debugText += `   [o] One-arg - Consumes exactly one stack element\n`;
+        debugText += `   [z] Zero-arg - Requires no stack arguments\n`;
+        debugText += `   [n] Non-zero - Always produces non-zero result\n`;
+        debugText += `   [d] Dissatisfiable - Can be provably false\n`;
+        debugText += `   [u] Unit - Cleanly consumes inputs\n`;
+        debugText += `   [s] Safe - Cannot be malleated\n`;
+        debugText += `   [f] Forced - Must satisfy if parent satisfies\n`;
+        debugText += `   [e] Expression - Valid Bitcoin script\n`;
+        debugText += `   [m] Max-size - Bounded satisfaction size\n\n`;
+
+        // Examples section
+        debugText += '=== TYPE EXAMPLES ===\n\n';
+        debugText += `Example 1: pk(key) has type [B/onduesm]\n`;
+        debugText += `   [B] = Base type - can be used as complete script\n`;
+        debugText += `   [o] = One-arg - consumes one stack element (signature)\n`;
+        debugText += `   [n] = Non-zero - always produces non-zero result when satisfied\n`;
+        debugText += `   [d] = Dissatisfiable - can be proven false (no signature provided)\n`;
+        debugText += `   [u] = Unit - cleanly consumes its inputs\n`;
+        debugText += `   [e] = Expression - can be compiled to valid Bitcoin script\n`;
+        debugText += `   [s] = Safe - cannot be malleated by third parties\n`;
+        debugText += `   [m] = Max-size - satisfaction size is bounded\n\n`;
+
+        debugText += `Example 2: thresh(2,pk(A),pk(B),pk(C)) has type [B/onduesm]\n`;
+        debugText += `   Same properties as pk() but requires 2 out of 3 signatures\n`;
+        debugText += `   The threshold makes it dissatisfiable and bounded in size\n\n`;
+
+        debugText += `Example 3: sha256(H) has type [B/fsm]\n`;
+        debugText += `   [B] = Base type\n`;
+        debugText += `   [f] = Forced - must be satisfied if parent is satisfied\n`;
+        debugText += `   [s] = Safe - cannot be malleated\n`;
+        debugText += `   [m] = Max-size - satisfaction size is bounded (just the preimage)\n`;
+        debugText += `   Note: Not [d] because it cannot be dissatisfied (preimage required)\n\n`;
+
+        return debugText;
     }
 
     addDerivationIndexField() {
@@ -5010,12 +5253,15 @@ export class MiniscriptCompiler {
         // Use unified compile for consistency
         const contextStr = context === 'legacy' ? "Legacy" :
                           context === 'taproot' ? "Taproot" : "Segwit";
+        const debugMode = document.getElementById('miniscript-debug-mode')?.checked || false;
+
         const options = {
             input_type: "Miniscript",
             context: contextStr,
             mode: context === 'taproot' ? "SingleLeaf" : "Default",
             network_str: "bitcoin",
-            nums_key: null
+            nums_key: null,
+            verbose_debug: debugMode
         };
         const result = compile_unified(modifiedExpression, options);
 
@@ -5707,7 +5953,14 @@ export class MiniscriptCompiler {
                 if (titleElement) {
                     const currentContext = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
                     const contextDisplay = this.getContextDisplayName(currentContext);
-                    titleElement.innerHTML = `✅ <strong>Miniscript ${contextDisplay} compilation successful</strong>`;
+                    titleElement.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
+                            <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                                🐛
+                            </button>
+                        </div>
+                    `;
                 }
                 
                 // Update or generate tree visualization
@@ -5837,7 +6090,14 @@ export class MiniscriptCompiler {
         
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
-                <h4>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></h4>
+                <h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
+                        <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            🐛
+                        </button>
+                    </div>
+                </h4>
                 <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">${message}</div>
                 ${treeHtml}
                 ${taprootInfoHtml}
