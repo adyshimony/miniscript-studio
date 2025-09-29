@@ -1174,6 +1174,21 @@ function getKeyVariables() {
     return {};
 }
 
+// Get only custom key variables (excluding defaults)
+function getCustomKeyVariables() {
+    if (window.compiler && window.compiler.keyVariables && window.compiler.defaultVariables) {
+        const keyObj = {};
+        for (const [name, value] of window.compiler.keyVariables) {
+            // Only include if NOT a default variable
+            if (!window.compiler.defaultVariables.has(name)) {
+                keyObj[name] = value;
+            }
+        }
+        return keyObj;
+    }
+    return {};
+}
+
 // Auto-compile helper function that respects the setting
 function autoCompileIfEnabled(type) {
     const autoCompile = document.getElementById('auto-compile-setting');
@@ -1277,16 +1292,20 @@ window.sharePolicyExpression = function(event) {
     // Get share format setting for full content sharing
     const shareFormat = document.getElementById('share-format-setting').value;
     let shareUrl;
-    
+
     if (shareFormat === 'json') {
-        // JSON format - includes all state
+        // JSON format - includes only CUSTOM variables (not defaults)
         const state = {
             policy: policy,
-            keys: getKeyVariables() // Get current key variables
+            keys: getCustomKeyVariables() // Changed to get only custom variables
         };
         const jsonString = JSON.stringify(state);
         const encoded = btoa(jsonString); // Base64 encode
         shareUrl = `${window.location.origin}${window.location.pathname}#state=${encoded}`;
+    } else if (shareFormat === 'base64') {
+        // Base64 format - just the policy, no keys
+        const encoded = btoa(policy); // Base64 encode
+        shareUrl = `${window.location.origin}${window.location.pathname}#policy64=${encoded}`;
     } else {
         // URL format - just the policy
         const encoded = encodeURIComponent(policy);
@@ -1362,16 +1381,20 @@ window.shareMiniscriptExpression = function(event) {
     // Get share format setting
     const shareFormat = document.getElementById('share-format-setting').value;
     let shareUrl;
-    
+
     if (shareFormat === 'json') {
-        // JSON format - includes all state
+        // JSON format - includes only CUSTOM variables (not defaults)
         const state = {
             miniscript: miniscript,
-            keys: getKeyVariables() // Get current key variables
+            keys: getCustomKeyVariables() // Changed to get only custom variables
         };
         const jsonString = JSON.stringify(state);
         const encoded = btoa(jsonString); // Base64 encode
         shareUrl = `${window.location.origin}${window.location.pathname}#state=${encoded}`;
+    } else if (shareFormat === 'base64') {
+        // Base64 format - just the miniscript, no keys
+        const encoded = btoa(miniscript); // Base64 encode
+        shareUrl = `${window.location.origin}${window.location.pathname}#miniscript64=${encoded}`;
     } else {
         // URL format - just the miniscript
         const encoded = encodeURIComponent(miniscript);
@@ -1863,6 +1886,60 @@ window.addEventListener('DOMContentLoaded', function() {
                         if (compileBtn) compileBtn.click();
                     }, 500);
                 }
+            }
+        } else if (hash.startsWith('policy64=')) {
+            // Base64 encoded policy only (no keys)
+            const encoded = hash.substring(9); // Remove 'policy64='
+            try {
+                const policy = atob(encoded); // Base64 decode
+                const policyInput = document.getElementById('policy-input');
+                if (policyInput) {
+                    policyInput.textContent = policy;
+                    console.log('Loaded policy from base64 format');
+
+                    // Apply syntax highlighting
+                    if (window.compiler && window.compiler.highlightPolicySyntax) {
+                        window.compiler.highlightPolicySyntax();
+                    }
+
+                    // Auto-compile if setting is enabled
+                    const autoCompile = document.getElementById('auto-compile-setting');
+                    if (autoCompile && autoCompile.checked) {
+                        setTimeout(() => {
+                            const compileBtn = document.getElementById('compile-policy-btn');
+                            if (compileBtn) compileBtn.click();
+                        }, 500);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to decode base64 policy:', e);
+            }
+        } else if (hash.startsWith('miniscript64=')) {
+            // Base64 encoded miniscript only (no keys)
+            const encoded = hash.substring(13); // Remove 'miniscript64='
+            try {
+                const miniscript = atob(encoded); // Base64 decode
+                const expressionInput = document.getElementById('expression-input');
+                if (expressionInput) {
+                    expressionInput.textContent = miniscript;
+                    console.log('Loaded miniscript from base64 format');
+
+                    // Apply syntax highlighting
+                    if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+                        window.compiler.highlightMiniscriptSyntax();
+                    }
+
+                    // Auto-compile if setting is enabled
+                    const autoCompile = document.getElementById('auto-compile-setting');
+                    if (autoCompile && autoCompile.checked) {
+                        setTimeout(() => {
+                            const compileBtn = document.getElementById('compile-btn');
+                            if (compileBtn) compileBtn.click();
+                        }, 500);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to decode base64 miniscript:', e);
             }
         }
     }
