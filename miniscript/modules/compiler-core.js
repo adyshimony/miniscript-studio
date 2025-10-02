@@ -4747,28 +4747,43 @@ export class MiniscriptCompiler {
         debugText += `Malleability: ${result.is_non_malleable ? 'Non-malleable' : 'Malleable'}\n`;
         debugText += `Miniscript Type: ${result.miniscript_type || 'N/A'}\n\n`;
 
-        // Script Metrics
-        debugText += '=== SCRIPT METRICS ===\n\n';
-        debugText += `Script Size: ${result.script_size || 'N/A'} bytes\n`;
-        debugText += `Max Satisfaction Size: ${result.max_satisfaction_size || 'N/A'} bytes\n`;
-        debugText += `Max Weight to Satisfy: ${result.max_weight_to_satisfy || 'N/A'} WU\n`;
 
-        // Add efficiency analysis
-        if (result.script_size && result.max_satisfaction_size) {
-            const scriptSize = parseInt(result.script_size);
-            const satSize = parseInt(result.max_satisfaction_size);
-            const totalSize = scriptSize + satSize;
-            debugText += `Total Size (script + satisfaction): ${totalSize} bytes\n`;
+        // Extended Properties from rust-miniscript library
+        if (result.debug_info && result.debug_info.extended_properties) {
+            const ext = result.debug_info.extended_properties;
+            debugText += '=== MINISCRIPT ANALYSIS (from rust-miniscript) ===\n\n';
 
-            if (scriptSize < 100) {
-                debugText += `Efficiency: Compact script (${scriptSize} bytes)\n`;
-            } else if (scriptSize < 200) {
-                debugText += `Efficiency: Medium script (${scriptSize} bytes)\n`;
-            } else {
-                debugText += `Efficiency: Large script (${scriptSize} bytes) - consider optimization\n`;
+            // Script Properties
+            debugText += 'Script Properties:\n';
+            debugText += `   Has Mixed Timelocks: ${ext.has_mixed_timelocks ? '⚠️ Yes (potential conflict)' : '✓ No (safe)'}\n`;
+            debugText += `   Has Repeated Keys: ${ext.has_repeated_keys ? '⚠️ Yes (suboptimal)' : '✓ No (optimized)'}\n`;
+            debugText += `   Requires Signature: ${ext.requires_sig ? '✓ Yes (secure)' : '⚠️ No (may be insecure)'}\n`;
+            debugText += `   Within Resource Limits: ${ext.within_resource_limits ? '✓ Yes (consensus-valid)' : '❌ No (exceeds limits)'}\n`;
+            if (ext.contains_raw_pkh !== undefined && ext.contains_raw_pkh !== null) {
+                debugText += `   Contains Raw PKH: ${ext.contains_raw_pkh ? '⚠️ Yes' : '✓ No'} (Legacy only)\n`;
             }
+            debugText += '\n';
+
+            // Script Analysis (raw values only from rust-miniscript)
+            if (ext.pk_cost !== null || ext.ops_count_static !== null || ext.stack_elements_sat !== null) {
+                debugText += 'Script Analysis:\n';
+
+                if (ext.ops_count_static !== null && ext.ops_count_static !== undefined) {
+                    debugText += `   Opcode Count: ${ext.ops_count_static}\n`;
+                }
+
+                if (ext.pk_cost !== null && ext.pk_cost !== undefined) {
+                    debugText += `   Script Size: ${ext.pk_cost} bytes\n`;
+                }
+
+                if (ext.stack_elements_sat !== null && ext.stack_elements_sat !== undefined) {
+                    debugText += `   Witness Stack Items: ${ext.stack_elements_sat}\n`;
+                }
+
+                debugText += '\n';
+            }
+
         }
-        debugText += '\n';
 
         // Script Output
         if (result.script) {
@@ -4783,79 +4798,31 @@ export class MiniscriptCompiler {
             debugText += '\n';
         }
 
-        // AST Structure with enhanced parsing
-        debugText += '=== AST STRUCTURE & TYPE ANALYSIS ===\n\n';
+        // Miniscript Structure with enhanced parsing
+        debugText += '=== MINISCRIPT STRUCTURE & TYPE SYSTEM ===\n\n';
         if (result.debug_info && result.debug_info.raw_output) {
             // Extract the meaningful parts of the debug output
             const rawOutput = result.debug_info.raw_output;
 
-            // First check for DESCRIPTOR DEBUG section which contains the type-annotated output
-            const descriptorDebugSection = rawOutput.match(/=== DESCRIPTOR DEBUG ===\n([\s\S]*?)(?:$)/);
+            // Extract the complete annotated expression - look for line starting with [type]
+            // This captures the full expression from RUST-MINISCRIPT DEBUG OUTPUT
+            const fullExpressionMatch = rawOutput.match(/^\[([BVWKonduesfmz/]+)\][^\n]+.*$/m);
 
-            if (descriptorDebugSection) {
-                // Extract the type-annotated descriptor output
-                const descriptorDebug = descriptorDebugSection[1].trim();
-
-                // For Taproot descriptors, extract the tree part with annotations
-                // Look for tr(XOnlyPublicKey(...), [type annotations]tree)
-                const trMatch = descriptorDebug.match(/[Tt]r\([^,]+,\s*((?:\[[^\]]+\])?[\s\S]+)\)/);
-                if (trMatch) {
-                    // Found the annotated tree part of the descriptor
-                    debugText += `Annotated Miniscript Expression:\n${trMatch[1].trim()}\n\n`;
-                } else {
-                    // Use the full descriptor debug if not Taproot
-                    debugText += `Annotated Expression:\n${descriptorDebug}\n\n`;
-                }
-            } else if (rawOutput.match(/=== MINISCRIPT WITH TYPE ANNOTATIONS ===\n([\s\S]*?)(?:\n\n|$)/)) {
-                // Fallback: check for MINISCRIPT WITH TYPE ANNOTATIONS section
-                const typeAnnotationSection = rawOutput.match(/=== MINISCRIPT WITH TYPE ANNOTATIONS ===\n([\s\S]*?)(?:\n\n|$)/);
-                const typedMiniscript = typeAnnotationSection[1].trim();
-                debugText += `Annotated Miniscript Expression:\n${typedMiniscript}\n\n`;
-            } else {
-                // Check for Miniscript[type]: format
-                const miniscriptTypeMatch = rawOutput.match(/Miniscript\[([^\]]+)\]:\s*([\s\S]+?)(?:\n\n|$)/);
-                if (miniscriptTypeMatch) {
-                    debugText += `Miniscript Type: [${miniscriptTypeMatch[1]}]\n`;
-                    debugText += `Annotated Expression:\n${miniscriptTypeMatch[2].trim()}\n\n`;
-                } else {
-                    // Fallback to previous parsing methods
-                    // Check if this is a Taproot descriptor with the {:#?} format output
-                    const trDescriptorMatch = rawOutput.match(/Tr\(\s*XOnlyPublicKey\([^)]+\),\s*([\s\S]+?)\s*\)(?:\s*$|\n)/);
-
-                    if (trDescriptorMatch) {
-                        // Found a Taproot descriptor with type annotations from Rust {:#?} format
-                        debugText += `Annotated Miniscript Expression:\n${trDescriptorMatch[1].trim()}\n\n`;
-                    } else {
-                        // Try to find typed miniscript expressions directly
-                        // Look for patterns like [B/fsm]or_d(...) with type annotations
-                        const typedExpressionPattern = /\[[BVWKonduesfmz/]+\][\w_]+\([^)]*(?:\([^)]*\)[^)]*)*\)/g;
-                        const typedMatches = rawOutput.match(typedExpressionPattern);
-
-                        if (typedMatches && typedMatches.length > 0) {
-                            // Found typed expressions, use the first substantial one
-                            const mainExpression = typedMatches.find(match => match.includes('or_') || match.includes('and_') || match.includes('thresh')) || typedMatches[0];
-                            debugText += `Annotated Miniscript Expression:\n${mainExpression}\n\n`;
-                        } else {
-                            // Fallback: look for any miniscript expression
-                            const simpleMatch = rawOutput.match(/(?:or_d|and_v|pk|pkh|thresh|multi)\([^)]+\)/);
-                            if (simpleMatch) {
-                                debugText += `AST Root: ${simpleMatch[0]}\n\n`;
-                            } else if (result.compiled_miniscript) {
-                                // Use the compiled_miniscript field as last resort
-                                const msMatch = result.compiled_miniscript.match(/(?:tr\([^,]+,)?([^)]+)\)?/);
-                                if (msMatch) {
-                                    debugText += `AST Root: ${msMatch[1]}\n\n`;
-                                }
-                            }
-                        }
-                    }
-                }
+            if (fullExpressionMatch) {
+                const fullExpression = fullExpressionMatch[0];
+                debugText += `Annotated Miniscript (with type annotations):\n${fullExpression}\n\n`;
             }
 
-            // Look for "Named:" line which shows the human-readable version
-            const namedMatch = rawOutput.match(/Named:\s*([^\n]+)/);
-            if (namedMatch) {
-                debugText += `Human-Readable Form: ${namedMatch[1].trim()}\n\n`;
+            // Extract original expression from EXPRESSION INFO section
+            const expressionInfoMatch = rawOutput.match(/Expression:\s*([^\n]+)/);
+            if (expressionInfoMatch) {
+                debugText += `Original Expression:\n${expressionInfoMatch[1].trim()}\n\n`;
+            }
+
+            // Extract context
+            const contextMatch = rawOutput.match(/Context:\s*([^\n]+)/);
+            if (contextMatch) {
+                debugText += `Context: ${contextMatch[1].trim()}\n\n`;
             }
 
             // Extract type annotations with better parsing
@@ -4873,29 +4840,19 @@ export class MiniscriptCompiler {
                 const isForced = uniqueTypes.some(t => t.includes('f'));
 
                 debugText += `Type Analysis:\n`;
-                debugText += `   Base type (B): ${hasBaseType ? 'Present' : 'Not present'}\n`;
-                debugText += `   Verify type (V): ${hasVerifyType ? 'Present' : 'Not present'}\n`;
-                debugText += `   Key type (K): ${hasKeyType ? 'Present' : 'Not present'}\n`;
-                debugText += `   Safe (s): ${isSafe ? 'Yes' : 'No'}\n`;
-                debugText += `   Forced (f): ${isForced ? 'Yes' : 'No'}\n`;
-                debugText += `   Bounded satisfaction (m): ${isNonMalleable ? 'Yes' : 'No'}\n\n`;
+                debugText += `   [B] Base type: ${hasBaseType ? 'Present' : 'Not present'} - Complete script fragment\n`;
+                debugText += `   [V] Verify type: ${hasVerifyType ? 'Present' : 'Not present'} - Always leaves 1 on stack or fails\n`;
+                debugText += `   [K] Key type: ${hasKeyType ? 'Present' : 'Not present'} - Raw public key (rare)\n`;
+                debugText += `   [W] Wrapper type: Not present - Must be wrapped to be used\n\n`;
+                debugText += `Properties:\n`;
+                debugText += `   [s] Safe: ${isSafe ? 'Yes' : 'No'} - Cannot be malleated\n`;
+                debugText += `   [f] Forced: ${isForced ? 'Yes' : 'No'} - Must satisfy if parent satisfies\n`;
+                debugText += `   [m] Bounded: ${isNonMalleable ? 'Yes' : 'No'} - Max satisfaction size is bounded\n\n`;
             }
 
-            // Include relevant raw debug output sections
-            if (rawOutput.length > 100) {
-                debugText += '=== DETAILED RUST-MINISCRIPT OUTPUT ===\n\n';
-                // Clean up the raw output for better readability
-                const cleanedOutput = rawOutput
-                    .replace(/=+/g, '') // Remove separator lines
-                    .replace(/\n\s*\n\s*\n/g, '\n\n') // Normalize multiple newlines
-                    .replace(/XOnlyPublicKey\([a-f0-9]+\)/g, 'XOnlyPublicKey(...)') // Shorten long keys for readability
-                    .replace(/RelLockTime\(Sequence\([^\)]+\)\)/g, match => match) // Keep RelLockTime info
-                    .trim();
-                debugText += cleanedOutput + '\n\n';
-            }
         } else {
-            debugText += `AST Root: ${result.compiled_miniscript || 'N/A'}\n`;
-            debugText += `Note: Compile with verbose debug mode for detailed AST analysis.\n\n`;
+            debugText += `Miniscript: ${result.compiled_miniscript || 'N/A'}\n`;
+            debugText += `Note: Compile with verbose debug mode for detailed structure analysis.\n\n`;
         }
 
         // Type System Reference
@@ -5942,6 +5899,18 @@ export class MiniscriptCompiler {
         if (this.isAutoCompiling) {
             const existingSuccess = messagesDiv.querySelector('.result-box.success');
             if (existingSuccess) {
+                // Clear any existing debug info during auto-compile
+                const existingDebugInfo = existingSuccess.querySelector('.debug-info-container');
+                if (existingDebugInfo) {
+                    existingDebugInfo.remove();
+                }
+
+                // Reset debug button state
+                const debugButton = existingSuccess.querySelector('button[onclick="toggleMiniscriptDebugInfo(this)"]');
+                if (debugButton) {
+                    debugButton.style.backgroundColor = 'transparent';
+                }
+
                 // Update the existing message content
                 const messageContent = existingSuccess.querySelector('div[style*="margin-top: 10px"]');
                 if (messageContent) {
@@ -5957,7 +5926,7 @@ export class MiniscriptCompiler {
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
                             <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                                🐛
+                                🐞
                             </button>
                         </div>
                     `;
@@ -6094,7 +6063,7 @@ export class MiniscriptCompiler {
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
                         <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                            🐛
+                            🐞
                         </button>
                     </div>
                 </h4>

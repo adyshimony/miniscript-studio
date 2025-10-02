@@ -61,6 +61,9 @@ pub struct ExtendedProperties {
     pub ops_count_static: Option<usize>,
     pub stack_elements_sat: Option<usize>,
     pub stack_elements_dissat: Option<usize>,
+    // Satisfaction size as (witness_size, scriptsig_size)
+    pub max_sat_size: Option<(usize, usize)>,
+    pub max_dissat_size: Option<(usize, usize)>,
 }
 
 /// Result structure for lift operations

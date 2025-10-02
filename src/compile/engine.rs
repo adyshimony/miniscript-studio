@@ -325,43 +325,78 @@ pub(crate) fn compile_non_taproot_context_debug(
         None
     };
 
-    // Generate debug info if verbose mode enabled - we'll use the result from miniscript parsing
+    // Generate debug info if verbose mode enabled - parse miniscript to extract real values
     let debug_info = if verbose_debug {
-        // For now, create a simple debug info placeholder
-        // The actual debug info will come from the miniscript parsing in the compilation functions
-        Some(crate::types::DebugInfo {
-            annotated_expression: format!("Miniscript expression: {}", processed_expr),
-            type_legend: "Type legend will be populated by actual miniscript parsing".to_string(),
-            type_properties: crate::types::TypeProperties {
-                base: true,
-                verify: false,
-                one_arg: true,
-                non_zero: true,
-                dissatisfiable: true,
-                unit: true,
-                expression: true,
-                safe: true,
-                forced: false,
-                has_max_size: true,
-                zero_arg: false,
+        // Parse the miniscript to get actual debug info with real values
+        let parsed_debug_info = match context {
+            "legacy" => {
+                use miniscript::{Miniscript, Legacy};
+                use bitcoin::PublicKey;
+                match processed_expr.parse::<Miniscript<PublicKey, Legacy>>() {
+                    Ok(ms) => crate::compile::debug::extract_debug_info(&ms, true),
+                    Err(_) => None,
+                }
             },
-            extended_properties: crate::types::ExtendedProperties {
-                has_mixed_timelocks: false,
-                has_repeated_keys: false,
-                requires_sig: true,
-                within_resource_limits: true,
-                contains_raw_pkh: false,
-                pk_cost: Some(73),
-                ops_count_static: Some(2),
-                stack_elements_sat: Some(1),
-                stack_elements_dissat: Some(1),
+            "segwit" => {
+                use miniscript::{Miniscript, Segwitv0};
+                use bitcoin::PublicKey;
+                match processed_expr.parse::<Miniscript<PublicKey, Segwitv0>>() {
+                    Ok(ms) => crate::compile::debug::extract_debug_info(&ms, true),
+                    Err(_) => None,
+                }
             },
-            raw_output: if let Some(ref debug_str) = actual_debug_output {
-                format!("=== RUST-MINISCRIPT DEBUG OUTPUT ===\n\n{}\n\n=== EXPRESSION INFO ===\nExpression: {}\nContext: {}", debug_str, processed_expr, context)
-            } else {
-                format!("=== MINISCRIPT COMPILATION DEBUG ===\nExpression: {}\nContext: {}\n\nDebug output not available (verbose mode may not be enabled)", processed_expr, context)
+            "taproot" => {
+                use miniscript::{Miniscript, Tap};
+                use bitcoin::XOnlyPublicKey;
+                match processed_expr.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+                    Ok(ms) => crate::compile::debug::extract_debug_info(&ms, true),
+                    Err(_) => None,
+                }
             },
-        })
+            _ => None,
+        };
+
+        // Use the parsed debug info or create a fallback
+        if let Some(mut debug) = parsed_debug_info {
+            // Append expression info to raw output
+            if let Some(ref debug_str) = actual_debug_output {
+                debug.raw_output = format!("=== RUST-MINISCRIPT DEBUG OUTPUT ===\n\n{}\n\n=== EXPRESSION INFO ===\nExpression: {}\nContext: {}", debug_str, processed_expr, context);
+            }
+            Some(debug)
+        } else {
+            // Fallback if parsing fails
+            Some(crate::types::DebugInfo {
+                annotated_expression: format!("Miniscript expression: {}", processed_expr),
+                type_legend: "".to_string(),
+                type_properties: crate::types::TypeProperties {
+                    base: true,
+                    verify: false,
+                    one_arg: false,
+                    non_zero: false,
+                    dissatisfiable: false,
+                    unit: false,
+                    expression: false,
+                    safe: true,
+                    forced: false,
+                    has_max_size: true,
+                    zero_arg: false,
+                },
+                extended_properties: crate::types::ExtendedProperties {
+                    has_mixed_timelocks: false,
+                    has_repeated_keys: false,
+                    requires_sig: false,
+                    within_resource_limits: true,
+                    contains_raw_pkh: false,
+                    pk_cost: None,
+                    ops_count_static: None,
+                    stack_elements_sat: None,
+                    stack_elements_dissat: None,
+                    max_sat_size: None,
+                    max_dissat_size: None,
+                },
+                raw_output: format!("=== MINISCRIPT COMPILATION DEBUG ===\nExpression: {}\nContext: {}\n\nDebug output not available", processed_expr, context),
+            })
+        }
     } else {
         None
     };

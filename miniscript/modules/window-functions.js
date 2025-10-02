@@ -2211,7 +2211,7 @@ window.toggleMiniscriptDebugInfo = function(button) {
         button.style.backgroundColor = 'var(--success-bg)';
 
         // Get the current expression and context to recompile with debug info
-        const expressionEditor = document.querySelector('.miniscript-editor');
+        const expressionEditor = document.getElementById('expression-input');
         const expression = expressionEditor ? expressionEditor.textContent.trim() : '';
         const context = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
 

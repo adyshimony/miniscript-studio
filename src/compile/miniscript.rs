@@ -181,21 +181,25 @@ pub fn compile_taproot_miniscript_raw(expression: &str) -> Result<(String, Strin
                             // Calculate weight info based on raw script
                             let max_satisfaction_size = ms.max_satisfaction_size().ok();
                             let max_weight_to_satisfy = ms.max_satisfaction_witness_elements().ok().map(|w| w as u64);
-                            
+
+                            // Get sanity check and malleability from rust-miniscript
+                            let sanity_check = ms.sanity_check().is_ok();
+                            let is_non_malleable = ms.is_non_malleable();
+
                             console_log!("Single-leaf taproot compilation successful");
                             console_log!("Raw script hex: {}", script_hex);
                             console_log!("Address: {}", address);
-                            
+
                             Ok((
                                 script_hex,           // Raw miniscript HEX (not taproot address)
-                                script_asm,          // Raw miniscript ASM (not taproot address)  
+                                script_asm,          // Raw miniscript ASM (not taproot address)
                                 Some(address.to_string()),
                                 script_size,
                                 "Taproot".to_string(),
                                 max_satisfaction_size,
                                 max_weight_to_satisfy,
-                                Some(true), // sanity_check
-                                Some(true), // is_non_malleable  
+                                Some(sanity_check),
+                                Some(is_non_malleable),  
                                 {
                                     let nums_point_str = NUMS_POINT;
                                     let tr_descriptor_str = format!("tr({},{})", nums_point_str, normalized_miniscript);
@@ -284,11 +288,15 @@ pub fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Opti
                             let script_size = script_pubkey.len();
                             let max_satisfaction_size = Some(200); // Estimated satisfaction size for taproot
                             let max_weight_to_satisfy = Some(script_size as u64 * 4 + 244); // Script weight + input weight
-                            
+
+                            // Get sanity check and malleability from rust-miniscript
+                            let sanity_check = ms.sanity_check().is_ok();
+                            let is_non_malleable = ms.is_non_malleable();
+
                             console_log!("Multi-leaf taproot compilation successful");
                             console_log!("Script hex: {}", script_hex);
                             console_log!("Address: {}", address);
-                            
+
                             Ok((
                                 script_hex,
                                 script_asm,
@@ -297,8 +305,8 @@ pub fn compile_taproot_miniscript_multiline(expression: &str, internal_key: Opti
                                 "Taproot".to_string(),
                                 max_satisfaction_size,
                                 max_weight_to_satisfy,
-                                Some(true), // sanity_check
-                                Some(true), // is_non_malleable
+                                Some(sanity_check),
+                                Some(is_non_malleable),
                                 {
                                     let tr_descriptor_str = format!("tr({},{})", internal_key_name, normalized_miniscript);
                                     console_log!("DEBUG MULTILINE: Generated descriptor: {}", tr_descriptor_str);
