@@ -25,6 +25,9 @@ export const CONSTANTS = {
     XONLY_KEY_LENGTH: 64,             // X-only key hex string length
     COMPRESSED_KEY_LENGTH: 66,        // Compressed key hex string length
 
+    // Taproot constants
+    NUMS_KEY: '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0', // NUMS point for unspendable key path
+
     // Stack limits
     MAX_UNDO_STATES: 50,              // Maximum undo history states
 

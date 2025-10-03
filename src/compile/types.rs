@@ -51,4 +51,6 @@ pub struct CompileResponse {
     pub is_non_malleable: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_info: Option<crate::types::DebugInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_info_leaves: Option<Vec<crate::types::LeafDebugInfo>>,
 }

@@ -45,6 +45,7 @@ fn compile_policy_unified(policy: &str, options: CompileOptions) -> Result<Compi
                 sanity_check,
                 is_non_malleable,
                 debug_info: None,
+                debug_info_leaves: None,
             })
         },
         Err(e) => Ok(CompilationResult {
@@ -61,6 +62,7 @@ fn compile_policy_unified(policy: &str, options: CompileOptions) -> Result<Compi
             sanity_check: None,
             is_non_malleable: None,
             debug_info: None,
+            debug_info_leaves: None,
         })
     }
 }
@@ -76,7 +78,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
 
         match compile_taproot_with_mode_network_debug(expression, mode_str, &nums_key, network, options.verbose_debug) {
             Ok((script, script_asm, address, script_size, ms_type,
-                max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript, debug_info)) => {
+                max_satisfaction_size, max_weight_to_satisfy, sanity_check, is_non_malleable, normalized_miniscript, debug_info, debug_info_leaves)) => {
                 Ok(CompilationResult {
                     success: true,
                     error: None,
@@ -91,6 +93,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                     sanity_check,
                     is_non_malleable,
                     debug_info,
+                    debug_info_leaves,
                 })
             },
             Err(e) => Ok(CompilationResult {
@@ -107,6 +110,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                 sanity_check: None,
                 is_non_malleable: None,
                 debug_info: None,
+                debug_info_leaves: None,
             })
         }
     } else {
@@ -128,6 +132,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                     sanity_check,
                     is_non_malleable,
                     debug_info,
+                    debug_info_leaves: None,
                 })
             },
             Err(e) => Ok(CompilationResult {
@@ -144,6 +149,7 @@ fn compile_miniscript_unified(expression: &str, options: CompileOptions) -> Resu
                 sanity_check: None,
                 is_non_malleable: None,
                 debug_info: None,
+                debug_info_leaves: None,
             })
         }
     }
@@ -156,7 +162,7 @@ fn compile_taproot_with_mode_network(
     nums_key: &str,
     network: Network
 ) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
-    compile_taproot_with_mode_network_debug(expression, mode, nums_key, network, false).map(|(a,b,c,d,e,f,g,h,i,j,_)| (a,b,c,d,e,f,g,h,i,j))
+    compile_taproot_with_mode_network_debug(expression, mode, nums_key, network, false).map(|(a,b,c,d,e,f,g,h,i,j,_,_)| (a,b,c,d,e,f,g,h,i,j))
 }
 
 // Taproot compilation with mode, network and debug support
@@ -166,15 +172,16 @@ fn compile_taproot_with_mode_network_debug(
     nums_key: &str,
     network: Network,
     verbose_debug: bool
-) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<crate::types::DebugInfo>), String> {
+) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>, Option<crate::types::DebugInfo>, Option<Vec<crate::types::LeafDebugInfo>>), String> {
     console_log!("=== COMPILE_TAPROOT_WITH_MODE_NETWORK ===\nExpression: {}\nMode: {}\nNetwork: {:?}", expression, mode, network);
 
-    let mut result = compile_taproot_with_mode(expression, mode, nums_key, network)?;
+    let mut response = compile_taproot_with_mode(expression, mode, nums_key, network)?;
+    console_log!("DEBUG: response.compiled_miniscript after compile_taproot_with_mode: {:?}", response.compiled_miniscript);
 
     if network != Network::Bitcoin {
         console_log!("Regenerating taproot address for different network: {:?}", network);
 
-        if let Some(ref _script_hex) = result.0.get(0..result.0.len().min(200)) {
+        if let Some(ref _script_hex) = response.script {
             let address_input = crate::address::AddressInput {
                 script_or_miniscript: expression.to_string(),
                 script_type: "Taproot".to_string(),
@@ -190,20 +197,39 @@ fn compile_taproot_with_mode_network_debug(
             };
 
             if let Ok(addr_result) = crate::address::generate_address(address_input) {
-                result.2 = Some(addr_result.address);
-                console_log!("Successfully regenerated address for network: {}", result.2.as_ref().unwrap());
+                response.address = Some(addr_result.address);
+                console_log!("Successfully regenerated address for network: {}", response.address.as_ref().unwrap());
             }
         }
     }
 
-    // Generate debug info if verbose mode enabled
-    let debug_info = if verbose_debug {
-        crate::compile::debug::extract_descriptor_debug_info::<bitcoin::PublicKey>(expression, true)
+    // Generate debug info if verbose mode enabled (only if not already populated)
+    console_log!("DEBUG: About to extract debug info. response.compiled_miniscript = {:?}", response.compiled_miniscript);
+    let debug_info = if verbose_debug && response.debug_info.is_none() {
+        // Use the compiled descriptor instead of the original expression to ensure correct internal key
+        let descriptor_for_debug = response.compiled_miniscript.as_deref().unwrap_or(expression);
+        console_log!("DEBUG INFO EXTRACTION: Using descriptor: {}", descriptor_for_debug);
+        // Use XOnlyPublicKey for taproot descriptors
+        use bitcoin::secp256k1::XOnlyPublicKey;
+        crate::compile::debug::extract_descriptor_debug_info::<XOnlyPublicKey>(descriptor_for_debug, true)
     } else {
-        None
+        response.debug_info
     };
 
-    Ok((result.0, result.1, result.2, result.3, result.4, result.5, result.6, result.7, result.8, result.9, debug_info))
+    Ok((
+        response.script.unwrap_or_default(),
+        response.script_asm.unwrap_or_default(),
+        response.address,
+        response.script_size.unwrap_or(0),
+        response.miniscript_type.unwrap_or_default(),
+        response.max_satisfaction_size,
+        response.max_weight_to_satisfy,
+        response.sanity_check,
+        response.is_non_malleable,
+        response.compiled_miniscript,
+        debug_info,
+        response.debug_info_leaves,
+    ))
 }
 
 // Taproot compilation with mode
@@ -212,61 +238,25 @@ fn compile_taproot_with_mode(
     mode: &str,
     nums_key: &str,
     network: Network
-) -> Result<(String, String, Option<String>, usize, String, Option<usize>, Option<u64>, Option<bool>, Option<bool>, Option<String>), String> {
+) -> Result<crate::compile::types::CompileResponse, String> {
     console_log!("=== COMPILE_TAPROOT_WITH_MODE ===\nExpression: {}\nMode: {}\nNetwork: {:?}", expression, mode, network);
 
     match mode {
         "multi-leaf" => {
             console_log!("Using multi-leaf compilation");
-            let result = crate::compile::modes::compile_taproot_multi_leaf(expression, network)?;
-            Ok((
-                result.script.unwrap_or_default(),
-                result.script_asm.unwrap_or_default(),
-                result.address,
-                result.script_size.unwrap_or(0),
-                result.miniscript_type.unwrap_or_default(),
-                result.max_satisfaction_size,
-                result.max_weight_to_satisfy,
-                result.sanity_check,
-                result.is_non_malleable,
-                result.compiled_miniscript,
-            ))
+            crate::compile::modes::compile_taproot_multi_leaf(expression, network, true)
         },
         "single-leaf" => {
             console_log!("Using single-leaf compilation");
-            let result = crate::compile::modes::compile_taproot_single_leaf(expression, nums_key, network)?;
-            Ok((
-                result.script.unwrap_or_default(),
-                result.script_asm.unwrap_or_default(),
-                result.address,
-                result.script_size.unwrap_or(0),
-                result.miniscript_type.unwrap_or_default(),
-                result.max_satisfaction_size,
-                result.max_weight_to_satisfy,
-                result.sanity_check,
-                result.is_non_malleable,
-                result.compiled_miniscript,
-            ))
+            crate::compile::modes::compile_taproot_single_leaf(expression, nums_key, network, false)
         },
         "script-path" => {
             console_log!("Using script-path compilation");
-            let result = crate::compile::modes::compile_taproot_script_path(expression, nums_key, network)?;
-            Ok((
-                result.script.unwrap_or_default(),
-                result.script_asm.unwrap_or_default(),
-                result.address,
-                result.script_size.unwrap_or(0),
-                result.miniscript_type.unwrap_or_default(),
-                result.max_satisfaction_size,
-                result.max_weight_to_satisfy,
-                result.sanity_check,
-                result.is_non_malleable,
-                result.compiled_miniscript,
-            ))
+            crate::compile::modes::compile_taproot_script_path(expression, nums_key, network, true)
         },
-        _ => {
-            console_log!("Unknown mode, falling back to default taproot compilation");
-            crate::compile::miniscript::compile_taproot_miniscript(expression, network)
+        "default" | _ => {
+            console_log!("Using default taproot compilation with multi-leaf detection");
+            crate::compile::modes::compile_taproot_multi_leaf(expression, network, true)
         }
     }
 }

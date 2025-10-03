@@ -1,7 +1,8 @@
 //! Debug information extraction for miniscript
 
 use miniscript::{Miniscript, MiniscriptKey, ScriptContext};
-use crate::types::{DebugInfo, TypeProperties, ExtendedProperties};
+use miniscript::descriptor::TapTree;
+use crate::types::{DebugInfo, TypeProperties, ExtendedProperties, LeafDebugInfo};
 use crate::console_log;
 
 /// Extract debug information from a miniscript
@@ -155,6 +156,57 @@ fn extract_extended_properties<Pk: MiniscriptKey, Ctx: ScriptContext>(
 /// Generate a legend explaining type codes
 fn generate_type_legend() -> String {
     "[B/onduesm] = B:Base o:one-arg n:non-zero d:dissatisfiable u:unit e:expression s:safe m:has-max-size | [V/...] = V:Verify | [z/...] = z:zero-arg | [f/...] = f:forced".to_string()
+}
+
+/// Extract debug info for all leaves in a TapTree
+pub fn extract_taptree_leaves_debug<Pk: MiniscriptKey + miniscript::ToPublicKey>(
+    tree: &TapTree<Pk>,
+    verbose: bool,
+) -> Option<Vec<LeafDebugInfo>> {
+    if !verbose {
+        return None;
+    }
+
+    console_log!("=== EXTRACTING DEBUG INFO FOR TAPTREE LEAVES ===");
+
+    let mut leaves = Vec::new();
+
+    // Iterate over all leaves in the tree
+    for (depth, leaf_ms) in tree.iter() {
+        console_log!("Processing leaf at depth {}", depth);
+        console_log!("Leaf script: {}", leaf_ms);
+
+        // Encode the leaf script to get HEX and ASM
+        let script = leaf_ms.encode();
+        let script_hex = script.to_hex_string();
+        let script_asm = format!("{:?}", script)
+            .replace("Script(", "")
+            .trim_end_matches(')')
+            .to_string();
+
+        console_log!("Leaf HEX: {}", script_hex);
+        console_log!("Leaf ASM: {}", script_asm);
+
+        // Extract debug info for this leaf
+        if let Some(debug_info) = extract_debug_info(leaf_ms, verbose) {
+            let leaf_info = LeafDebugInfo {
+                depth,
+                script: leaf_ms.to_string(),
+                script_asm,
+                script_hex,
+                debug_info,
+            };
+            leaves.push(leaf_info);
+        }
+    }
+
+    console_log!("Total leaves processed: {}", leaves.len());
+
+    if leaves.is_empty() {
+        None
+    } else {
+        Some(leaves)
+    }
 }
 
 /// Extract debug info for descriptors (Taproot)

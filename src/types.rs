@@ -21,6 +21,8 @@ pub struct CompilationResult {
     pub is_non_malleable: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_info: Option<DebugInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_info_leaves: Option<Vec<LeafDebugInfo>>,
 }
 
 /// Debug information for verbose mode
@@ -31,6 +33,16 @@ pub struct DebugInfo {
     pub type_properties: TypeProperties,
     pub extended_properties: ExtendedProperties,
     pub raw_output: String,            // Full Debug output
+}
+
+/// Debug information for a single TapTree leaf (Taproot only)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeafDebugInfo {
+    pub depth: u8,                     // Tree depth (0 = leftmost/rightmost leaves)
+    pub script: String,                // The miniscript expression for this leaf
+    pub script_asm: String,            // The compiled script in ASM format
+    pub script_hex: String,            // The compiled script in HEX format
+    pub debug_info: DebugInfo,         // Full debug analysis for this leaf
 }
 
 /// Type properties extracted from miniscript

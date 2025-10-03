@@ -167,13 +167,13 @@ pub fn generate_address(input: AddressInput) -> Result<AddressGenerationResult, 
             // Dispatch to the appropriate taproot compilation function
             let result = match mode {
                 "multi-leaf" => {
-                    crate::compile::modes::compile_taproot_multi_leaf(&input.script_or_miniscript, network)
+                    crate::compile::modes::compile_taproot_multi_leaf(&input.script_or_miniscript, network, false)
                 },
                 "single-leaf" => {
-                    crate::compile::modes::compile_taproot_single_leaf(&input.script_or_miniscript, crate::taproot::utils::NUMS_POINT, network)
+                    crate::compile::modes::compile_taproot_single_leaf(&input.script_or_miniscript, crate::taproot::utils::NUMS_POINT, network, false)
                 },
                 "script-path" => {
-                    crate::compile::modes::compile_taproot_script_path(&input.script_or_miniscript, crate::taproot::utils::NUMS_POINT, network)
+                    crate::compile::modes::compile_taproot_script_path(&input.script_or_miniscript, crate::taproot::utils::NUMS_POINT, network, false)
                 },
                 _ => return Err(AddressError::DescriptorParse("Invalid taproot mode".to_string()))
             };

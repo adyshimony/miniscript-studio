@@ -2223,16 +2223,12 @@ window.toggleMiniscriptDebugInfo = function(button) {
 
                 // Determine the correct mode, especially for Taproot
                 let mode = "Default";
-                if (context === 'taproot') {
-                    // Check current taproot mode from global variable or detect from expression
-                    const currentMode = window.currentTaprootMode || 'single-leaf';
-                    if (currentMode === 'single-leaf') {
-                        mode = "SingleLeaf";
-                    } else if (currentMode === 'multi-leaf') {
-                        mode = "MultiLeaf";
-                    } else if (currentMode === 'script-path') {
-                        mode = "ScriptPath";
-                    }
+                if (context === 'taproot' || context === 'taproot-multi' || context === 'taproot-keypath') {
+                    // Determine mode based on context (same logic as in compileMiniscript)
+                    const currentMode = context === 'taproot-keypath' ? 'multi-leaf' :
+                                      context === 'taproot-multi' ? 'script-path' :
+                                      window.currentTaprootMode || 'single-leaf';
+                    mode = currentMode; // Use the mode string directly: 'multi-leaf', 'script-path', or 'single-leaf'
                 }
 
                 // Use the NUMS key from compiler's default variables
@@ -2251,6 +2247,9 @@ window.toggleMiniscriptDebugInfo = function(button) {
                 const result = compile_unified(processedExpression, options);
 
                 if (result.success) {
+                    // Store the mode in result for debug info formatting
+                    result.taprootMode = mode;
+
                     // Create debug info container
                     debugDiv = document.createElement('div');
                     debugDiv.className = 'debug-info-container';

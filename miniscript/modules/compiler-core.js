@@ -522,7 +522,8 @@ export class MiniscriptCompiler {
         
         const expression = document.getElementById('expression-input').textContent.trim();
         const context = document.querySelector('input[name="context"]:checked').value;
-        
+        console.log(`DEBUG MINISCRIPT: Read context="${context}" from radio button`);
+
         // Store original expression for network switching
         this.originalExpression = expression;
         
@@ -570,15 +571,16 @@ export class MiniscriptCompiler {
                 const options = {
                     input_type: "Miniscript",
                     context: "Taproot",
-                    mode: currentMode === 'multi-leaf' ? "MultiLeaf" :
-                          currentMode === 'script-path' ? "ScriptPath" : "SingleLeaf",
+                    mode: currentMode, // Use the mode string directly: 'multi-leaf', 'script-path', or 'single-leaf'
                     network_str: "bitcoin",
                     nums_key: numsKey,
                     verbose_debug: debugMode
                 };
+                console.log(`DEBUG FRONTEND: context=${context}, currentMode=${currentMode}, sending mode=${options.mode}`);
                 result = compile_unified(processedExpression, options);
                 if (result.success) {
                     result.taprootMode = currentMode;
+                    result.context = context; // Store the original context
                 }
             } else {
                 // Non-taproot contexts: use unified compile
@@ -943,8 +945,7 @@ export class MiniscriptCompiler {
                 const options = {
                     input_type: "Policy",
                     context: "Taproot",
-                    mode: mode === 'multi-leaf' ? "MultiLeaf" :
-                          mode === 'script-path' ? "ScriptPath" : "SingleLeaf",
+                    mode: mode, // Use the mode string directly: 'multi-leaf', 'script-path', or 'single-leaf'
                     network_str: "bitcoin",
                     nums_key: null,
                     verbose_debug: debugMode
@@ -4747,6 +4748,46 @@ export class MiniscriptCompiler {
         debugText += `Malleability: ${result.is_non_malleable ? 'Non-malleable' : 'Malleable'}\n`;
         debugText += `Miniscript Type: ${result.miniscript_type || 'N/A'}\n\n`;
 
+        // Key Path Spending Info for Taproot with internal key (not NUMS)
+        // Only show for 'multi-leaf' mode (Taproot Key path + script path context)
+        const descriptorMatch = result.compiled_miniscript?.match(/^tr\(([^,]+)/);
+        const internalKey = descriptorMatch ? descriptorMatch[1] : null;
+        const hasInternalKey = internalKey && internalKey !== CONSTANTS.NUMS_KEY;
+
+        if (result.miniscript_type === 'Taproot' && hasInternalKey && result.taprootMode === 'multi-leaf') {
+            debugText += '=== KEY PATH SPENDING (Most Efficient) ===\n\n';
+
+            debugText += `Internal Key: ${internalKey}\n`;
+            debugText += 'Spending Method: Schnorr signature with tweaked public key\n';
+            debugText += 'Total Weight: ~57.5 WU\n\n';
+
+            debugText += 'Breakdown:\n';
+            debugText += '   Signature: 64 bytes (Schnorr)\n';
+            debugText += '   Witness overhead: ~2.5 bytes (varint + witness count)\n';
+            debugText += '   Control Block: Not required ✓\n';
+            debugText += '   Script: Not required ✓\n\n';
+
+            // Calculate script path costs for comparison (if we have per-leaf info)
+            if (result.debug_info_leaves && result.debug_info_leaves.length > 0) {
+                debugText += 'Key Path vs Script Path Comparison:\n';
+                debugText += '   Key Path:        ~57.5 WU (cheapest option)\n';
+
+                result.debug_info_leaves.forEach((leaf, index) => {
+                    const ext = leaf.debug_info?.extended_properties;
+                    if (ext) {
+                        // Estimate script path cost: signature (66 WU) + script size + control block (~34 WU)
+                        const scriptSize = ext.pk_cost || 0;
+                        const scriptPathCost = 66 + scriptSize + 34;
+                        const percentIncrease = Math.round(((scriptPathCost - 57.5) / 57.5) * 100);
+                        debugText += `   Script Path #${index + 1}:  ${scriptPathCost} WU (+${percentIncrease}% more expensive)\n`;
+                    }
+                });
+
+                debugText += '\n⚡ Recommendation: Use key path spending when possible for maximum efficiency\n\n';
+            } else {
+                debugText += '⚡ Recommendation: Use key path spending for maximum efficiency\n\n';
+            }
+        }
 
         // Extended Properties from rust-miniscript library
         if (result.debug_info && result.debug_info.extended_properties) {
@@ -4874,6 +4915,70 @@ export class MiniscriptCompiler {
         debugText += `   [m] Max-size - Bounded satisfaction size\n\n`;
 
         // Examples section
+        // Per-leaf debug info for Taproot multi-leaf trees
+        if (result.debug_info_leaves && result.debug_info_leaves.length > 0) {
+            debugText += '=== TAPROOT SCRIPT PATHS DEBUG INFO (Per-Leaf) ===\n\n';
+            debugText += `Total Leaves: ${result.debug_info_leaves.length}\n\n`;
+
+            result.debug_info_leaves.forEach((leaf, index) => {
+                debugText += `--- Leaf ${index + 1} (Depth: ${leaf.depth}) ---\n\n`;
+                debugText += `Script: ${leaf.script}\n`;
+                if (leaf.script_asm) {
+                    debugText += `ASM: ${leaf.script_asm}\n`;
+                }
+                if (leaf.script_hex) {
+                    debugText += `HEX: ${leaf.script_hex}\n`;
+                }
+                debugText += '\n';
+
+                // Extended properties for this leaf
+                if (leaf.debug_info && leaf.debug_info.extended_properties) {
+                    const ext = leaf.debug_info.extended_properties;
+
+                    debugText += 'Script Properties:\n';
+                    debugText += `   Has Mixed Timelocks: ${ext.has_mixed_timelocks ? '⚠️ Yes' : '✓ No'}\n`;
+                    debugText += `   Has Repeated Keys: ${ext.has_repeated_keys ? '⚠️ Yes' : '✓ No'}\n`;
+                    debugText += `   Requires Signature: ${ext.requires_sig ? '✓ Yes' : '⚠️ No'}\n`;
+                    debugText += `   Within Resource Limits: ${ext.within_resource_limits ? '✓ Yes' : '❌ No'}\n`;
+                    debugText += '\n';
+
+                    // Script analysis for this leaf
+                    debugText += 'Script Analysis:\n';
+                    if (ext.ops_count_static !== null && ext.ops_count_static !== undefined) {
+                        debugText += `   Opcode Count: ${ext.ops_count_static}\n`;
+                    }
+                    if (ext.pk_cost !== null && ext.pk_cost !== undefined) {
+                        debugText += `   Script Size: ${ext.pk_cost} bytes\n`;
+                    }
+                    if (ext.stack_elements_sat !== null && ext.stack_elements_sat !== undefined) {
+                        debugText += `   Witness Stack Items: ${ext.stack_elements_sat}\n`;
+                    }
+                    debugText += '\n';
+                }
+
+                // Annotated miniscript with type annotations for this leaf
+                if (leaf.debug_info && leaf.debug_info.raw_output) {
+                    const rawOutput = leaf.debug_info.raw_output;
+
+                    // Extract the full annotated expression from the debug output
+                    // This captures the complete expression with all type annotations embedded
+                    const fullExpressionMatch = rawOutput.match(/^\[([BVWKonduesfmz/]+)\][^\n]+.*$/m);
+
+                    if (fullExpressionMatch) {
+                        const fullExpression = fullExpressionMatch[0];
+                        debugText += 'Annotated Miniscript (with type annotations):\n';
+                        debugText += fullExpression + '\n\n';
+                    } else {
+                        // Fallback: just show the type if we can't extract the full expression
+                        const typeMatch = rawOutput.match(/^\[([BVWKonduesfmz/]+)\]/m);
+                        if (typeMatch) {
+                            debugText += `Type: ${typeMatch[0]}\n\n`;
+                        }
+                    }
+                }
+            });
+        }
+
         debugText += '=== TYPE EXAMPLES ===\n\n';
         debugText += `Example 1: pk(key) has type [B/onduesm]\n`;
         debugText += `   [B] = Base type - can be used as complete script\n`;
@@ -6888,8 +6993,7 @@ export class MiniscriptCompiler {
                     const options = {
                         input_type: "Miniscript",
                         context: "Taproot",
-                        mode: currentMode === 'multi-leaf' ? "MultiLeaf" :
-                              currentMode === 'script-path' ? "ScriptPath" : "SingleLeaf",
+                        mode: currentMode, // Use the mode string directly: 'multi-leaf', 'script-path', or 'single-leaf'
                         network_str: newNetwork,
                         nums_key: internalKey
                     };

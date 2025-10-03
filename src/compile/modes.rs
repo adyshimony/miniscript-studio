@@ -11,7 +11,7 @@ use std::str::FromStr;
 use crate::parse::helpers::needs_descriptor_processing;
 
 /// Compile taproot multi-leaf mode (uses extracted key instead of NUMS - same logic as script_path)
-pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<CompileResponse, String> {
+pub fn compile_taproot_multi_leaf(expression: &str, network: Network, verbose: bool) -> Result<CompileResponse, String> {
     use std::sync::Arc;
     use miniscript::descriptor::TapTree;
 
@@ -87,6 +87,30 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
                         // Calculate script size (SAME AS SCRIPT_PATH)
                         let script_size = script_pubkey.len();
 
+                        // Extract per-leaf debug info if verbose mode enabled
+                        console_log!("DEBUG MULTI-LEAF: Checking for per-leaf debug info, verbose={}", verbose);
+                        let debug_info_leaves = if verbose {
+                            // Get the TapTree from descriptor if it exists
+                            if let Descriptor::Tr(ref tr_desc) = descriptor {
+                                console_log!("DEBUG MULTI-LEAF: Descriptor is Tr variant");
+                                if let Some(tree) = tr_desc.tap_tree() {
+                                    console_log!("DEBUG MULTI-LEAF: TapTree exists, extracting leaf debug info");
+                                    let result = crate::compile::debug::extract_taptree_leaves_debug(tree, verbose);
+                                    console_log!("DEBUG MULTI-LEAF: Extracted {} leaves", result.as_ref().map(|v| v.len()).unwrap_or(0));
+                                    result
+                                } else {
+                                    console_log!("DEBUG MULTI-LEAF: No TapTree in descriptor");
+                                    None
+                                }
+                            } else {
+                                console_log!("DEBUG MULTI-LEAF: Descriptor is not Tr variant");
+                                None
+                            }
+                        } else {
+                            console_log!("DEBUG MULTI-LEAF: Verbose mode is false");
+                            None
+                        };
+
                         return Ok(CompileResponse {
                             success: true,
                             error: None,
@@ -101,6 +125,7 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
                             sanity_check: Some(true),
                             is_non_malleable: Some(true),
                             debug_info: None,
+                            debug_info_leaves,
                         });
                     }
                     Err(_e) => {
@@ -150,6 +175,7 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
                                 sanity_check: Some(true),
                                 is_non_malleable: Some(true),
                                 debug_info: None,
+                                debug_info_leaves: None,
                             })
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))
@@ -170,7 +196,7 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network) -> Result<
 }
 
 /// Compile taproot single-leaf mode (uses NUMS point)
-pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Network) -> Result<CompileResponse, String> {
+pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Network, verbose: bool) -> Result<CompileResponse, String> {
     use std::sync::Arc;
     use miniscript::descriptor::TapTree;
 
@@ -249,6 +275,7 @@ pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Ne
                                 sanity_check: Some(true),
                                 is_non_malleable: Some(true),
                                 debug_info: None,
+                                debug_info_leaves: None,
                             })
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))
@@ -269,7 +296,7 @@ pub fn compile_taproot_single_leaf(expression: &str, nums_key: &str, network: Ne
 }
 
 /// Compile taproot script-path mode (uses NUMS point)
-pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Network) -> Result<CompileResponse, String> {
+pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Network, verbose: bool) -> Result<CompileResponse, String> {
     use std::sync::Arc;
     use miniscript::descriptor::TapTree;
 
@@ -338,10 +365,26 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
                         
                         console_log!("DEBUG DESCRIPTOR: Script hex: {}", script_hex);
                         console_log!("DEBUG DESCRIPTOR: Script ASM: {}", script_asm);
-                        
+
                         // Calculate script size
                         let script_size = script_pubkey.len();
-                        
+
+                        // Extract per-leaf debug info if verbose mode enabled
+                        let debug_info_leaves = if verbose {
+                            // Get the TapTree from descriptor if it exists
+                            if let Descriptor::Tr(ref tr_desc) = descriptor {
+                                if let Some(tree) = tr_desc.tap_tree() {
+                                    crate::compile::debug::extract_taptree_leaves_debug(tree, verbose)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
                         return Ok(CompileResponse {
                             success: true,
                             error: None,
@@ -356,6 +399,7 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
                             sanity_check: Some(true),
                             is_non_malleable: Some(true),
                             debug_info: None,
+                            debug_info_leaves,
                         });
                     }
                     Err(_e) => {
@@ -405,6 +449,7 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
                                 sanity_check: Some(true),
                                 is_non_malleable: Some(true),
                                 debug_info: None,
+                                debug_info_leaves: None,
                             })
                         },
                         Err(e) => Err(format!("Address generation failed: {:?}", e))

@@ -92,10 +92,15 @@ impl CompileContext {
 
 // Compilation mode (mainly for taproot)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum CompileMode {
+    #[serde(alias = "Default")]
     Default,
+    #[serde(alias = "SingleLeaf")]
     SingleLeaf,
+    #[serde(alias = "MultiLeaf")]
     MultiLeaf,
+    #[serde(alias = "ScriptPath")]
     ScriptPath,
 }
 
