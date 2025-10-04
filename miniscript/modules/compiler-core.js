@@ -649,11 +649,17 @@ export class MiniscriptCompiler {
                     // For descriptor validation, build the message using original expression from editor
                     successMsg = `Valid descriptor: wsh(${expression})`;
                 } else {
-                    successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
-                    
-                    // For all Taproot contexts, show descriptor and special formatting
+                    // For all contexts, don't show script size (not meaningful for display)
                     const currentMode = window.currentTaprootMode || 'single-leaf';
                     const isTaprootContext = result.miniscript_type === 'Taproot';
+
+                    // Show miniscript expression for all contexts
+                    const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                    let displayExpression = expression;
+                    if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+                        displayExpression = this.replaceKeysWithNames(expression);
+                    }
+                    successMsg = `Miniscript expression:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayExpression}</span>`;
                     
                     if (isTaprootContext && result.compiled_miniscript) {
                         // Show descriptor for all Taproot contexts
@@ -684,40 +690,10 @@ export class MiniscriptCompiler {
                             } else {
                                 // More complex miniscript - single script leaf
                                 successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
-                                successMsg += `Compiled as a single script leaf. Entire policy is revealed when spending (~136 WU).<br>`;
-
-                                // Add weight info for complex scripts
-                                if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                                    const sigWU = CONSTANTS.SIGNATURE_WEIGHT_UNITS;
-                                    const scriptWU = result.script_size + 1;
-                                    const controlWU = 34;
-                                    const totalWU = sigWU + scriptWU + controlWU + 1;
-
-                                    successMsg += `<br>Spending cost analysis:<br>`;
-                                    successMsg += `Sig: ${sigWU} WU<br>`;
-                                    successMsg += `Script: ${scriptWU} WU<br>`;
-                                    successMsg += `Control: ${controlWU} WU<br>`;
-                                    successMsg += `Total: ${totalWU} WU<br><br>`;
-                                }
                             }
                         } else {
-                            // Other Taproot modes - keep existing logic
-                            if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
-                                const sigWU = CONSTANTS.SIGNATURE_WEIGHT_UNITS;
-                                const scriptWU = result.script_size + 1;
-                                const controlWU = 34;
-                                const totalWU = sigWU + scriptWU + controlWU + 1;
-
-                                successMsg += `<br>Spending cost analysis:<br>`;
-                                successMsg += `Sig: ${sigWU} WU<br>`;
-                                successMsg += `Script: ${scriptWU} WU<br>`;
-                                successMsg += `Control: ${controlWU} WU<br>`;
-                                successMsg += `Total: ${totalWU} WU<br><br>`;
-                            } else {
-                                successMsg += `<br>`;
-                            }
-
-                            successMsg += `Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
+                            // Other Taproot modes
+                            successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
                         }
                         
                         // Add Data field for all Taproot contexts
@@ -755,19 +731,21 @@ export class MiniscriptCompiler {
                             successMsg += `Per-input total: ${totalWU} WU<br><br>`;
                         } else if (context === 'segwit') {
                             // For Segwit v0 (P2WSH)
-                            const scriptWeight = result.script_size;            // e.g. 35
-                            const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
-                            
-                            const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
-                            const satisfactionTotal = scriptWeight + inputWeight; // 35 + 73 = 108
-                            const inputOverhead = 160;                          // outpoint (36) + nSequence (4) = 40 bytes × 4
-                            const perInputTotal = satisfactionTotal + inputOverhead; // 108 + 160 = 268
-                            
+                            const scriptBytes = result.script_size;              // e.g. 77 (script size in bytes)
+                            const maxSat = result.max_satisfaction_size;         // e.g. 152 (full witness bytes including script)
+
+                            // Signature weight includes ECDSA signature + sighash byte
+                            const sigWeight = maxSat - (1 + scriptBytes);        // 152 - (1 + 77) = 74
+                            const scriptWeight = scriptBytes + 1;                // 77 + 1 = 78 (script + length byte)
+                            const satisfactionTotal = sigWeight + scriptWeight;  // 74 + 78 = 152
+                            const inputOverhead = 160;                           // outpoint (36) + nSequence (4) = 40 bytes × 4
+                            const perInputTotal = satisfactionTotal + inputOverhead; // 152 + 160 = 312
+
                             successMsg += `<br>Spending cost analysis:<br>`;
-                            successMsg += `Script (witnessScript): ${scriptWeight} WU<br>`;
-                            successMsg += `Input (witness, excl. script): ${inputWeight}.000000 WU<br>`;
-                            successMsg += `Satisfaction total: ${satisfactionTotal}.000000 WU<br>`;
-                            successMsg += `Input overhead (outpoint + nSequence): ${inputOverhead} WU<br>`;
+                            successMsg += `Signature (ECDSA + sighash): ${sigWeight} WU<br>`;
+                            successMsg += `Script (witnessScript): ${scriptWeight} WU (${scriptBytes} B script + 1 B length)<br>`;
+                            successMsg += `Satisfaction (witness): ${satisfactionTotal} WU<br>`;
+                            successMsg += `Input overhead (non-witness: outpoint + nSequence): ${inputOverhead} WU<br>`;
                             successMsg += `Per-input total: ${perInputTotal} WU<br><br>`;
                         } else {
                             // For other contexts (taproot_single_leaf, etc.) - keep the simpler format
@@ -1089,7 +1067,13 @@ export class MiniscriptCompiler {
                     result.script_asm = "No single script - this descriptor defines multiple paths. Choose derivation index below to derive";
                 } else {
                     // Show normal compilation success message with spending cost analysis format
-                    successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
+                    // Show the compiled miniscript expression
+                    const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
+                    let displayMiniscriptExpr = displayMiniscript;
+                    if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+                        displayMiniscriptExpr = this.replaceKeysWithNames(displayMiniscript);
+                    }
+                    successMsg = `Miniscript expression:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayMiniscriptExpr}</span>`;
                     
                     if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         // Different calculation for Legacy vs Segwit contexts
@@ -1120,19 +1104,21 @@ export class MiniscriptCompiler {
                             successMsg += `Per-input total: ${totalWU} WU<br><br>`;
                         } else if (context === 'segwit') {
                             // For Segwit v0 (P2WSH)
-                            const scriptWeight = result.script_size;            // e.g. 35
-                            const maxSat = result.max_satisfaction_size;        // e.g. 109 (full witness bytes)
-                            
-                            const inputWeight = maxSat - (1 + scriptWeight);    // 109 - (1 + 35) = 73
-                            const satisfactionTotal = scriptWeight + inputWeight; // 35 + 73 = 108
-                            const inputOverhead = 160;                          // outpoint (36) + nSequence (4) = 40 bytes × 4
-                            const perInputTotal = satisfactionTotal + inputOverhead; // 108 + 160 = 268
-                            
+                            const scriptBytes = result.script_size;              // e.g. 77 (script size in bytes)
+                            const maxSat = result.max_satisfaction_size;         // e.g. 152 (full witness bytes including script)
+
+                            // Signature weight includes ECDSA signature + sighash byte
+                            const sigWeight = maxSat - (1 + scriptBytes);        // 152 - (1 + 77) = 74
+                            const scriptWeight = scriptBytes + 1;                // 77 + 1 = 78 (script + length byte)
+                            const satisfactionTotal = sigWeight + scriptWeight;  // 74 + 78 = 152
+                            const inputOverhead = 160;                           // outpoint (36) + nSequence (4) = 40 bytes × 4
+                            const perInputTotal = satisfactionTotal + inputOverhead; // 152 + 160 = 312
+
                             successMsg += `<br>Spending cost analysis:<br>`;
-                            successMsg += `Script (witnessScript): ${scriptWeight} WU<br>`;
-                            successMsg += `Input (witness, excl. script): ${inputWeight}.000000 WU<br>`;
-                            successMsg += `Satisfaction total: ${satisfactionTotal}.000000 WU<br>`;
-                            successMsg += `Input overhead (outpoint + nSequence): ${inputOverhead} WU<br>`;
+                            successMsg += `Signature (ECDSA + sighash): ${sigWeight} WU<br>`;
+                            successMsg += `Script (witnessScript): ${scriptWeight} WU (${scriptBytes} B script + 1 B length)<br>`;
+                            successMsg += `Satisfaction (witness): ${satisfactionTotal} WU<br>`;
+                            successMsg += `Input overhead (non-witness: outpoint + nSequence): ${inputOverhead} WU<br>`;
                             successMsg += `Per-input total: ${perInputTotal} WU<br><br>`;
                         } else {
                             // For other contexts (taproot_single_leaf, etc.) - keep the simpler format
@@ -4743,7 +4729,21 @@ export class MiniscriptCompiler {
 
         // Compilation Overview
         debugText += '=== COMPILATION OVERVIEW ===\n\n';
-        debugText += `Compiled Miniscript: ${result.compiled_miniscript || 'N/A'}\n`;
+
+        // For key-only Taproot (single-leaf mode with pk(KEY)), show simplified descriptor
+        let displayCompiledMiniscript = result.compiled_miniscript || 'N/A';
+        if (result.miniscript_type === 'Taproot' && result.taprootMode === 'single-leaf' && result.compiled_miniscript) {
+            // Check if this is a key-only descriptor: tr(NUMS,pk(KEY))#checksum
+            const keyOnlyMatch = result.compiled_miniscript.match(/^tr\([^,]+,pk\(([^)]+)\)\)(#[a-z0-9]+)?(\|LEAF_ASM:.*)?$/);
+            if (keyOnlyMatch) {
+                // Transform tr(NUMS,pk(KEY))#checksum|LEAF_ASM:... to tr(KEY)#checksum
+                const key = keyOnlyMatch[1];
+                const checksum = keyOnlyMatch[2] || '';
+                displayCompiledMiniscript = `tr(${key})${checksum}`;
+            }
+        }
+
+        debugText += `Compiled Miniscript: ${displayCompiledMiniscript}\n`;
         debugText += `Sanity Check: ${result.sanity_check ? 'PASS' : 'FAIL'}\n`;
         debugText += `Malleability: ${result.is_non_malleable ? 'Non-malleable' : 'Malleable'}\n`;
         debugText += `Miniscript Type: ${result.miniscript_type || 'N/A'}\n\n`;
@@ -4759,18 +4759,19 @@ export class MiniscriptCompiler {
 
             debugText += `Internal Key: ${internalKey}\n`;
             debugText += 'Spending Method: Schnorr signature with tweaked public key\n';
-            debugText += 'Total Weight: ~57.5 WU\n\n';
+            debugText += 'Total Weight: 66 WU (67 with sighash byte)\n\n';
 
             debugText += 'Breakdown:\n';
             debugText += '   Signature: 64 bytes (Schnorr)\n';
-            debugText += '   Witness overhead: ~2.5 bytes (varint + witness count)\n';
+            debugText += '   Sighash byte: 1 byte\n';
+            debugText += '   Witness count: 1 byte (varint)\n';
             debugText += '   Control Block: Not required ✓\n';
             debugText += '   Script: Not required ✓\n\n';
 
             // Calculate script path costs for comparison (if we have per-leaf info)
             if (result.debug_info_leaves && result.debug_info_leaves.length > 0) {
                 debugText += 'Key Path vs Script Path Comparison:\n';
-                debugText += '   Key Path:        ~57.5 WU (cheapest option)\n';
+                debugText += '   Key Path:        66 WU (cheapest option)\n';
 
                 result.debug_info_leaves.forEach((leaf, index) => {
                     const ext = leaf.debug_info?.extended_properties;
@@ -4778,14 +4779,12 @@ export class MiniscriptCompiler {
                         // Estimate script path cost: signature (66 WU) + script size + control block (~34 WU)
                         const scriptSize = ext.pk_cost || 0;
                         const scriptPathCost = 66 + scriptSize + 34;
-                        const percentIncrease = Math.round(((scriptPathCost - 57.5) / 57.5) * 100);
+                        const percentIncrease = Math.round(((scriptPathCost - 66) / 66) * 100);
                         debugText += `   Script Path #${index + 1}:  ${scriptPathCost} WU (+${percentIncrease}% more expensive)\n`;
                     }
                 });
 
-                debugText += '\n⚡ Recommendation: Use key path spending when possible for maximum efficiency\n\n';
-            } else {
-                debugText += '⚡ Recommendation: Use key path spending for maximum efficiency\n\n';
+                debugText += '\n';
             }
         }
 
@@ -4817,10 +4816,6 @@ export class MiniscriptCompiler {
                     debugText += `   Script Size: ${ext.pk_cost} bytes\n`;
                 }
 
-                if (ext.stack_elements_sat !== null && ext.stack_elements_sat !== undefined) {
-                    debugText += `   Witness Stack Items: ${ext.stack_elements_sat}\n`;
-                }
-
                 debugText += '\n';
             }
 
@@ -4837,6 +4832,15 @@ export class MiniscriptCompiler {
                 debugText += `Address: ${result.address}\n`;
             }
             debugText += '\n';
+        }
+
+        // For key-only Taproot (single-leaf mode with pk(KEY)), skip the rest of debug info
+        if (result.miniscript_type === 'Taproot' && result.taprootMode === 'single-leaf' && result.compiled_miniscript) {
+            const keyOnlyMatch = result.compiled_miniscript.match(/^tr\([^,]+,pk\(([^)]+)\)\)(#[a-z0-9]+)?(\|LEAF_ASM:.*)?$/);
+            if (keyOnlyMatch) {
+                // This is key-only Taproot - return here, skip the rest
+                return debugText;
+            }
         }
 
         // Miniscript Structure with enhanced parsing
@@ -4949,9 +4953,6 @@ export class MiniscriptCompiler {
                     }
                     if (ext.pk_cost !== null && ext.pk_cost !== undefined) {
                         debugText += `   Script Size: ${ext.pk_cost} bytes\n`;
-                    }
-                    if (ext.stack_elements_sat !== null && ext.stack_elements_sat !== undefined) {
-                        debugText += `   Witness Stack Items: ${ext.stack_elements_sat}\n`;
                     }
                     debugText += '\n';
                 }
@@ -5339,8 +5340,7 @@ export class MiniscriptCompiler {
                 successMsg = `Valid descriptor: wsh(${modifiedExpression})`;
             } else {
                 // For Segwit v0 and other types, show that it was derived from the modified expression
-                successMsg = `${result.miniscript_type}, ${result.script_size} bytes script size<br>`;
-                successMsg += `Derived from: ${modifiedExpression}`;
+                successMsg = `Derived from: ${modifiedExpression}`;
             }
 
             this.showMiniscriptSuccess(successMsg, modifiedExpression);
@@ -6382,8 +6382,8 @@ export class MiniscriptCompiler {
                             <div style="font-size: 12px; line-height: 1.6;">
                                 ${descriptorLine}
                                 <div>Internal Key: ${actualInternalKey}</div>
-                                ${currentMode === 'multi-leaf' ? '<div>Key path spending total cost: ~57.5 WU</div>' : ''}
-                                <div>Script Tree: ${branchCount > 0 ? branchCount + ' spending script path' + (branchCount !== 1 ? 's' : '') : 'No branches available'}</div>
+                                ${currentMode === 'multi-leaf' ? '<div>Key path spending: 66 WU (67 with sighash byte)<br>⚡ Recommendation: Use key path spending for maximum efficiency</div>' : ''}
+                                <div>Script paths: ${branchCount > 0 ? branchCount + (branchCount === 1 ? ' leaf' : ' leaves') : 'No branches available'}</div>
                                 ${branchesContent}
                             </div>
                         </div>
