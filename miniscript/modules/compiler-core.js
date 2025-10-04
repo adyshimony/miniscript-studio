@@ -812,7 +812,7 @@ export class MiniscriptCompiler {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
                         
-                        if (isTaprootContext && currentMode === 'single-leaf') {
+                        if (isTaprootContext) {
                             // Check if this is a pure key case (pk(KEY))
                             const isPureKey = /^pk\([^)]+\)$/.test(expression.trim());
 
@@ -4792,7 +4792,7 @@ export class MiniscriptCompiler {
         // Extended Properties from rust-miniscript library
         if (result.debug_info && result.debug_info.extended_properties) {
             const ext = result.debug_info.extended_properties;
-            debugText += '=== MINISCRIPT ANALYSIS (from rust-miniscript) ===\n\n';
+            debugText += '=== MINISCRIPT ANALYSIS ===\n\n';
 
             // Script Properties
             debugText += 'Script Properties:\n';

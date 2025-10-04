@@ -187,42 +187,42 @@ pub(crate) fn get_taproot_miniscript_branches(descriptor: &str) -> JsValue {
     // YOUR EXACT LOGIC
     match &tree {
         TapTree::Leaf(ms) => {
-            // If the single leaf miniscript lifts to an OR policy, split into branches
-            if let Ok(policy) = ms.lift() {
-                let pol_str = policy.to_string();
-                if let Ok(conc) = Concrete::<XOnlyPublicKey>::from_str(&pol_str) {
-                    if let Concrete::Or(or_branches) = conc {
-                        for (_w, subp) in or_branches.iter() {
-                            let sub_conc: Concrete<XOnlyPublicKey> = (**subp).clone();
-                            if let Ok(sub_ms) = sub_conc.compile::<Tap>() {
-                                let script = sub_ms.encode();
-                                let hex = script.to_hex_string();
-                                let asm = script.to_asm_string();
-                                
-                                // Calculate proper Taproot witness weight breakdown
-                                let (sig_wu, script_wu, control_wu, total_wu) = crate::taproot::weights::taproot_witness_breakdown(&sub_ms, script.len(), 0);
-                                
-                                branches.push(BranchInfo {
-                                    miniscript: sub_ms.to_string(),
-                                    hex,
-                                    asm,
-                                    sig_wu,
-                                    script_wu,
-                                    control_wu,
-                                    total_wu,
-                                });
-                            }
-                        }
-                        return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
-                            success: true,
-                            internal_key,
-                            branches,
-                            error: None,
-                        }).unwrap_or(JsValue::NULL);
-                    }
-                }
-            }
-            // Fallback: just report the single leaf
+            // COMMENTED OUT: Don't split OR patterns into multiple branches - treat as single leaf
+            // if let Ok(policy) = ms.lift() {
+            //     let pol_str = policy.to_string();
+            //     if let Ok(conc) = Concrete::<XOnlyPublicKey>::from_str(&pol_str) {
+            //         if let Concrete::Or(or_branches) = conc {
+            //             for (_w, subp) in or_branches.iter() {
+            //                 let sub_conc: Concrete<XOnlyPublicKey> = (**subp).clone();
+            //                 if let Ok(sub_ms) = sub_conc.compile::<Tap>() {
+            //                     let script = sub_ms.encode();
+            //                     let hex = script.to_hex_string();
+            //                     let asm = script.to_asm_string();
+            //
+            //                     // Calculate proper Taproot witness weight breakdown
+            //                     let (sig_wu, script_wu, control_wu, total_wu) = crate::taproot::weights::taproot_witness_breakdown(&sub_ms, script.len(), 0);
+            //
+            //                     branches.push(BranchInfo {
+            //                         miniscript: sub_ms.to_string(),
+            //                         hex,
+            //                         asm,
+            //                         sig_wu,
+            //                         script_wu,
+            //                         control_wu,
+            //                         total_wu,
+            //                     });
+            //                 }
+            //             }
+            //             return serde_wasm_bindgen::to_value(&MiniscriptBranchResult {
+            //                 success: true,
+            //                 internal_key,
+            //                 branches,
+            //                 error: None,
+            //             }).unwrap_or(JsValue::NULL);
+            //         }
+            //     }
+            // }
+            // Always treat as single leaf (no OR splitting)
             let script = ms.encode();
             let hex = script.to_hex_string();
             let asm = script.to_asm_string();

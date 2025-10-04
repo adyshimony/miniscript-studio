@@ -226,7 +226,66 @@ pub fn extract_descriptor_debug_info<Pk: MiniscriptKey>(
     use miniscript::{Descriptor, Miniscript, Tap};
 
     // Try to extract extended properties from parsed miniscript
-    let extended_properties = if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+    let extended_properties = if let Ok(parsed_desc) = descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
+        // If it's a Taproot descriptor, extract from the miniscript in the tree
+        if let Descriptor::Tr(ref tr_desc) = parsed_desc {
+            if let Some(tree) = tr_desc.tap_tree() {
+                if let miniscript::descriptor::TapTree::Leaf(ref ms) = tree {
+                    extract_extended_properties(ms)
+                } else {
+                    // Multi-leaf, use defaults
+                    ExtendedProperties {
+                        has_mixed_timelocks: false,
+                        has_repeated_keys: false,
+                        requires_sig: true,
+                        within_resource_limits: true,
+                        contains_raw_pkh: false,
+                        pk_cost: None,
+                        ops_count_static: None,
+                        stack_elements_sat: None,
+                        stack_elements_dissat: None,
+                        max_sat_size: None,
+                        max_dissat_size: None,
+                    }
+                }
+            } else {
+                // No tree, use defaults
+                ExtendedProperties {
+                    has_mixed_timelocks: false,
+                    has_repeated_keys: false,
+                    requires_sig: true,
+                    within_resource_limits: true,
+                    contains_raw_pkh: false,
+                    pk_cost: None,
+                    ops_count_static: None,
+                    stack_elements_sat: None,
+                    stack_elements_dissat: None,
+                    max_sat_size: None,
+                    max_dissat_size: None,
+                }
+            }
+        } else {
+            // Non-Taproot, try parsing as miniscript
+            if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+                extract_extended_properties(&parsed_ms)
+            } else {
+                // Fallback to defaults
+                ExtendedProperties {
+                    has_mixed_timelocks: false,
+                    has_repeated_keys: false,
+                    requires_sig: true,
+                    within_resource_limits: true,
+                    contains_raw_pkh: false,
+                    pk_cost: None,
+                    ops_count_static: None,
+                    stack_elements_sat: None,
+                    stack_elements_dissat: None,
+                    max_sat_size: None,
+                    max_dissat_size: None,
+                }
+            }
+        }
+    } else if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         extract_extended_properties(&parsed_ms)
     } else {
         // Fallback to defaults if we can't parse
@@ -246,10 +305,35 @@ pub fn extract_descriptor_debug_info<Pk: MiniscriptKey>(
     };
 
     let debug_output = if let Ok(parsed_desc) = descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
-        // Successfully parsed as descriptor - format with {:#?} to get type annotations
-        let formatted = format!("{:#?}", parsed_desc);
-        console_log!("Parsed as Descriptor: {:#?}", parsed_desc);
-        formatted
+        // Successfully parsed as descriptor - extract miniscript for type annotations
+        console_log!("Parsed as Descriptor");
+
+        // If it's a Taproot descriptor, try to extract the miniscript from the tree
+        if let Descriptor::Tr(ref tr_desc) = parsed_desc {
+            if let Some(tree) = tr_desc.tap_tree() {
+                // For single-leaf trees, extract the miniscript
+                if let miniscript::descriptor::TapTree::Leaf(ref ms) = tree {
+                    let formatted = format!("{:#?}", ms);
+                    console_log!("Extracted miniscript from Taproot descriptor: {:#?}", ms);
+                    formatted
+                } else {
+                    // Multi-leaf tree, format the descriptor
+                    let formatted = format!("{:#?}", parsed_desc);
+                    console_log!("Multi-leaf Taproot descriptor: {:#?}", parsed_desc);
+                    formatted
+                }
+            } else {
+                // No tree, format the descriptor
+                let formatted = format!("{:#?}", parsed_desc);
+                console_log!("Taproot descriptor without tree: {:#?}", parsed_desc);
+                formatted
+            }
+        } else {
+            // Non-Taproot descriptor, format as-is
+            let formatted = format!("{:#?}", parsed_desc);
+            console_log!("Non-Taproot descriptor: {:#?}", parsed_desc);
+            formatted
+        }
     } else if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         // Try parsing as miniscript directly
         let formatted = format!("{:#?}", parsed_ms);
@@ -262,7 +346,66 @@ pub fn extract_descriptor_debug_info<Pk: MiniscriptKey>(
     };
 
     // Extract type properties if we can parse the descriptor
-    let type_properties = if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+    let type_properties = if let Ok(parsed_desc) = descriptor.parse::<Descriptor<XOnlyPublicKey>>() {
+        // If it's a Taproot descriptor, extract from the miniscript in the tree
+        if let Descriptor::Tr(ref tr_desc) = parsed_desc {
+            if let Some(tree) = tr_desc.tap_tree() {
+                if let miniscript::descriptor::TapTree::Leaf(ref ms) = tree {
+                    extract_type_properties(ms)
+                } else {
+                    // Multi-leaf, use defaults
+                    TypeProperties {
+                        base: false,
+                        verify: false,
+                        one_arg: false,
+                        non_zero: false,
+                        dissatisfiable: false,
+                        unit: false,
+                        expression: false,
+                        safe: false,
+                        forced: false,
+                        has_max_size: false,
+                        zero_arg: false,
+                    }
+                }
+            } else {
+                // No tree, use defaults
+                TypeProperties {
+                    base: false,
+                    verify: false,
+                    one_arg: false,
+                    non_zero: false,
+                    dissatisfiable: false,
+                    unit: false,
+                    expression: false,
+                    safe: false,
+                    forced: false,
+                    has_max_size: false,
+                    zero_arg: false,
+                }
+            }
+        } else {
+            // Non-Taproot, try parsing as miniscript
+            if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
+                extract_type_properties(&parsed_ms)
+            } else {
+                // Fallback to defaults
+                TypeProperties {
+                    base: false,
+                    verify: false,
+                    one_arg: false,
+                    non_zero: false,
+                    dissatisfiable: false,
+                    unit: false,
+                    expression: false,
+                    safe: false,
+                    forced: false,
+                    has_max_size: false,
+                    zero_arg: false,
+                }
+            }
+        }
+    } else if let Ok(parsed_ms) = descriptor.parse::<Miniscript<XOnlyPublicKey, Tap>>() {
         extract_type_properties(&parsed_ms)
     } else {
         // Fallback to defaults if we can't parse

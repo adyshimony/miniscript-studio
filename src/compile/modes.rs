@@ -34,7 +34,9 @@ pub fn compile_taproot_multi_leaf(expression: &str, network: Network, verbose: b
             console_log!("Parsed miniscript: {}", normalized_miniscript);
 
             // Transform top-level OR patterns to tree notation (SAME AS SCRIPT_PATH)
-            let transformed_miniscript = super::utils::transform_or_to_tree(&normalized_miniscript);
+            // COMMENTED OUT: Keep full miniscript as single script path, don't split OR into multi-leaf
+            // let transformed_miniscript = super::utils::transform_or_to_tree(&normalized_miniscript);
+            let transformed_miniscript = normalized_miniscript.clone();
             console_log!("After OR transformation: {}", transformed_miniscript);
 
             // Calculate satisfaction weights
@@ -320,7 +322,9 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
             console_log!("Parsed miniscript: {}", normalized_miniscript);
             
             // Transform top-level OR patterns to tree notation
-            let transformed_miniscript = super::utils::transform_or_to_tree(&normalized_miniscript);
+            // COMMENTED OUT: Keep full miniscript as single script path, don't split OR into multi-leaf
+            // let transformed_miniscript = super::utils::transform_or_to_tree(&normalized_miniscript);
+            let transformed_miniscript = normalized_miniscript.clone();
             console_log!("After OR transformation: {}", transformed_miniscript);
             
             // Calculate satisfaction weights 
@@ -411,30 +415,30 @@ pub fn compile_taproot_script_path(expression: &str, nums_key: &str, network: Ne
             
             // Original single-leaf approach (no OR transformation)
             console_log!("Using single-leaf approach");
-            
+
             // Create the tree with the miniscript (clone to avoid move)
             let tree = TapTree::Leaf(Arc::new(ms.clone()));
             console_log!("DEBUG DESCRIPTOR: Created TapTree leaf");
-            
+
             // Create descriptor using Descriptor::new_tr() approach (the correct way!)
             match Descriptor::<XOnlyPublicKey>::new_tr(nums_xonly_key, Some(tree)) {
                 Ok(descriptor) => {
                     console_log!("DEBUG DESCRIPTOR: Successfully created descriptor: {}", descriptor);
-                    
+
                     // Generate address from descriptor
                     match descriptor.address(network) {
                         Ok(address) => {
                             console_log!("DEBUG DESCRIPTOR: Generated address: {}", address);
-                            
+
                             // Get the scriptPubKey (OP_1 + 32-byte tweaked key)
                             let script_pubkey = address.script_pubkey();
                             let script_hex = script_pubkey.to_hex_string();
                             let script_asm = format!("{:?}", script_pubkey).replace("Script(", "").trim_end_matches(')').to_string();
                             let script_size = script_pubkey.len();
-                            
+
                             console_log!("DEBUG DESCRIPTOR: Script hex: {}", script_hex);
                             console_log!("DEBUG DESCRIPTOR: Script ASM: {}", script_asm);
-                            
+
                             Ok(CompileResponse {
                                 success: true,
                                 error: None,
