@@ -111,10 +111,7 @@ fn extract_extended_properties<Pk: MiniscriptKey, Ctx: ScriptContext>(
     let has_repeated_keys = ms.has_repeated_keys();
     let requires_sig = ms.requires_sig();
     let within_resource_limits = ms.within_resource_limits();
-
-    // contains_raw_pkh is only available for Legacy context
-    // We'll set it to false for now as it's context-specific
-    let contains_raw_pkh = false;
+    let contains_raw_pkh = ms.contains_raw_pkh();
 
     // Extract extended properties directly from ms.ext (all from rust-miniscript)
     let pk_cost = Some(ms.ext.pk_cost);
