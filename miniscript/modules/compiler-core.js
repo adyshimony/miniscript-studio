@@ -3830,9 +3830,9 @@ export class MiniscriptCompiler {
                 // Re-apply policy syntax highlighting
                 delete policyInput.dataset.lastHighlightedText;
                 this.highlightPolicySyntax();
-                
+
                 console.log('Successfully lifted to policy:', displayPolicy);
-                this.showMiniscriptSuccess('✅ Lifted to Policy!');
+                this.showMiniscriptSuccess('✅ Lifted to Policy!', null, false);
             } else {
                 console.log('Policy lift failed:', policyResult.error);
                 this.showMiniscriptError(`Cannot lift miniscript: ${policyResult.error || 'Unknown error'}`);
@@ -5997,9 +5997,9 @@ export class MiniscriptCompiler {
         }
     }
 
-    showMiniscriptSuccess(message, expression = null) {
+    showMiniscriptSuccess(message, expression = null, showDebugButton = true) {
         const messagesDiv = document.getElementById('miniscript-messages');
-        
+
         // Check if we should update existing success message during auto-compile
         if (this.isAutoCompiling) {
             const existingSuccess = messagesDiv.querySelector('.result-box.success');
@@ -6021,18 +6021,20 @@ export class MiniscriptCompiler {
                 if (messageContent) {
                     messageContent.innerHTML = message;
                 }
-                
+
                 // Update title with current context
                 const titleElement = existingSuccess.querySelector('h4');
                 if (titleElement) {
                     const currentContext = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
                     const contextDisplay = this.getContextDisplayName(currentContext);
+                    const debugButtonHtml = showDebugButton ? `
+                            <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                                🐞
+                            </button>` : '';
                     titleElement.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
-                            <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                                🐞
-                            </button>
+                            ${debugButtonHtml}
                         </div>
                     `;
                 }
@@ -6161,15 +6163,18 @@ export class MiniscriptCompiler {
         // Get current context for display
         const context = document.querySelector('input[name="context"]:checked')?.value || 'legacy';
         const contextDisplay = this.getContextDisplayName(context);
-        
+
+        const debugButtonHtml = showDebugButton ? `
+                        <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                            🐞
+                        </button>` : '';
+
         messagesDiv.innerHTML = `
             <div class="result-box success" style="margin: 0;">
                 <h4>
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
-                        <button onclick="toggleMiniscriptDebugInfo(this)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle debug info" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
-                            🐞
-                        </button>
+                        ${debugButtonHtml}
                     </div>
                 </h4>
                 <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">${message}</div>
