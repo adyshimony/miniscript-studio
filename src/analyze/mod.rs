@@ -524,9 +524,18 @@ pub fn enumerate_spending_paths<Pk: MiniscriptKey + std::fmt::Display>(
     let paths = get_all_paths(policy);
 
     // Format paths as human-readable strings
+    // Add warning for paths that don't require a signature
     paths.into_iter()
         .enumerate()
-        .map(|(i, conditions)| format!("Path {}: {}", i + 1, conditions.join(" + ")))
+        .map(|(i, conditions)| {
+            let path_str = conditions.join(" + ");
+            let has_signature = path_str.contains(" signs");
+            if has_signature {
+                format!("Path {}: {}", i + 1, path_str)
+            } else {
+                format!("Path {}: {} ⚠️ (no signature required)", i + 1, path_str)
+            }
+        })
         .collect()
 }
 

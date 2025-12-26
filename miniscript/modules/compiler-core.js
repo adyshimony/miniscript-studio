@@ -1314,6 +1314,7 @@ export class MiniscriptCompiler {
             result.spending_paths.forEach(path => {
                 content += `<div style="margin-left: 10px;">${this.escapeHtml(maybeReplaceKeys(path))}</div>`;
             });
+            content += `<br>`;
         }
 
         // Keys
