@@ -227,10 +227,15 @@ window.loadExample = function(example, exampleId, explicitContext) {
 // Global function to load policy examples
 window.loadPolicyExample = function(example, exampleId, explicitContext) {
     console.log('🚀 loadPolicyExample (from script.js) called with:', example, exampleId, explicitContext);
-    
+
     const policyInput = document.getElementById('policy-input');
     const isMobile = window.innerWidth <= 768;
-    
+
+    // Clear policyLifted flag when loading an example
+    if (window.compiler) {
+        window.compiler.policyLifted = false;
+    }
+
     // Reset taproot mode to default
     window.currentTaprootMode = 'single-leaf';
     

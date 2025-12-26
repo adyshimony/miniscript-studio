@@ -15,6 +15,7 @@ pub(crate) mod parse;
 mod lift;
 pub mod address;
 mod taproot;
+pub mod analyze;
 
 // Public modules for integration tests
 pub mod descriptors;
@@ -104,6 +105,18 @@ pub fn lift_to_miniscript(bitcoin_script: &str) -> JsValue {
 #[wasm_bindgen]
 pub fn lift_to_policy(miniscript: &str) -> JsValue {
     lift::lift_to_policy(miniscript)
+}
+
+// Analyze a miniscript expression
+#[wasm_bindgen]
+pub fn analyze_miniscript(expression: &str, context: &str) -> JsValue {
+    analyze::analyze_miniscript(expression, context)
+}
+
+// Analyze a policy expression
+#[wasm_bindgen]
+pub fn analyze_policy(policy: &str) -> JsValue {
+    analyze::analyze_policy(policy)
 }
 // Generate address for network switching (Legacy/Segwit/Taproot)
 #[wasm_bindgen]

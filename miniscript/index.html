@@ -1172,6 +1172,7 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
                 <div class="button-group">
                     <button id="compile-policy-btn" class="primary-btn">🔨 Compile</button>
+                    <button id="policy-info-btn" class="secondary-btn">🔍 Analyze</button>
                     <button id="save-policy-btn" class="secondary-btn">💾 Save</button>
                     <button id="load-policy-btn" class="secondary-btn">📂 Load</button>
                     <button id="clear-policy-btn" class="secondary-btn">🗑️ Clear</button>
@@ -1274,7 +1275,7 @@
                     <button onclick="removeMiniscriptExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🧹
                     </button>
-                    <button id="lift-miniscript-btn" onclick="liftMiniscriptToPolicy()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="lift-miniscript-btn" onclick="liftMiniscriptToPolicy()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Policy for Analysis" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         ⬆️
                     </button>
                     <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy miniscript expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -2167,10 +2168,17 @@
                         </p>
                     </div>
                     <div class="tip-item">
-                        <strong style="color: var(--text-color); font-size: 16px;">⬆️ Lift (Reverse Engineering):</strong>
+                        <strong style="color: var(--text-color); font-size: 16px;">⬆️ Lift:</strong>
                         <br>
                         <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
-                            Paste Bitcoin Script hex/ASM into the "Script HEX" or "Script ASM" fields to automatically lift them back to miniscript. Every lift also shows the policy equivalent. You can also lift miniscript expression to policy.
+                            Paste Bitcoin Script hex/ASM into the "Script HEX" or "Script ASM" fields to lift them to miniscript. Use ⬆️ to lift miniscript to policy for analysis.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <strong style="color: var(--text-color); font-size: 16px;">🔍 Analyze:</strong>
+                        <br>
+                        <p style="margin: 4px 0 0 0; color: var(--text-color); font-size: 13px;">
+                            View detailed policy analysis - spending paths, keys, timelocks, security info and more.
                         </p>
                     </div>
                     <div class="tip-item">
@@ -2905,7 +2913,7 @@
                     simple: "Enter your Policy here..."
                 },
                 miniscript: {
-                    full: "Enter your Miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your new expression.\nUse ⬆️ to lift your expression back to policy.\nYou can turn off these tips and example descriptions in setting.",
+                    full: "Enter your Miniscript here or click an example below.\nUse 🏷️ to show/hide key names, 🔑 to generate keys from your new expression.\nUse ⬆️ to lift to policy for analysis.\nYou can turn off these tips and example descriptions in setting.",
                     simple: "Enter your Miniscript here..."
                 }
             };

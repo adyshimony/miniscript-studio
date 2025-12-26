@@ -112,3 +112,176 @@ pub struct ParsedDescriptor {
     pub original: String,
     pub info: DescriptorInfo,
 }
+
+/// Result structure for script/policy analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalysisResult {
+    pub success: bool,
+    pub error: Option<String>,
+
+    /// The semantic policy string (from lift)
+    pub spending_logic: Option<String>,
+
+    /// Human-readable spending paths
+    pub spending_paths: Option<Vec<String>>,
+
+    /// Key information
+    pub keys: Option<KeyAnalysis>,
+
+    /// Timelock information
+    pub timelocks: Option<TimelockAnalysis>,
+
+    /// Hashlock information
+    pub hashlocks: Option<HashlockAnalysis>,
+
+    /// Complexity analysis (depth, paths, thresholds)
+    pub complexity: Option<ComplexityAnalysis>,
+
+    /// Security properties
+    pub security: Option<SecurityAnalysis>,
+
+    /// Size and weight information (only available from miniscript, not policy)
+    pub size: Option<SizeAnalysis>,
+
+    /// Tree structure as nested JSON for JS rendering
+    pub tree_structure: Option<PolicyTreeNode>,
+
+    /// Warnings (e.g., trivially satisfiable, unsatisfiable, etc.)
+    pub warnings: Option<Vec<String>>,
+
+    /// Source type: "miniscript" or "policy"
+    pub source: Option<String>,
+}
+
+/// Tree node for policy visualization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyTreeNode {
+    /// Node type: "and", "or", "thresh", "pk", "after", "older", "sha256", etc.
+    #[serde(rename = "type")]
+    pub node_type: String,
+
+    /// Raw value (key hex, timelock number, hash, or k/n for thresh)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+
+    /// For thresh nodes: k value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub k: Option<usize>,
+
+    /// For thresh nodes: n value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n: Option<usize>,
+
+    /// Child nodes
+    pub children: Vec<PolicyTreeNode>,
+}
+
+impl PolicyTreeNode {
+    /// Check if this tree contains a node matching the given pattern
+    /// Searches node_type (case-insensitive), value, formatted representations,
+    /// and recursively searches children
+    pub fn contains(&self, pattern: &str) -> bool {
+        let pattern_lower = pattern.to_lowercase();
+
+        // Check node_type (case-insensitive)
+        if self.node_type.to_lowercase().contains(&pattern_lower) {
+            return true;
+        }
+
+        // Check value
+        if let Some(ref val) = self.value {
+            if val.to_lowercase().contains(&pattern_lower) {
+                return true;
+            }
+            // Check formatted representation like "pk(Alice)", "after(800000)"
+            let formatted = format!("{}({})", self.node_type, val);
+            if formatted.to_lowercase().contains(&pattern_lower) {
+                return true;
+            }
+        }
+
+        // Check thresh formatted representation like "THRESH(2/3)"
+        if self.node_type == "thresh" {
+            if let (Some(k), Some(n)) = (self.k, self.n) {
+                let thresh_fmt = format!("thresh({}/{})", k, n);
+                if thresh_fmt.to_lowercase().contains(&pattern_lower) {
+                    return true;
+                }
+            }
+        }
+
+        // Check children recursively
+        for child in &self.children {
+            if child.contains(pattern) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+/// Key analysis information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeyAnalysis {
+    pub total_references: usize,
+    pub unique_keys: Vec<String>,
+    /// Min signatures needed across all paths
+    pub min_signatures: Option<usize>,
+    /// Max signatures needed across all paths
+    pub max_signatures: Option<usize>,
+}
+
+/// Complexity analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplexityAnalysis {
+    /// Maximum tree depth
+    pub depth: usize,
+    /// Number of spending paths
+    pub num_paths: usize,
+    /// Threshold conditions found (e.g., ["2-of-3", "1-of-1"])
+    pub thresholds: Vec<String>,
+}
+
+/// Timelock analysis information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimelockAnalysis {
+    pub relative: Vec<TimelockInfo>,
+    pub absolute: Vec<TimelockInfo>,
+    pub has_mixed: bool,
+}
+
+/// Individual timelock information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimelockInfo {
+    pub value: u32,
+}
+
+/// Hashlock analysis information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HashlockAnalysis {
+    pub sha256_count: usize,
+    pub hash256_count: usize,
+    pub ripemd160_count: usize,
+    pub hash160_count: usize,
+}
+
+/// Security analysis information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityAnalysis {
+    pub is_non_malleable: bool,
+    pub requires_signature: bool,
+    pub has_repeated_keys: bool,
+    pub within_resource_limits: bool,
+    pub passes_sanity_check: bool,
+    pub is_safe: bool,
+}
+
+/// Size and weight analysis information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SizeAnalysis {
+    pub script_bytes: Option<usize>,
+    pub max_witness_bytes: Option<usize>,
+    pub witness_elements: Option<usize>,
+    pub opcodes: Option<usize>,
+    pub pk_cost: Option<usize>,
+}

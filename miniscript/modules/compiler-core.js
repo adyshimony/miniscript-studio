@@ -1,4 +1,4 @@
-import init, { compile_unified, lift_to_miniscript, lift_to_policy, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights, get_wasm_build_info } from '../pkg/miniscript_wasm.js';
+import init, { compile_unified, lift_to_miniscript, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights, get_wasm_build_info, analyze_policy, analyze_miniscript } from '../pkg/miniscript_wasm.js';
 import { CONSTANTS } from './constants.js';
 
 /**
@@ -39,6 +39,7 @@ export class MiniscriptCompiler {
         };
         this.lastSuggestedKeyName = null; // Track auto-suggested names
         this.isGeneratingKey = false; // Flag to prevent clearing suggestion during generation
+        this.policyLifted = false; // Flag to track if current policy was lifted from miniscript
         this.init();
     }
 
@@ -99,6 +100,11 @@ export class MiniscriptCompiler {
         // Clear policy button
         document.getElementById('clear-policy-btn').addEventListener('click', () => {
             this.clearPolicy();
+        });
+
+        // Policy info button
+        document.getElementById('policy-info-btn').addEventListener('click', () => {
+            this.showPolicyInfo();
         });
 
         // Compile button
@@ -315,6 +321,9 @@ export class MiniscriptCompiler {
         });
         
         policyInput.addEventListener('input', () => {
+            // Clear policyLifted flag when user edits the policy
+            this.policyLifted = false;
+
             // Save state for undo if not currently undoing (debounced)
             if (!this.isUndoing) {
                 if (this.saveStateTimeouts.policy) {
@@ -1198,13 +1207,204 @@ export class MiniscriptCompiler {
     clearPolicy() {
         document.getElementById('policy-input').innerHTML = '';
         this.clearPolicyErrors();
-        
+
+        // Clear policyLifted flag
+        this.policyLifted = false;
+
         // Reset taproot mode to default
         window.currentTaprootMode = 'single-leaf';
-        
+
         // Hide policy description panel
         const policyPanel = document.querySelector('.policy-description-panel');
         if (policyPanel) policyPanel.style.display = 'none';
+    }
+
+    /**
+     * Show policy analysis information (ℹ️ Info button)
+     * Calls WASM analyze_policy and displays results in policy-errors div
+     */
+    showPolicyInfo() {
+        const policy = document.getElementById('policy-input').textContent.trim();
+
+        // Clear previous errors/success messages
+        this.clearPolicyErrors();
+
+        if (!policy) {
+            this.showPolicyError('Please enter a policy expression to analyze.');
+            return;
+        }
+
+        if (!this.wasm) {
+            this.showPolicyError('Compiler not ready, please wait and try again.');
+            return;
+        }
+
+        // Show loading state
+        const infoBtn = document.getElementById('policy-info-btn');
+        const originalText = infoBtn.textContent;
+        infoBtn.textContent = '⏳ Analyzing...';
+        infoBtn.disabled = true;
+
+        try {
+            // Clean and process policy
+            const cleanedPolicy = this.cleanExpression(policy);
+            const context = document.querySelector('input[name="policy-context"]:checked').value;
+            const processedPolicy = this.replaceKeyVariables(cleanedPolicy, context);
+
+            // Call WASM analyze_policy function
+            const result = analyze_policy(processedPolicy);
+
+            // Reset button
+            infoBtn.textContent = originalText;
+            infoBtn.disabled = false;
+
+            if (result.success) {
+                this.displayAnalysisResult(result, false); // false = no warning for policy info
+            } else {
+                this.showPolicyError(result.error || 'Policy analysis failed');
+            }
+
+        } catch (error) {
+            console.error('Policy analysis error:', error);
+            infoBtn.textContent = originalText;
+            infoBtn.disabled = false;
+            this.showPolicyError(`Policy analysis failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Display analysis result in policy-errors div
+     * @param {Object} result - AnalysisResult from WASM
+     * @param {boolean} showWarning - Whether to show "semantic only" warning
+     * @param {string} targetDivId - Target div ID for displaying result (default: 'policy-errors')
+     */
+    displayAnalysisResult(result, showWarning = false, targetDivId = 'policy-errors') {
+        const targetDiv = document.getElementById(targetDivId);
+
+        // Check if we should show key names based on toggle state (check both toggles)
+        const policyToggle = document.getElementById('policy-key-names-toggle');
+        const miniscriptToggle = document.getElementById('miniscript-key-names-toggle');
+        const activeToggle = targetDivId === 'policy-errors' ? policyToggle : miniscriptToggle;
+        const showKeyNames = activeToggle?.dataset.active !== 'false' && this.keyVariables && this.keyVariables.size > 0;
+
+        // Helper to optionally replace keys with names
+        const maybeReplaceKeys = (text) => showKeyNames ? this.replaceKeysWithNames(text) : text;
+
+        // Use error styling if there are warnings
+        const hasWarnings = result.warnings && result.warnings.length > 0;
+        const boxClass = hasWarnings ? 'result-box error' : 'result-box success';
+
+        let content = `<div class="${boxClass}" style="margin: 0; text-align: left;">`;
+        content += `<h4>ℹ️ Policy Analysis</h4>`;
+        content += `<div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">`;
+
+        // Warning for miniscript lift (not for policy info)
+        if (showWarning) {
+            content += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 10px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px;">⚠️ Lifted Policy from Miniscript - for analysis purposes only. May differ from the original, may not be compilable back to Miniscript, and probability information cannot be recovered.</div>`;
+        }
+
+        // Spending Logic
+        if (result.spending_logic) {
+            content += `Spending Logic:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${this.escapeHtml(maybeReplaceKeys(result.spending_logic))}</span><br>`;
+        }
+
+        // Spending Paths
+        if (result.spending_paths && result.spending_paths.length > 0) {
+            content += `Spending Paths:<br>`;
+            result.spending_paths.forEach(path => {
+                content += `<div style="margin-left: 10px;">${this.escapeHtml(maybeReplaceKeys(path))}</div>`;
+            });
+        }
+
+        // Keys
+        if (result.keys) {
+            const displayKeys = result.keys.unique_keys.map(key => maybeReplaceKeys(key)).join(', ') || 'none';
+            content += `Keys: ${result.keys.total_references} references, ${result.keys.unique_keys.length} unique (${displayKeys})`;
+            if (result.keys.min_signatures != null && result.keys.max_signatures != null) {
+                if (result.keys.min_signatures === result.keys.max_signatures) {
+                    content += `, signatures per path: ${result.keys.min_signatures}`;
+                } else {
+                    content += `, signatures per path: ${result.keys.min_signatures}-${result.keys.max_signatures}`;
+                }
+            }
+            content += `<br>`;
+        }
+
+        // Complexity
+        if (result.complexity) {
+            const parts = [];
+            parts.push(`depth: ${result.complexity.depth}`);
+            parts.push(`paths: ${result.complexity.num_paths}`);
+            if (result.complexity.thresholds && result.complexity.thresholds.length > 0) {
+                parts.push(`thresholds: ${result.complexity.thresholds.join(', ')}`);
+            }
+            content += `Complexity: ${parts.join(', ')}<br>`;
+        }
+
+        // Timelocks
+        // Note: has_mixed is effectively always false - rust-miniscript rejects mixed
+        // timelocks at parse time. The warning is handled in the Warnings section if ever triggered.
+        {
+            const hasRelative = result.timelocks?.relative && result.timelocks.relative.length > 0;
+            const hasAbsolute = result.timelocks?.absolute && result.timelocks.absolute.length > 0;
+
+            content += `Timelocks: `;
+            if (hasRelative || hasAbsolute) {
+                if (hasRelative) {
+                    content += result.timelocks.relative.map(t => `relative ${t.value} blocks ${this.blocksToHumanTime(t.value)}`).join(', ');
+                }
+                if (hasRelative && hasAbsolute) content += `, `;
+                if (hasAbsolute) {
+                    content += result.timelocks.absolute.map(t => `absolute ${this.formatAbsoluteTimelock(t.value)}`).join(', ');
+                }
+            } else {
+                content += `none`;
+            }
+            content += `<br>`;
+        }
+
+        // Hashlocks
+        {
+            const parts = [];
+            if (result.hashlocks?.sha256_count > 0) parts.push(`SHA256: ${result.hashlocks.sha256_count}`);
+            if (result.hashlocks?.hash256_count > 0) parts.push(`HASH256: ${result.hashlocks.hash256_count}`);
+            if (result.hashlocks?.ripemd160_count > 0) parts.push(`RIPEMD160: ${result.hashlocks.ripemd160_count}`);
+            if (result.hashlocks?.hash160_count > 0) parts.push(`HASH160: ${result.hashlocks.hash160_count}`);
+            content += `Hashlocks: ${parts.length > 0 ? parts.join(', ') : 'none'}<br>`;
+        }
+
+        // Security
+        if (result.security) {
+            const secParts = [];
+            secParts.push(result.security.is_non_malleable ? 'non-malleable' : 'malleable');
+            // Show requires_signature for both miniscript and policy (now accurate for both)
+            secParts.push(result.security.requires_signature ? 'requires sig' : 'no sig required');
+            if (result.security.has_repeated_keys) secParts.push('repeated keys');
+            if (result.source === 'miniscript' && !result.security.within_resource_limits) secParts.push('exceeds limits');
+            content += `Security: ${secParts.join(', ')}<br>`;
+        }
+
+        content += `</div>`;
+
+        // Tree Structure
+        if (result.tree_structure) {
+            const treeFormatted = this.formatPolicyTreeAsVerticalHierarchy(result.tree_structure, showKeyNames);
+            content += `
+                <div style="margin-top: 15px;">
+                    Tree structure
+                    <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${this.escapeHtml(treeFormatted)}</pre>
+                </div>
+            `;
+        }
+
+        // Warnings - only show if there are warnings
+        if (result.warnings && result.warnings.length > 0) {
+            content += `<div style="margin-top: 10px; font-size: 13px;">Warnings: ${result.warnings.map(w => this.escapeHtml(w)).join(', ')}</div>`;
+        }
+
+        content += '</div>';
+
+        targetDiv.innerHTML = content;
     }
 
     showPolicyError(message) {
@@ -1225,7 +1425,7 @@ export class MiniscriptCompiler {
                 
                 if (missingKey) {
                     additionalHelp = `
-<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
 <strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
 <br><br>
 <strong>Your options:</strong>
@@ -1243,7 +1443,7 @@ export class MiniscriptCompiler {
                 } else if (gotLength <= 15) {
                     // Generic help for short strings that look like variable names
                     additionalHelp = `
-<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
 <strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
 <br><br>
 <strong>Your options:</strong>
@@ -1261,12 +1461,28 @@ export class MiniscriptCompiler {
                 }
             }
         }
-        
+
+        // Add note if this policy was lifted from miniscript (only for actual compilation errors, not context/setup errors)
+        let liftedPolicyNote = '';
+        const isContextError = message.includes('Please enter a policy') ||
+                               message.includes('Compiler not ready') ||
+                               message.includes('please wait') ||
+                               message.includes('check your compile context') ||
+                               message.includes('requires x-only keys') ||
+                               message.includes('Found compressed key');
+        if (this.policyLifted && !isContextError) {
+            liftedPolicyNote = `
+<div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border: 1px solid var(--error-border); border-radius: 6px; color: var(--text-color);">
+<strong>💡 Note:</strong> This policy was lifted from Miniscript for analysis and may not be directly compilable or analyzable. Manual edits may be required.
+</div>`;
+        }
+
         policyErrorsDiv.innerHTML = `
             <div class="result-box error" style="margin: 0; text-align: left;">
                 <h4>❌ Policy error</h4>
                 <div style="margin-top: 10px; text-align: left;">${message}</div>
                 ${additionalHelp}
+                ${liftedPolicyNote}
             </div>
         `;
     }
@@ -1410,7 +1626,7 @@ export class MiniscriptCompiler {
         // Check if we should show key names or raw keys
         const showKeyNames = document.getElementById('key-names-toggle')?.dataset.active === 'true';
         let displayInternalKey = internalKey;
-        if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
+        if (showKeyNames && this.keyVariables && this.keyVariables.size > 0 && internalKey) {
             displayInternalKey = this.replaceKeysWithNames(internalKey);
         }
         
@@ -3766,26 +3982,32 @@ export class MiniscriptCompiler {
     liftMiniscriptToPolicy() {
         const expressionInput = document.getElementById('expression-input');
         const miniscript = expressionInput.textContent.trim();
-        
+
         if (!miniscript) {
             this.showMiniscriptError('No miniscript expression to lift');
             return;
         }
-        
+
         if (!this.wasm) {
             this.showMiniscriptError('Compiler not ready, please wait and try again.');
             return;
         }
-        
+
         // Show loading state
         const button = document.getElementById('lift-miniscript-btn');
         const originalText = button.innerHTML;
         button.innerHTML = '⏳';
         button.disabled = true;
-        button.title = 'Lifting...';
-        
+        button.title = 'Analyzing...';
+
         try {
-            // Replace any key variable names with their actual values before lifting
+            // Get the current context and normalize taproot variants
+            let context = document.querySelector('input[name="context"]:checked').value;
+            if (context.startsWith('taproot')) {
+                context = 'taproot';
+            }
+
+            // Replace any key variable names with their actual values before analyzing
             let processedMiniscript = miniscript;
             if (this.keyVariables.size > 0) {
                 for (const [keyName, keyValue] of this.keyVariables.entries()) {
@@ -3794,57 +4016,73 @@ export class MiniscriptCompiler {
                     processedMiniscript = processedMiniscript.replace(regex, keyValue);
                 }
             }
-            
-            console.log('Lifting miniscript to policy:', processedMiniscript);
-            
-            // Lift miniscript to policy
-            const policyResult = lift_to_policy(processedMiniscript);
-            
-            if (policyResult.success && policyResult.policy) {
-                // Replace keys with names in the policy result if we have key variables
-                let displayPolicy = policyResult.policy;
-                if (this.keyVariables.size > 0) {
-                    displayPolicy = this.replaceKeysWithNames(policyResult.policy);
-                }
-                
-                // Fill policy textarea
-                const policyInput = document.getElementById('policy-input');
-                policyInput.textContent = displayPolicy;
-                
-                // Reset policy format button state
-                const policyFormatBtn = document.getElementById('policy-format-toggle');
-                if (policyFormatBtn) {
-                    policyFormatBtn.style.color = 'var(--text-secondary)';
-                    policyFormatBtn.title = 'Format expression with indentation';
-                    policyFormatBtn.dataset.formatted = 'false';
-                }
-                
-                // Update the "Show key names" toggle button for policy to active state
-                const policyToggleBtn = document.getElementById('policy-key-names-toggle');
-                if (policyToggleBtn && this.keyVariables.size > 0) {
-                    policyToggleBtn.style.color = 'var(--success-border)';
-                    policyToggleBtn.title = 'Hide key names';
-                    policyToggleBtn.dataset.active = 'true';
-                }
-                
-                // Re-apply policy syntax highlighting
-                delete policyInput.dataset.lastHighlightedText;
-                this.highlightPolicySyntax();
 
-                console.log('Successfully lifted to policy:', displayPolicy);
-                this.showMiniscriptSuccess('✅ Lifted to Policy!', null, false);
-            } else {
-                console.log('Policy lift failed:', policyResult.error);
-                this.showMiniscriptError(`Cannot lift miniscript: ${policyResult.error || 'Unknown error'}`);
-            }
-        } catch (error) {
-            console.error('Lift error:', error);
-            this.showMiniscriptError(`Lift failed: ${error.message}`);
-        } finally {
+            // Analyze miniscript (includes lift to policy)
+            const result = analyze_miniscript(processedMiniscript, context);
+
             // Reset button
             button.innerHTML = originalText;
             button.disabled = false;
-            button.title = 'Lift to Policy';
+            button.title = 'Lift to Policy for Analysis';
+
+            if (result.success) {
+                // Load the policy into the policy editor
+                if (result.spending_logic) {
+                    let displayPolicy = result.spending_logic;
+                    if (this.keyVariables.size > 0) {
+                        displayPolicy = this.replaceKeysWithNames(displayPolicy);
+                    }
+
+                    const policyInput = document.getElementById('policy-input');
+                    policyInput.textContent = displayPolicy;
+
+                    // Reset policy format button state
+                    const policyFormatBtn = document.getElementById('policy-format-toggle');
+                    if (policyFormatBtn) {
+                        policyFormatBtn.style.color = 'var(--text-secondary)';
+                        policyFormatBtn.title = 'Format expression with indentation';
+                        policyFormatBtn.dataset.formatted = 'false';
+                    }
+
+                    // Update the "Show key names" toggle button for policy to active state
+                    const policyToggleBtn = document.getElementById('policy-key-names-toggle');
+                    if (policyToggleBtn && this.keyVariables.size > 0) {
+                        policyToggleBtn.style.color = 'var(--success-border)';
+                        policyToggleBtn.title = 'Hide key names';
+                        policyToggleBtn.dataset.active = 'true';
+                    }
+
+                    // Re-apply policy syntax highlighting
+                    delete policyInput.dataset.lastHighlightedText;
+                    this.highlightPolicySyntax();
+
+                    // Sync policy context with miniscript context
+                    const miniscriptContext = document.querySelector('input[name="context"]:checked').value;
+                    let policyContext = miniscriptContext;
+                    // Map taproot variants to base taproot for policy
+                    if (miniscriptContext.startsWith('taproot')) {
+                        policyContext = 'taproot';
+                    }
+                    const policyContextRadio = document.querySelector(`input[name="policy-context"][value="${policyContext}"]`);
+                    if (policyContextRadio) {
+                        policyContextRadio.checked = true;
+                    }
+
+                    // Set policyLifted flag to indicate this policy was lifted from miniscript
+                    this.policyLifted = true;
+                }
+
+                // Display analysis in policy area with warning
+                this.displayAnalysisResult(result, true); // true = show warning, default target is policy-errors
+            } else {
+                this.showMiniscriptError(`Cannot analyze miniscript: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Analysis error:', error);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            button.title = 'Lift to Policy for Analysis';
+            this.showMiniscriptError(`Analysis failed: ${error.message}`);
         }
     }
 
@@ -3926,57 +4164,8 @@ export class MiniscriptCompiler {
                 delete expressionInput.dataset.lastHighlightedText;
                 this.highlightMiniscriptSyntax();
                 
-                console.log('Step 1 success - Miniscript:', miniscriptResult.miniscript);
-                
-                // Step 2: Try to lift Miniscript to Policy
-                try {
-                    const policyResult = lift_to_policy(miniscriptResult.miniscript);
-                    
-                    if (policyResult.success && policyResult.policy) {
-                        // Replace keys with names in the policy result if we have key variables
-                        let displayPolicy = policyResult.policy;
-                        if (this.keyVariables.size > 0) {
-                            displayPolicy = this.replaceKeysWithNames(policyResult.policy);
-                        }
-                        
-                        // Fill policy textarea
-                        const policyInput = document.getElementById('policy-input');
-                        policyInput.textContent = displayPolicy;
-                        
-                        // Reset policy format button state
-                        const policyFormatBtn = document.getElementById('policy-format-toggle');
-                        if (policyFormatBtn) {
-                            policyFormatBtn.style.color = 'var(--text-secondary)';
-                            policyFormatBtn.title = 'Format expression with indentation';
-                            policyFormatBtn.dataset.formatted = 'false';
-                        }
-                        
-                        // Update the "Show key names" toggle button for policy to active state
-                        const policyToggleBtn = document.getElementById('policy-key-names-toggle');
-                        if (policyToggleBtn && this.keyVariables.size > 0) {
-                            policyToggleBtn.style.color = 'var(--success-border)';
-                            policyToggleBtn.title = 'Hide key names';
-                            policyToggleBtn.dataset.active = 'true';
-                        }
-                        
-                        // Re-apply policy syntax highlighting
-                        delete policyInput.dataset.lastHighlightedText;
-                        this.highlightPolicySyntax();
-                        
-                        console.log('Step 2 success - Policy:', policyResult.policy);
-                        this.showSuccess('✅ Lifted to both Policy and Miniscript!');
-                    } else {
-                        // Only miniscript worked
-                        document.getElementById('policy-input').textContent = '';
-                        console.log('Step 2 partial - Policy lift failed:', policyResult.error);
-                        this.showInfo('✅ Lifted to Miniscript (Policy conversion not possible for this script)');
-                    }
-                } catch (policyError) {
-                    // Policy lift failed, but miniscript succeeded
-                    document.getElementById('policy-input').textContent = '';
-                    console.log('Policy lift error:', policyError);
-                    this.showInfo('✅ Lifted to Miniscript (Policy conversion not possible for this script)');
-                }
+                console.log('Lifted to Miniscript:', miniscriptResult.miniscript);
+                this.showSuccess('✅ Lifted to Miniscript!');
             } else {
                 console.log('Miniscript lift failed:', miniscriptResult.error);
                 this.showLiftError(`Cannot lift Bitcoin script: ${miniscriptResult.error || 'Unknown error'}`);
@@ -3988,7 +4177,7 @@ export class MiniscriptCompiler {
             // Reset button
             button.textContent = originalText;
             button.disabled = false;
-            button.title = 'Lift to Miniscript and Policy';
+            button.title = 'Lift to Miniscript';
         }
     }
 
@@ -4306,7 +4495,7 @@ export class MiniscriptCompiler {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h4 style="margin: 0;">📜 Script HEX</h4>
                 <div style="display: flex; align-items: center; gap: 0px;">
-                    <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         ⬆️
                     </button>
                     <button id="copy-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy hex script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -4334,7 +4523,7 @@ export class MiniscriptCompiler {
                     <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Hide pushbytes" data-active="false" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         👁️
                     </button>
-                    <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         ⬆️
                     </button>
                     <button id="copy-script-btn" onclick="copyBitcoinScript()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy Bitcoin script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -4447,7 +4636,7 @@ export class MiniscriptCompiler {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="margin: 0;">📜 Script HEX</h4>
                     <div style="display: flex; align-items: center; gap: 0px;">
-                        <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <button id="lift-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             ⬆️
                         </button>
                         <button id="copy-hex-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy hex script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -4539,7 +4728,7 @@ export class MiniscriptCompiler {
                         <button id="hide-pushbytes-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--success-border); display: flex; align-items: center; border-radius: 3px;" title="Show pushbytes" data-active="true" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             👁️
                         </button>
-                        <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript and Policy" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <button id="lift-script-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Miniscript" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                             ⬆️
                         </button>
                         <button id="copy-script-btn" onclick="copyBitcoinScript()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy Bitcoin script" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -5378,7 +5567,7 @@ export class MiniscriptCompiler {
 
                 if (missingKey) {
                     additionalHelp = `
-<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
 <strong>💡 Tip:</strong> The key variable "<strong>${missingKey}</strong>" appears to be missing or undefined.
 <br><br>
 <strong>Your options:</strong>
@@ -5396,7 +5585,7 @@ export class MiniscriptCompiler {
                 } else if (gotLength <= 15) {
                     // Generic help for short strings that look like variable names
                     additionalHelp = `
-<div style="margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
+<div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border: 1px solid var(--error-border); border-radius: 6px; text-align: left; color: var(--text-color);">
 <strong>💡 Tip:</strong> This looks like a missing key variable (got ${gotLength} characters instead of a public key).
 <br><br>
 <strong>Your options:</strong>
@@ -5995,6 +6184,157 @@ export class MiniscriptCompiler {
         for (const child of nodeInfo.children) {
             this.drawConnectors(child, lines);
         }
+    }
+
+    /**
+     * Format a PolicyTreeNode (from Rust analysis) as a vertical hierarchy tree
+     * Uses the same visual style as formatTreeAsVerticalHierarchy
+     * @param {Object} tree - PolicyTreeNode with type, text, children
+     * @param {boolean} replaceKeys - Whether to replace keys with variable names
+     * @returns {string} Formatted tree string
+     */
+    formatPolicyTreeAsVerticalHierarchy(tree, replaceKeys = false) {
+        if (!tree) return '';
+
+        // Calculate node positions
+        const nodeInfo = this.calculatePolicyNodePositions(tree, 0, 0, replaceKeys);
+        const lines = this.renderBinaryTree(nodeInfo);
+        return lines.join('\n');
+    }
+
+    /**
+     * Format display text for a PolicyTreeNode from raw data
+     */
+    formatPolicyNodeText(node, replaceKeys = false) {
+        if (!node) return '?';
+
+        let text;
+        const nodeType = node.type || '';
+
+        switch (nodeType) {
+            case 'and':
+                text = 'and';
+                break;
+            case 'or':
+                text = 'or';
+                break;
+            case 'thresh':
+                text = `thresh(${node.k}/${node.n})`;
+                break;
+            case 'pk':
+                text = `pk(${node.value || ''})`;
+                break;
+            case 'after':
+                text = `after(${node.value || ''})`;
+                break;
+            case 'older':
+                text = `older(${node.value || ''})`;
+                break;
+            case 'sha256':
+            case 'hash256':
+            case 'ripemd160':
+            case 'hash160':
+                text = `${nodeType}(${node.value || ''})`;
+                break;
+            case 'unsatisfiable':
+                text = 'UNSATISFIABLE';
+                break;
+            case 'trivial':
+                text = 'TRIVIAL';
+                break;
+            default:
+                text = nodeType || '?';
+        }
+
+        // Replace keys with variable names if requested
+        if (replaceKeys && this.keyVariables && this.keyVariables.size > 0) {
+            text = this.replaceKeysWithNames(text);
+        }
+
+        return text;
+    }
+
+    /**
+     * Convert blocks to human-readable time duration
+     * @param {number} blocks - Number of blocks
+     * @returns {string} Human-readable duration (e.g., "~1 days")
+     */
+    blocksToHumanTime(blocks) {
+        const minutes = blocks * 10; // ~10 min per block
+        if (blocks === 1) {
+            return '~10 min';
+        } else if (blocks < 6) {
+            return `~${minutes} min`;
+        } else if (blocks < 144) {
+            return `~${Math.floor(minutes / 60)} hours`;
+        } else {
+            return `~${Math.floor(minutes / 60 / 24)} days`;
+        }
+    }
+
+    /**
+     * Format absolute timelock (block height or Unix timestamp)
+     * @param {number} value - Block height or Unix timestamp
+     * @returns {string} Formatted string
+     */
+    formatAbsoluteTimelock(value) {
+        if (value >= 500000000) {
+            // Unix timestamp
+            const date = new Date(value * 1000);
+            return `${value} (${date.toLocaleDateString()})`;
+        } else {
+            // Block height
+            return `block ${value}`;
+        }
+    }
+
+    /**
+     * Calculate node positions for PolicyTreeNode structure
+     */
+    calculatePolicyNodePositions(tree, depth, position, replaceKeys = false) {
+        if (!tree) return null;
+
+        // Get display text from raw node data
+        const displayText = this.formatPolicyNodeText(tree, replaceKeys);
+
+        // If no children, this is a leaf node
+        if (!tree.children || tree.children.length === 0) {
+            return {
+                text: displayText,
+                position: position,
+                rightmostPosition: position + displayText.length,
+                depth: depth,
+                children: []
+            };
+        }
+
+        // Process children
+        const childNodes = [];
+        let nextPosition = position;
+
+        for (let i = 0; i < tree.children.length; i++) {
+            const childNode = this.calculatePolicyNodePositions(tree.children[i], depth + 1, nextPosition, replaceKeys);
+            if (childNode) {
+                childNodes.push(childNode);
+                nextPosition = childNode.rightmostPosition + 4; // spacing between siblings
+            }
+        }
+
+        // Calculate this node's position based on children
+        let nodePosition = position;
+        if (childNodes.length > 0) {
+            const leftmost = childNodes[0].position;
+            const rightmost = childNodes[childNodes.length - 1].position;
+            nodePosition = Math.floor((leftmost + rightmost) / 2);
+        }
+
+        return {
+            text: displayText,
+            position: nodePosition,
+            rightmostPosition: Math.max(nodePosition + displayText.length, nextPosition - 4),
+            depth: depth,
+            children: childNodes
+        };
     }
 
     showMiniscriptSuccess(message, expression = null, showDebugButton = true) {
@@ -7565,10 +7905,13 @@ export class MiniscriptCompiler {
     loadPolicy(name) {
         const policies = this.getSavedPolicies();
         const savedPolicy = policies.find(policy => policy.name === name);
-        
+
+        // Clear policyLifted flag when loading saved policy
+        this.policyLifted = false;
+
         // Reset taproot mode to default
         window.currentTaprootMode = 'single-leaf';
-        
+
         if (savedPolicy) {
             document.getElementById('policy-input').textContent = savedPolicy.expression;
             this.highlightPolicySyntax();
