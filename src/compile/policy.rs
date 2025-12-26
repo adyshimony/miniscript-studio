@@ -223,7 +223,7 @@ pub fn compile_policy_to_miniscript_with_mode(policy: &str, context: &str, mode:
                         _ => compile_segwit_policy(concrete_policy, network),
                     }
                 },
-                Err(e) => Err(format!("Policy parsing failed: {}", e))
+                Err(e) => Err(format!("Policy compilation failed: {}", e))
             }
         }
     }

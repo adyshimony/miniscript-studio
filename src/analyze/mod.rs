@@ -159,11 +159,11 @@ fn perform_policy_analysis(policy_str: &str) -> Result<AnalysisResult, String> {
     // Parse the concrete policy
     let policy: Concrete<String> = policy_str
         .parse()
-        .map_err(|e| format!("Policy parsing failed: {}", e))?;
+        .map_err(|e| format!("Policy analysis failed: {}", e))?;
 
     // Lift concrete policy to semantic policy
     let semantic = policy.lift()
-        .map_err(|e| format!("Failed to lift policy: {}", e))?;
+        .map_err(|e| format!("Policy analysis failed: {}", e))?;
 
     // Extract analysis from semantic policy
     let spending_logic = semantic.to_string();
