@@ -85,6 +85,10 @@ export class MiniscriptCompiler {
                 console.log('Policy undo stack:', this.undoStacks.policy);
                 console.log('Miniscript undo stack:', this.undoStacks.miniscript);
             }, CONSTANTS.INIT_DELAY_MS);
+
+            // Dispatch event to signal compiler is fully ready
+            window.dispatchEvent(new CustomEvent('compilerReady'));
+            console.log('Compiler ready event dispatched');
         } catch (error) {
             console.error('Failed to initialize WASM module:', error);
             this.showError('Failed to load compiler module. Please refresh the page.');
@@ -1283,9 +1287,18 @@ export class MiniscriptCompiler {
 
         // Check if we should show key names based on toggle state (check both toggles)
         const policyToggle = document.getElementById('policy-key-names-toggle');
-        const miniscriptToggle = document.getElementById('miniscript-key-names-toggle');
+        const miniscriptToggle = document.getElementById('key-names-toggle');
         const activeToggle = targetDivId === 'policy-errors' ? policyToggle : miniscriptToggle;
-        const showKeyNames = activeToggle?.dataset.active !== 'false' && this.keyVariables && this.keyVariables.size > 0;
+        const showKeyNames = activeToggle?.dataset.active === 'true' && this.keyVariables && this.keyVariables.size > 0;
+
+        console.log('displayAnalysisResult debug:', {
+            targetDivId,
+            policyToggleActive: policyToggle?.dataset.active,
+            miniscriptToggleActive: miniscriptToggle?.dataset.active,
+            activeToggleActive: activeToggle?.dataset.active,
+            keyVariablesSize: this.keyVariables?.size,
+            showKeyNames
+        });
 
         // Helper to optionally replace keys with names
         const maybeReplaceKeys = (text) => showKeyNames ? this.replaceKeysWithNames(text) : text;
@@ -7017,21 +7030,11 @@ export class MiniscriptCompiler {
     }
 
     setupReplaceKeysCheckbox() {
-        console.log('Setting up replace keys buttons');
-        // Initialize both toggle button states
-        setTimeout(() => {
-            const miniscriptToggleBtn = document.getElementById('key-names-toggle');
-            if (miniscriptToggleBtn) {
-                miniscriptToggleBtn.dataset.active = 'false';
-                console.log('Miniscript toggle button initialized');
-            }
-            
-            const policyToggleBtn = document.getElementById('policy-key-names-toggle');
-            if (policyToggleBtn) {
-                policyToggleBtn.dataset.active = 'false';
-                console.log('Policy toggle button initialized');
-            }
-        }, CONSTANTS.INIT_DELAY_MS);
+        // Toggle button states are initialized in DOMContentLoaded (window-functions.js)
+        // and updated by loadPolicyExample/loadExample when loading from URL
+        // No additional setup needed here - removing delayed reset that was
+        // overwriting URL-loaded toggle states
+        console.log('Replace keys buttons ready');
     }
 
     clearExpression() {

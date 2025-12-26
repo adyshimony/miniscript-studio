@@ -297,6 +297,7 @@ window.loadPolicyExample = function(example, exampleId, explicitContext) {
     // Update policy toggle button state based on loaded content
     if (window.compiler && window.compiler.containsKeyNames) {
         const containsKeyNames = window.compiler.containsKeyNames(example);
+        console.log('loadPolicyExample toggle debug:', { example, containsKeyNames, keyVariablesSize: window.compiler.keyVariables?.size });
         const policyToggleBtn = document.getElementById('policy-key-names-toggle');
         if (policyToggleBtn) {
             if (containsKeyNames) {
@@ -1803,95 +1804,112 @@ window.addEventListener('DOMContentLoaded', function() {
             
             const loadExample = exampleMap[exampleParam];
             if (loadExample) {
-                setTimeout(() => {
+                // Wait for compiler to be fully ready before loading example
+                const loadWhenReady = () => {
                     loadExample();
                     console.log('Example loaded:', exampleParam);
-                }, 100); // Small delay to ensure functions are available
+                };
+
+                // Check if compiler is already ready (has keyVariables loaded)
+                if (window.compiler && window.compiler.keyVariables && window.compiler.keyVariables.size > 0) {
+                    loadWhenReady();
+                } else {
+                    // Wait for compilerReady event
+                    window.addEventListener('compilerReady', loadWhenReady, { once: true });
+                }
             } else {
                 console.warn('Unknown example:', exampleParam);
             }
             
         } else if (sharedPolicy) {
-            // Load policy from URL
-            const policyInput = document.getElementById('policy-input');
-            if (policyInput) {
-                policyInput.textContent = decodeURIComponent(sharedPolicy);
-                console.log('Loaded shared policy:', sharedPolicy);
-                
-                // Apply syntax highlighting after setting content
-                if (window.compiler && window.compiler.highlightPolicySyntax) {
-                    window.compiler.highlightPolicySyntax();
-                }
-                
-                // Set button state based on content AFTER initialization
-                setTimeout(() => {
+            // Load policy from URL - wait for compiler to be ready
+            const loadSharedPolicy = () => {
+                const policyInput = document.getElementById('policy-input');
+                if (policyInput) {
+                    policyInput.textContent = decodeURIComponent(sharedPolicy);
+                    console.log('Loaded shared policy:', sharedPolicy);
+
+                    // Apply syntax highlighting after setting content
+                    if (window.compiler && window.compiler.highlightPolicySyntax) {
+                        window.compiler.highlightPolicySyntax();
+                    }
+
+                    // Set button state based on content
                     const policyToggleBtn = document.getElementById('policy-key-names-toggle');
                     if (policyToggleBtn && window.compiler && window.compiler.containsKeyNames) {
                         const decodedPolicy = decodeURIComponent(sharedPolicy);
                         const containsKeyNames = window.compiler.containsKeyNames(decodedPolicy);
                         if (containsKeyNames) {
-                            // Content shows key names (Alice, Bob, etc.) - button should say "Hide"
                             policyToggleBtn.style.color = 'var(--success-border)';
                             policyToggleBtn.title = 'Hide key names';
                             policyToggleBtn.dataset.active = 'true';
                         } else {
-                            // Content shows hex keys - button should say "Show"
                             policyToggleBtn.style.color = 'var(--success-border)';
                             policyToggleBtn.title = 'Show key names';
                             policyToggleBtn.dataset.active = 'false';
                         }
                     }
-                }, 150);
-                
-                // Auto-compile if setting is enabled
-                const autoCompile = document.getElementById('auto-compile-setting');
-                if (autoCompile && autoCompile.checked) {
-                    setTimeout(() => {
-                        const compileBtn = document.getElementById('compile-policy-btn');
-                        if (compileBtn) compileBtn.click();
-                    }, 500);
+
+                    // Auto-compile if setting is enabled
+                    const autoCompile = document.getElementById('auto-compile-setting');
+                    if (autoCompile && autoCompile.checked) {
+                        setTimeout(() => {
+                            const compileBtn = document.getElementById('compile-policy-btn');
+                            if (compileBtn) compileBtn.click();
+                        }, 100);
+                    }
                 }
+            };
+
+            if (window.compiler && window.compiler.keyVariables && window.compiler.keyVariables.size > 0) {
+                loadSharedPolicy();
+            } else {
+                window.addEventListener('compilerReady', loadSharedPolicy, { once: true });
             }
         } else if (sharedMiniscript) {
-            // Load miniscript from URL
-            const expressionInput = document.getElementById('expression-input');
-            if (expressionInput) {
-                expressionInput.textContent = decodeURIComponent(sharedMiniscript);
-                console.log('Loaded shared miniscript:', sharedMiniscript);
-                
-                // Apply syntax highlighting after setting content
-                if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
-                    window.compiler.highlightMiniscriptSyntax();
-                }
-                
-                // Set button state based on content AFTER initialization
-                setTimeout(() => {
+            // Load miniscript from URL - wait for compiler to be ready
+            const loadSharedMiniscript = () => {
+                const expressionInput = document.getElementById('expression-input');
+                if (expressionInput) {
+                    expressionInput.textContent = decodeURIComponent(sharedMiniscript);
+                    console.log('Loaded shared miniscript:', sharedMiniscript);
+
+                    // Apply syntax highlighting after setting content
+                    if (window.compiler && window.compiler.highlightMiniscriptSyntax) {
+                        window.compiler.highlightMiniscriptSyntax();
+                    }
+
+                    // Set button state based on content
                     const toggleBtn = document.getElementById('key-names-toggle');
                     if (toggleBtn && window.compiler && window.compiler.containsKeyNames) {
                         const decodedMiniscript = decodeURIComponent(sharedMiniscript);
                         const containsKeyNames = window.compiler.containsKeyNames(decodedMiniscript);
                         if (containsKeyNames) {
-                            // Content shows key names (Alice, Bob, etc.) - button should say "Hide"
                             toggleBtn.style.color = 'var(--success-border)';
                             toggleBtn.title = 'Hide key names';
                             toggleBtn.dataset.active = 'true';
                         } else {
-                            // Content shows hex keys - button should say "Show"
                             toggleBtn.style.color = 'var(--success-border)';
                             toggleBtn.title = 'Show key names';
                             toggleBtn.dataset.active = 'false';
                         }
                     }
-                }, 150);
-                
-                // Auto-compile if setting is enabled
-                const autoCompile = document.getElementById('auto-compile-setting');
-                if (autoCompile && autoCompile.checked) {
-                    setTimeout(() => {
-                        const compileBtn = document.getElementById('compile-btn');
-                        if (compileBtn) compileBtn.click();
-                    }, 500);
+
+                    // Auto-compile if setting is enabled
+                    const autoCompile = document.getElementById('auto-compile-setting');
+                    if (autoCompile && autoCompile.checked) {
+                        setTimeout(() => {
+                            const compileBtn = document.getElementById('compile-btn');
+                            if (compileBtn) compileBtn.click();
+                        }, 100);
+                    }
                 }
+            };
+
+            if (window.compiler && window.compiler.keyVariables && window.compiler.keyVariables.size > 0) {
+                loadSharedMiniscript();
+            } else {
+                window.addEventListener('compilerReady', loadSharedMiniscript, { once: true });
             }
         } else if (hash.startsWith('policy64=')) {
             // Base64 encoded policy only (no keys)
