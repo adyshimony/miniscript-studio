@@ -256,4 +256,137 @@ mod analyze_tests {
         // This is a limitation of check_timelocks - it only checks within same type (after vs after, older vs older)
         // not across types (after vs older)
     }
+
+    #[test]
+    fn test_large_thresh_parsing() {
+        // Test a 2-of-15 multisig with hex keys
+        let policy_str = "thresh(2,pk(03da6a0f9b14e0c82b2e3b0e9f9f3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f),pk(02c8a5c2e3b4a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3),pk(03b7a0766e8b6b29700c970dbb0b48ac195cd8aedaa3d73152d01c0771c2874aa9),pk(02f8073b09f6e6f0342456b8c27fb0187d618653cad737f3117bf5ce5dbb781325),pk(03889b5a28cfeb2958873df03119a43536c12c52a6484fd4afe71229a5ae06b55c),pk(021208140fbad9c4df73936df2e7e4a9333ad4925af7532f0c555b37399300e696),pk(0242b595b5feeb32e4c5a86971542dc6d0ac1627165f22d37332085fc527d1c13f),pk(02c98f1ee625379323ecaa58806f70f784256d5fc0fe84179935590a2156b233ef),pk(030bf2c8353ed6360cc76ae447d20f3e52988ebb325057f551a6156c254b9fb9ab),pk(02cb48e9d06a6baf071d581e7844e9a62a560aca3512edff68623d5003549fcef0),pk(03f4c1a73d0bd7dbc0c25aa361684bcb158c274ad76477eb145faea3858dc2fd4f),pk(02318f455a1ef51763e1acb573449e4a52e8fcada49f8a0fea8387a4f4b146b3ac),pk(03681ff8dd97a900012dc58dcb4b9ab3e40b29b96bc3e014ae1eba4f7b80abb3c8),pk(0230efbeba3e9b9321c1cbcf93f416c25fbcb96c322b3ecc73e0dfd6db558ca682),pk(03996553edf7dc7702e4f4ed8e2feadb5dbbd1f3c55c64c7ee943b32e870d1f2a0))";
+
+        let result: Result<Concrete<String>, _> = policy_str.parse();
+        println!("Parse result: {:?}", result);
+        assert!(result.is_ok(), "Should parse 2-of-15 multisig");
+    }
+
+    #[test]
+    fn test_specific_key_validity() {
+        use bitcoin::secp256k1::PublicKey;
+
+        let key_hex = "02318f455a1ef51763e1acb573449e4a52e8fcada49f8a0fea8387a4f4b146b3ac";
+        let bytes = hex::decode(key_hex).unwrap();
+        match PublicKey::from_slice(&bytes) {
+            Ok(pk) => println!("Valid key: {}", pk),
+            Err(e) => println!("Invalid key: {}", e),
+        }
+    }
+
+    /// Test that extracts and validates all keys from the actual compiler-core.js key pools.
+    /// This reads the JS file directly to ensure we're testing the real keys, not a copy.
+    #[test]
+    fn test_all_key_pool_validity() {
+        use bitcoin::secp256k1::PublicKey;
+        use bitcoin::key::XOnlyPublicKey;
+        use std::fs;
+        use regex::Regex;
+
+        // Read the actual compiler-core.js file
+        let js_content = fs::read_to_string("miniscript/modules/compiler-core.js")
+            .expect("Failed to read compiler-core.js");
+
+        // Extract all 66-char hex keys (compressed public keys starting with 02 or 03)
+        let compressed_regex = Regex::new(r"'(0[23][a-fA-F0-9]{64})'").unwrap();
+        let compressed_keys: Vec<String> = compressed_regex
+            .captures_iter(&js_content)
+            .map(|cap| cap[1].to_string())
+            .collect();
+
+        // Extract all 64-char hex keys (x-only public keys)
+        let xonly_regex = Regex::new(r"'([a-fA-F0-9]{64})'").unwrap();
+        let all_64char_keys: Vec<String> = xonly_regex
+            .captures_iter(&js_content)
+            .map(|cap| cap[1].to_string())
+            .filter(|k| !k.starts_with("02") && !k.starts_with("03")) // Exclude compressed keys
+            .collect();
+
+        println!("\n=== VALIDATING COMPRESSED KEYS FROM compiler-core.js ===");
+        println!("Found {} compressed keys (66 hex chars, 02/03 prefix)\n", compressed_keys.len());
+
+        let mut invalid_compressed: Vec<(String, String)> = Vec::new();
+        let mut valid_compressed_count = 0;
+
+        for key_hex in &compressed_keys {
+            match hex::decode(key_hex) {
+                Ok(bytes) => {
+                    match PublicKey::from_slice(&bytes) {
+                        Ok(_) => {
+                            valid_compressed_count += 1;
+                        }
+                        Err(e) => {
+                            println!("❌ {}: {}", key_hex, e);
+                            invalid_compressed.push((key_hex.clone(), format!("{}", e)));
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("❌ {}: Hex decode error: {}", key_hex, e);
+                    invalid_compressed.push((key_hex.clone(), format!("Hex decode error: {}", e)));
+                }
+            }
+        }
+
+        println!("\n=== VALIDATING X-ONLY KEYS FROM compiler-core.js ===");
+        println!("Found {} x-only keys (64 hex chars)\n", all_64char_keys.len());
+
+        let mut invalid_xonly: Vec<(String, String)> = Vec::new();
+        let mut valid_xonly_count = 0;
+
+        for key_hex in &all_64char_keys {
+            match hex::decode(key_hex) {
+                Ok(bytes) => {
+                    let bytes_arr: [u8; 32] = match bytes.try_into() {
+                        Ok(arr) => arr,
+                        Err(_) => {
+                            println!("❌ {}: Failed to convert to 32-byte array", key_hex);
+                            invalid_xonly.push((key_hex.clone(), "Failed to convert to 32-byte array".to_string()));
+                            continue;
+                        }
+                    };
+                    match XOnlyPublicKey::from_slice(&bytes_arr) {
+                        Ok(_) => {
+                            valid_xonly_count += 1;
+                        }
+                        Err(e) => {
+                            println!("❌ {}: {}", key_hex, e);
+                            invalid_xonly.push((key_hex.clone(), format!("{}", e)));
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("❌ {}: Hex decode error: {}", key_hex, e);
+                    invalid_xonly.push((key_hex.clone(), format!("Hex decode error: {}", e)));
+                }
+            }
+        }
+
+        println!("\n=== SUMMARY ===");
+        println!("Compressed keys: {} valid, {} invalid", valid_compressed_count, invalid_compressed.len());
+        println!("X-only keys: {} valid, {} invalid", valid_xonly_count, invalid_xonly.len());
+
+        if !invalid_compressed.is_empty() {
+            println!("\n❌ INVALID COMPRESSED KEYS:");
+            for (key, error) in &invalid_compressed {
+                println!("  - {} -> {}", key, error);
+            }
+        }
+
+        if !invalid_xonly.is_empty() {
+            println!("\n❌ INVALID X-ONLY KEYS:");
+            for (key, error) in &invalid_xonly {
+                println!("  - {} -> {}", key, error);
+            }
+        }
+
+        // Fail the test if any invalid keys are found
+        assert!(invalid_compressed.is_empty(), "Found {} invalid compressed keys!", invalid_compressed.len());
+        assert!(invalid_xonly.is_empty(), "Found {} invalid x-only keys!", invalid_xonly.len());
+    }
 }

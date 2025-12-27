@@ -297,7 +297,6 @@ window.loadPolicyExample = function(example, exampleId, explicitContext) {
     // Update policy toggle button state based on loaded content
     if (window.compiler && window.compiler.containsKeyNames) {
         const containsKeyNames = window.compiler.containsKeyNames(example);
-        console.log('loadPolicyExample toggle debug:', { example, containsKeyNames, keyVariablesSize: window.compiler.keyVariables?.size });
         const policyToggleBtn = document.getElementById('policy-key-names-toggle');
         if (policyToggleBtn) {
             if (containsKeyNames) {
