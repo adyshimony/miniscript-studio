@@ -122,8 +122,11 @@ pub struct AnalysisResult {
     /// The semantic policy string (from lift)
     pub spending_logic: Option<String>,
 
-    /// Human-readable spending paths
+    /// Human-readable spending paths (flat list)
     pub spending_paths: Option<Vec<String>>,
+
+    /// Grouped spending paths (for better UX with large policies)
+    pub spending_paths_grouped: Option<Vec<SpendingPathGroup>>,
 
     /// Key information
     pub keys: Option<KeyAnalysis>,
@@ -284,4 +287,30 @@ pub struct SizeAnalysis {
     pub witness_elements: Option<usize>,
     pub opcodes: Option<usize>,
     pub pk_cost: Option<usize>,
+}
+
+/// Grouped spending paths for better UX display
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpendingPathGroup {
+    /// Human-readable label for this group (e.g., "Federation", "Emergency Recovery")
+    pub label: String,
+
+    /// Summary description (e.g., "5-of-7 multisig: {Fed1, Fed2, ...}")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+
+    /// Number of paths in this group
+    pub path_count: usize,
+
+    /// Individual paths (only populated if path_count <= threshold, e.g., 10)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paths: Option<Vec<String>>,
+
+    /// Preview paths (first 3 paths, always populated for large groups)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview_paths: Option<Vec<String>>,
+
+    /// Nested groups for nested or() structures
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option<Vec<SpendingPathGroup>>,
 }

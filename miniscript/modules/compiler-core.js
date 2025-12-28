@@ -672,7 +672,7 @@ export class MiniscriptCompiler {
                     if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
                         displayExpression = this.replaceKeysWithNames(expression);
                     }
-                    successMsg = `Miniscript expression:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayExpression}</span>`;
+                    successMsg = `Miniscript expression:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${displayExpression}</span>`;
                     
                     if (isTaprootContext && result.compiled_miniscript) {
                         // Show descriptor for all Taproot contexts
@@ -698,22 +698,22 @@ export class MiniscriptCompiler {
                                 // Simple pk(KEY) - optimized to key-only Taproot
                                 // Extract key and checksum from tr(NUMS,pk(KEY))#checksum to tr(KEY)#checksum
                                 const keyOnlyDescriptor = displayDescriptor.replace(/^tr\([^,]+,pk\(([^)]+)\)\)(#[a-z0-9]+)?$/, 'tr($1)$2');
-                                successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${keyOnlyDescriptor}</span><br>`;
+                                successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${keyOnlyDescriptor}</span><br>`;
                                 successMsg += `Optimized to key-only Taproot. Most efficient spend (66 WU, no script revealed).<br><br>`;
                             } else {
                                 // More complex miniscript - single script leaf
-                                successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
+                                successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${displayDescriptor}</span><br>`;
                             }
                         } else {
                             // Other Taproot modes
-                            successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayDescriptor}</span><br>`;
+                            successMsg += `<br>Taproot descriptor:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${displayDescriptor}</span><br>`;
                         }
-                        
+
                         // Add Data field for all Taproot contexts
                         if (result.script) {
                             // Remove OP_1 (51) + push32 (20) prefix to show just the tweaked key
                             const tweakedKey = result.script.substring(4);
-                            successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${tweakedKey}</span><br>`;
+                            successMsg += `Data (tweaked public key):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${tweakedKey}</span><br>`;
                         }
                     } else if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         // Different calculation for Legacy vs Segwit contexts
@@ -787,10 +787,10 @@ export class MiniscriptCompiler {
                     if (result.script) {
                         if (isTaprootContext) {
                             // For Taproot contexts, show complete scriptPubKey as-is
-                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.script}</span><br>`;
+                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
                         } else {
                             // For non-Taproot contexts, show original script in HEX
-                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.script}</span><br>`;
+                            successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
                         }
                     }
                     if (result.script_asm) {
@@ -823,18 +823,18 @@ export class MiniscriptCompiler {
                                 }
 
                                 if (leafAsm) {
-                                    successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${leafAsm}</span><br>`;
+                                    successMsg += `ASM (leaf):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${leafAsm}</span><br>`;
                                 }
                             }
 
-                            successMsg += `ASM (scriptPubKey):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
+                            successMsg += `ASM (scriptPubKey):<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
                         } else {
                             // For other contexts, show normal ASM
-                            successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
+                            successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
                         }
                     }
                     if (result.address) {
-                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.address}</span>`;
+                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.address}</span>`;
                         
                     }
                 }
@@ -1086,7 +1086,7 @@ export class MiniscriptCompiler {
                     if (showKeyNames && this.keyVariables && this.keyVariables.size > 0) {
                         displayMiniscriptExpr = this.replaceKeysWithNames(displayMiniscript);
                     }
-                    successMsg = `Miniscript expression:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${displayMiniscriptExpr}</span>`;
+                    successMsg = `Miniscript expression:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${displayMiniscriptExpr}</span>`;
                     
                     if (result.max_weight_to_satisfy && result.max_satisfaction_size) {
                         // Different calculation for Legacy vs Segwit contexts
@@ -1158,7 +1158,7 @@ export class MiniscriptCompiler {
                     
                     // Add hex, asm, and address
                     if (result.script) {
-                        successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.script}</span><br>`;
+                        successMsg += `HEX:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.script}</span><br>`;
                     }
                     if (result.script_asm) {
                         // Create simplified version with key names (same as script field)
@@ -1169,10 +1169,10 @@ export class MiniscriptCompiler {
                         if (showKeyNames && this.keyVariables.size > 0) {
                             finalAsm = this.replaceKeysWithNames(simplifiedAsm);
                         }
-                        successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${finalAsm}</span><br>`;
+                        successMsg += `ASM:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${finalAsm}</span><br>`;
                     }
                     if (result.address) {
-                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${result.address}</span>`;
+                        successMsg += `Address:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${result.address}</span>`;
                     }
                 }
                 
@@ -1304,16 +1304,35 @@ export class MiniscriptCompiler {
 
         // Warning for miniscript lift (not for policy info)
         if (showWarning) {
-            content += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 10px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px;">⚠️ Lifted Policy from Miniscript - for analysis purposes only. May differ from the original, may not be compilable back to Miniscript, and probability information cannot be recovered.</div>`;
+            content += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 10px;">⚠️ Lifted Policy from Miniscript - for analysis purposes only. May differ from the original, may not be compilable back to Miniscript, and probability information cannot be recovered.</div>`;
+        }
+
+        // Security warnings at the top (malleable, no sig required, etc.)
+        if (result.warnings && result.warnings.length > 0) {
+            result.warnings.forEach(warning => {
+                const isError = warning.includes('❌');
+                const isSecurity = warning.includes('SECURITY') || warning.includes('MALLEABLE');
+                if (isSecurity || isError) {
+                    content += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 10px;">${this.escapeHtml(warning)}</div>`;
+                }
+            });
         }
 
         // Spending Logic
         if (result.spending_logic) {
-            content += `Spending Logic:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block; font-size: 12px;">${this.escapeHtml(maybeReplaceKeys(result.spending_logic))}</span><br>`;
+            content += `Spending Logic:<br><span style="word-break: break-all; overflow-wrap: anywhere; font-family: monospace; display: block;">${this.escapeHtml(maybeReplaceKeys(result.spending_logic))}</span><br>`;
         }
 
-        // Spending Paths
-        if (result.spending_paths && result.spending_paths.length > 0) {
+        // Spending Paths (grouped display)
+        if (result.spending_paths_grouped && result.spending_paths_grouped.length > 0) {
+            const totalPaths = result.spending_paths_grouped.reduce((sum, g) => sum + g.path_count, 0);
+            content += `Spending Paths: ${totalPaths} combination${totalPaths !== 1 ? 's' : ''}<br>`;
+
+            // Always show full tree structure with Branch labels
+            content += this.renderSpendingPathGroups(result.spending_paths_grouped, maybeReplaceKeys, 0, result.spending_paths || []);
+            content += `<br>`;
+        } else if (result.spending_paths && result.spending_paths.length > 0) {
+            // Fallback to flat list if grouped not available
             content += `Spending Paths:<br>`;
             result.spending_paths.forEach(path => {
                 content += `<div style="margin-left: 10px;">${this.escapeHtml(maybeReplaceKeys(path))}</div>`;
@@ -1394,17 +1413,7 @@ export class MiniscriptCompiler {
         // Tree Structure
         if (result.tree_structure) {
             const treeFormatted = this.formatPolicyTreeAsVerticalHierarchy(result.tree_structure, showKeyNames);
-            content += `
-                <div style="margin-top: 15px;">
-                    Tree structure
-                    <pre style="margin-top: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${this.escapeHtml(treeFormatted)}</pre>
-                </div>
-            `;
-        }
-
-        // Warnings - only show if there are warnings
-        if (result.warnings && result.warnings.length > 0) {
-            content += `<div style="margin-top: 10px; font-size: 13px;">Warnings: ${result.warnings.map(w => this.escapeHtml(w)).join(', ')}</div>`;
+            content += `<div style="margin-top: 15px;">Tree structure<pre style="margin-top: 8px; margin-bottom: 0; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; overflow-x: auto; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 12px; line-height: 1.4; background: transparent;">${this.escapeHtml(treeFormatted)}</pre></div>`;
         }
 
         content += '</div>';
@@ -1528,9 +1537,9 @@ export class MiniscriptCompiler {
             return `
                 <div style="margin-top: 10px; text-align: left; font-size: 13px;">
                     Generated Miniscript:
-                    <code style="display: block; margin: 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace; font-size: 12px;">${miniscript}</code>
-                    <div style="color: var(--text-secondary); font-size: 13px; margin-top: 10px;">
-                        ${miniscript.match(/^\s*\{.*\}\s*$/) ? 
+                    <code style="display: block; margin: 0; word-break: break-word; overflow-wrap: anywhere; hyphens: none; max-width: 100%; overflow-x: auto; font-family: monospace;">${miniscript}</code>
+                    <div style="margin-top: 10px;">
+                        ${miniscript.match(/^\s*\{.*\}\s*$/) ?
                             '💡 Policy compiled into multiple miniscript expressions. Cannot load into miniscript editor. Switch to Taproot compilation (multi-leaf TapTree) mode to select your miniscript expression.' :
                             '💡 Check the miniscript below for script hex, ASM, and address details.'
                         }
@@ -6355,6 +6364,64 @@ export class MiniscriptCompiler {
             // Block height
             return `block ${value}`;
         }
+    }
+
+    /**
+     * Render grouped spending paths as HTML
+     * @param {Array} groups - Array of SpendingPathGroup objects
+     * @param {Function} maybeReplaceKeys - Function to replace key aliases
+     * @param {number} depth - Current nesting depth
+     * @returns {string} HTML content
+     */
+    renderSpendingPathGroups(groups, maybeReplaceKeys, depth = 0, allSpendingPaths = []) {
+        let content = '';
+        const indent = depth * 20;
+
+        groups.forEach((group) => {
+            // Group header with label, summary, and count on one line
+            content += `<div style="margin-left: ${indent}px;">`;
+            if (group.summary) {
+                content += `${this.escapeHtml(group.label)}: ${this.escapeHtml(maybeReplaceKeys(group.summary))} - (${group.path_count} combination${group.path_count !== 1 ? 's' : ''})`;
+            } else {
+                content += `${this.escapeHtml(group.label)} (${group.path_count} combination${group.path_count !== 1 ? 's' : ''})`;
+            }
+            content += `</div>`;
+
+            // Individual paths (full list if available, or preview with "... and X more")
+            if (group.paths && group.paths.length > 0) {
+                group.paths.forEach((path, pathIndex) => {
+                    content += `<div style="margin-left: ${indent + 20}px;">`;
+                    content += `Path ${pathIndex + 1}: ${this.escapeHtml(maybeReplaceKeys(path))}`;
+                    content += `</div>`;
+                });
+            } else if (group.preview_paths && group.preview_paths.length > 0) {
+                group.preview_paths.forEach((path, pathIndex) => {
+                    content += `<div style="margin-left: ${indent + 20}px;">`;
+                    content += `Path ${pathIndex + 1}: ${this.escapeHtml(maybeReplaceKeys(path))}`;
+                    content += `</div>`;
+                });
+                // Find problematic paths (no signature required) from full spending_paths
+                const problematicPaths = allSpendingPaths.filter(p => !p.includes(' signs'));
+                const previewCount = group.preview_paths.length;
+                const problematicCount = problematicPaths.length;
+                const remaining = group.path_count - previewCount - problematicCount;
+                if (remaining > 0) {
+                    content += `<div style="margin-left: ${indent + 20}px;">... and ${remaining} more</div>`;
+                }
+                // Show all problematic paths with warning (don't add if already present)
+                problematicPaths.forEach((path) => {
+                    const pathWithWarning = path.includes('⚠️') ? path : `${path} ⚠️ (no signature required)`;
+                    content += `<div style="margin-left: ${indent + 20}px;">${this.escapeHtml(maybeReplaceKeys(pathWithWarning))}</div>`;
+                });
+            }
+
+            // Nested children if available
+            if (group.children && group.children.length > 0) {
+                content += this.renderSpendingPathGroups(group.children, maybeReplaceKeys, depth + 1, allSpendingPaths);
+            }
+        });
+
+        return content;
     }
 
     /**

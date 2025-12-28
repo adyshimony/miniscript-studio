@@ -12,7 +12,7 @@ use miniscript::policy::{Liftable, semantic::Policy as SemanticPolicy};
 use crate::types::{
     AnalysisResult, KeyAnalysis, TimelockAnalysis, TimelockInfo,
     HashlockAnalysis, SecurityAnalysis, SizeAnalysis, PolicyTreeNode,
-    ComplexityAnalysis,
+    ComplexityAnalysis, SpendingPathGroup,
 };
 use crate::console_log;
 
@@ -37,6 +37,7 @@ pub fn analyze_miniscript(expression: &str, context: &str) -> JsValue {
             error: Some(e),
             spending_logic: None,
             spending_paths: None,
+            spending_paths_grouped: None,
             keys: None,
             timelocks: None,
             hashlocks: None,
@@ -68,6 +69,7 @@ pub fn analyze_policy(policy_str: &str) -> JsValue {
             error: Some(e),
             spending_logic: None,
             spending_paths: None,
+            spending_paths_grouped: None,
             keys: None,
             timelocks: None,
             hashlocks: None,
@@ -102,6 +104,7 @@ where
     // Extract analysis from semantic policy
     let spending_logic = semantic.to_string();
     let spending_paths = enumerate_spending_paths(&semantic);
+    let spending_paths_grouped = get_grouped_paths(&semantic);
     let keys = extract_key_analysis(&semantic, &spending_paths);
     let has_mixed = ms.has_mixed_timelocks();
     let timelocks = extract_timelock_analysis(&semantic, has_mixed);
@@ -117,14 +120,34 @@ where
     }
 
     // Extract security info from miniscript
+    let is_non_malleable = ms.is_non_malleable();
+    let requires_signature = ms.requires_sig();
     let security = Some(SecurityAnalysis {
-        is_non_malleable: ms.is_non_malleable(),
-        requires_signature: ms.requires_sig(),
+        is_non_malleable,
+        requires_signature,
         has_repeated_keys: ms.has_repeated_keys(),
         within_resource_limits: ms.within_resource_limits(),
         passes_sanity_check: ms.sanity_check().is_ok(),
         is_safe: ms.ty.mall.safe,
     });
+
+    // Add security warnings
+    if !requires_signature {
+        let has_timelocks = !timelocks.relative.is_empty() || !timelocks.absolute.is_empty();
+        let has_hashlocks = hashlocks.sha256_count > 0 || hashlocks.hash256_count > 0
+            || hashlocks.ripemd160_count > 0 || hashlocks.hash160_count > 0;
+
+        let warning_msg = match (has_timelocks, has_hashlocks) {
+            (true, true) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone with knowledge of the hash preimage or after the timelock expires could spend these funds without authorization.",
+            (true, false) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone after the timelock expires could spend these funds without authorization.",
+            (false, true) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone with knowledge of the hash preimage could spend these funds without authorization.",
+            (false, false) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone could spend these funds without authorization.",
+        };
+        warnings.push(warning_msg.to_string());
+    }
+    if !is_non_malleable {
+        warnings.push("⚠️ MALLEABLE: This script is malleable. Third parties could modify the transaction witness without invalidating it, which may cause issues with protocols that rely on transaction IDs (e.g., Lightning, payment channels).".to_string());
+    }
 
     // Extract size info from miniscript
     let size = Some(SizeAnalysis {
@@ -140,6 +163,7 @@ where
         error: None,
         spending_logic: Some(spending_logic),
         spending_paths: Some(spending_paths),
+        spending_paths_grouped: Some(spending_paths_grouped),
         keys: Some(keys),
         timelocks: Some(timelocks),
         hashlocks: Some(hashlocks),
@@ -168,6 +192,7 @@ fn perform_policy_analysis(policy_str: &str) -> Result<AnalysisResult, String> {
     // Extract analysis from semantic policy
     let spending_logic = semantic.to_string();
     let spending_paths = enumerate_spending_paths(&semantic);
+    let spending_paths_grouped = get_grouped_paths(&semantic);
     let keys = extract_key_analysis(&semantic, &spending_paths);
 
     // For policy, check for height-vs-time mixing using check_timelocks()
@@ -202,11 +227,30 @@ fn perform_policy_analysis(policy_str: &str) -> Result<AnalysisResult, String> {
         is_safe,
     });
 
+    // Add security warnings
+    if !requires_signature {
+        let has_timelocks = !timelocks.relative.is_empty() || !timelocks.absolute.is_empty();
+        let has_hashlocks = hashlocks.sha256_count > 0 || hashlocks.hash256_count > 0
+            || hashlocks.ripemd160_count > 0 || hashlocks.hash160_count > 0;
+
+        let warning_msg = match (has_timelocks, has_hashlocks) {
+            (true, true) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone with knowledge of the hash preimage or after the timelock expires could spend these funds without authorization.",
+            (true, false) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone after the timelock expires could spend these funds without authorization.",
+            (false, true) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone with knowledge of the hash preimage could spend these funds without authorization.",
+            (false, false) => "⚠️ SECURITY: Some spending paths do not require a signature. Anyone could spend these funds without authorization.",
+        };
+        warnings.push(warning_msg.to_string());
+    }
+    if !is_non_malleable {
+        warnings.push("⚠️ MALLEABLE: This policy may compile to a malleable script. Third parties could modify the transaction witness without invalidating it, which may cause issues with protocols that rely on transaction IDs (e.g., Lightning, payment channels).".to_string());
+    }
+
     Ok(AnalysisResult {
         success: true,
         error: None,
         spending_logic: Some(spending_logic),
         spending_paths: Some(spending_paths),
+        spending_paths_grouped: Some(spending_paths_grouped),
         keys: Some(keys),
         timelocks: Some(timelocks),
         hashlocks: Some(hashlocks),
@@ -752,6 +796,441 @@ fn format_duration_seconds(seconds: u32) -> String {
         format!("~{} hours", actual_seconds / 3600)
     } else {
         format!("~{} days", actual_seconds / 86400)
+    }
+}
+
+/// Maximum number of paths to enumerate in a group before collapsing to summary
+const MAX_PATHS_TO_ENUMERATE: usize = 10;
+
+/// Number of preview paths to show when group has too many paths
+const PREVIEW_PATHS_COUNT: usize = 3;
+
+/// Format a path with optional warning if no signature is required
+fn format_path_with_warning(conditions: &[String]) -> String {
+    let path_str = conditions.join(" + ");
+    let has_signature = path_str.contains(" signs");
+    if has_signature {
+        path_str
+    } else {
+        format!("{} ⚠️ (no signature required)", path_str)
+    }
+}
+
+/// Generate grouped spending paths from semantic policy
+/// Groups paths by top-level OR branches for better UX
+pub fn get_grouped_paths<Pk: MiniscriptKey + std::fmt::Display>(
+    policy: &SemanticPolicy<Pk>,
+) -> Vec<SpendingPathGroup> {
+    get_grouped_paths_recursive(policy, 1).groups
+}
+
+/// Internal result type for recursive grouped path generation
+struct GroupedPathsResult {
+    groups: Vec<SpendingPathGroup>,
+    flat_paths: Vec<Vec<String>>,
+}
+
+/// Recursively generate grouped paths
+fn get_grouped_paths_recursive<Pk: MiniscriptKey + std::fmt::Display>(
+    policy: &SemanticPolicy<Pk>,
+    branch_number: usize,
+) -> GroupedPathsResult {
+    match policy {
+        SemanticPolicy::Unsatisfiable => GroupedPathsResult {
+            groups: vec![],
+            flat_paths: vec![],
+        },
+        SemanticPolicy::Trivial => {
+            let paths = vec![vec!["(always true)".to_string()]];
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some("Always satisfiable".to_string()),
+                    path_count: 1,
+                    paths: Some(vec!["(always true)".to_string()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: paths,
+            }
+        }
+        SemanticPolicy::Key(pk) => {
+            let path = vec![format!("{} signs", pk)];
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("pk({})", pk)),
+                    path_count: 1,
+                    paths: Some(vec![format!("{} signs", pk)]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![path],
+            }
+        }
+        SemanticPolicy::After(t) => {
+            let condition = if t.is_block_height() {
+                format!("wait until block {}", t.to_consensus_u32())
+            } else {
+                let timestamp = t.to_consensus_u32() as i64;
+                let date = format_unix_timestamp(timestamp);
+                format!("wait until {}", date)
+            };
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("after({})", t.to_consensus_u32())),
+                    path_count: 1,
+                    paths: Some(vec![condition.clone()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![vec![condition]],
+            }
+        }
+        SemanticPolicy::Older(t) => {
+            let condition = if t.is_height_locked() {
+                format!("wait {} blocks", t.to_consensus_u32())
+            } else {
+                let seconds = t.to_consensus_u32();
+                let duration = format_duration_seconds(seconds);
+                format!("wait {}", duration)
+            };
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("older({})", t.to_consensus_u32())),
+                    path_count: 1,
+                    paths: Some(vec![condition.clone()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![vec![condition]],
+            }
+        }
+        SemanticPolicy::Sha256(h) => {
+            let hash_str = h.to_string();
+            let short_hash = &hash_str[..8.min(hash_str.len())];
+            let condition = format!("provide SHA256 preimage for {}", short_hash);
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("sha256({}...)", short_hash)),
+                    path_count: 1,
+                    paths: Some(vec![condition.clone()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![vec![condition]],
+            }
+        }
+        SemanticPolicy::Hash256(h) => {
+            let hash_str = h.to_string();
+            let short_hash = &hash_str[..8.min(hash_str.len())];
+            let condition = format!("provide HASH256 preimage for {}", short_hash);
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("hash256({}...)", short_hash)),
+                    path_count: 1,
+                    paths: Some(vec![condition.clone()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![vec![condition]],
+            }
+        }
+        SemanticPolicy::Ripemd160(h) => {
+            let hash_str = h.to_string();
+            let short_hash = &hash_str[..8.min(hash_str.len())];
+            let condition = format!("provide RIPEMD160 preimage for {}", short_hash);
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("ripemd160({}...)", short_hash)),
+                    path_count: 1,
+                    paths: Some(vec![condition.clone()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![vec![condition]],
+            }
+        }
+        SemanticPolicy::Hash160(h) => {
+            let hash_str = h.to_string();
+            let short_hash = &hash_str[..8.min(hash_str.len())];
+            let condition = format!("provide HASH160 preimage for {}", short_hash);
+            GroupedPathsResult {
+                groups: vec![SpendingPathGroup {
+                    label: format!("Branch {}", branch_number),
+                    summary: Some(format!("hash160({}...)", short_hash)),
+                    path_count: 1,
+                    paths: Some(vec![condition.clone()]),
+                    preview_paths: None,
+                    children: None,
+                }],
+                flat_paths: vec![vec![condition]],
+            }
+        }
+        SemanticPolicy::Thresh(thresh) => {
+            let k = thresh.k();
+            let n = thresh.n();
+            let children: Vec<Arc<SemanticPolicy<Pk>>> = thresh.iter().cloned().collect();
+
+            if k == 1 {
+                // OR: Create separate groups for each branch
+                let mut groups = Vec::new();
+                let mut all_flat_paths = Vec::new();
+
+                for (i, child) in children.iter().enumerate() {
+                    let child_result = get_grouped_paths_recursive(child.as_ref(), i + 1);
+                    all_flat_paths.extend(child_result.flat_paths);
+
+                    // Generate a smart label for this branch
+                    let label = generate_branch_label(child.as_ref(), i + 1);
+                    let summary = generate_branch_summary(child.as_ref());
+                    let child_path_count: usize = child_result.groups.iter().map(|g| g.path_count).sum();
+
+                    // If child has multiple groups (nested OR), show as children
+                    // Otherwise, flatten into a single group
+                    if child_result.groups.len() > 1 {
+                        groups.push(SpendingPathGroup {
+                            label,
+                            summary,
+                            path_count: child_path_count,
+                            paths: None,
+                            preview_paths: None,
+                            children: Some(child_result.groups),
+                        });
+                    } else if let Some(single_group) = child_result.groups.into_iter().next() {
+                        // Single group from child - apply warning formatting to paths
+                        // Check both for signature AND for existing warning to avoid duplicates
+                        let (paths, preview_paths) = if child_path_count <= MAX_PATHS_TO_ENUMERATE {
+                            // Apply warning to each path (if not already present)
+                            let formatted_paths = single_group.paths.map(|ps| {
+                                ps.iter().map(|p| {
+                                    if p.contains(" signs") || p.contains("⚠️") {
+                                        p.clone()
+                                    } else {
+                                        format!("{} ⚠️ (no signature required)", p)
+                                    }
+                                }).collect()
+                            });
+                            (formatted_paths, None)
+                        } else {
+                            // Apply warning to preview paths (if not already present)
+                            let formatted_preview = single_group.preview_paths.map(|ps| {
+                                ps.iter().map(|p| {
+                                    if p.contains(" signs") || p.contains("⚠️") {
+                                        p.clone()
+                                    } else {
+                                        format!("{} ⚠️ (no signature required)", p)
+                                    }
+                                }).collect()
+                            });
+                            (None, formatted_preview)
+                        };
+                        groups.push(SpendingPathGroup {
+                            label,
+                            summary,
+                            path_count: child_path_count,
+                            paths,
+                            preview_paths,
+                            children: None,
+                        });
+                    }
+                }
+
+                GroupedPathsResult {
+                    groups,
+                    flat_paths: all_flat_paths,
+                }
+            } else {
+                // AND or THRESH: Combine into single group
+                let child_paths: Vec<Vec<Vec<String>>> = children
+                    .iter()
+                    .map(|child| get_all_paths(child.as_ref()))
+                    .collect();
+
+                let flat_paths = if k == n {
+                    // AND: cartesian product
+                    cartesian_product(&child_paths)
+                } else {
+                    // THRESH(k, n): k-of-n combinations
+                    let combinations = generate_combinations(n, k);
+                    let mut result = Vec::new();
+                    for combo in combinations {
+                        let selected: Vec<Vec<Vec<String>>> = combo
+                            .iter()
+                            .filter_map(|&idx| child_paths.get(idx).cloned())
+                            .collect();
+                        result.extend(cartesian_product(&selected));
+                    }
+                    result
+                };
+
+                let path_count = flat_paths.len();
+                let summary = generate_thresh_summary::<Pk>(&children, k, n);
+                let (paths, preview_paths) = if path_count <= MAX_PATHS_TO_ENUMERATE {
+                    (Some(flat_paths.iter().map(|p| format_path_with_warning(p)).collect()), None)
+                } else {
+                    // Show first 3 paths as preview
+                    let preview: Vec<String> = flat_paths.iter()
+                        .take(PREVIEW_PATHS_COUNT)
+                        .map(|p| format_path_with_warning(p))
+                        .collect();
+                    (None, Some(preview))
+                };
+
+                GroupedPathsResult {
+                    groups: vec![SpendingPathGroup {
+                        label: format!("Branch {}", branch_number),
+                        summary: Some(summary),
+                        path_count,
+                        paths,
+                        preview_paths,
+                        children: None,
+                    }],
+                    flat_paths,
+                }
+            }
+        }
+    }
+}
+
+/// Generate a simple label for a branch
+fn generate_branch_label<Pk: MiniscriptKey + std::fmt::Display>(
+    _policy: &SemanticPolicy<Pk>,
+    branch_num: usize,
+) -> String {
+    format!("Branch {}", branch_num)
+}
+
+/// Generate a summary description for a branch
+fn generate_branch_summary<Pk: MiniscriptKey + std::fmt::Display>(
+    policy: &SemanticPolicy<Pk>,
+) -> Option<String> {
+    match policy {
+        SemanticPolicy::Key(pk) => Some(format!("pk({})", pk)),
+        SemanticPolicy::Thresh(thresh) => {
+            let k = thresh.k();
+            let n = thresh.n();
+
+            // Collect keys
+            let mut keys: Vec<String> = Vec::new();
+            let mut has_timelock = false;
+            let mut timelock_desc = String::new();
+
+            for child in thresh.iter() {
+                match child.as_ref() {
+                    SemanticPolicy::Key(pk) => keys.push(pk.to_string()),
+                    SemanticPolicy::Older(t) => {
+                        has_timelock = true;
+                        if t.is_height_locked() {
+                            let blocks = t.to_consensus_u32();
+                            let days = blocks as f64 / 144.0;
+                            timelock_desc = format!("+ wait {} blocks (~{:.0} days)", blocks, days);
+                        } else {
+                            let seconds = t.to_consensus_u32();
+                            timelock_desc = format!("+ wait {}", format_duration_seconds(seconds));
+                        }
+                    }
+                    SemanticPolicy::After(t) => {
+                        has_timelock = true;
+                        if t.is_block_height() {
+                            timelock_desc = format!("+ after block {}", t.to_consensus_u32());
+                        } else {
+                            let date = format_unix_timestamp(t.to_consensus_u32() as i64);
+                            timelock_desc = format!("+ after {}", date);
+                        }
+                    }
+                    SemanticPolicy::Thresh(inner) => {
+                        // Nested threshold - collect its keys
+                        for inner_child in inner.iter() {
+                            if let SemanticPolicy::Key(pk) = inner_child.as_ref() {
+                                keys.push(pk.to_string());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if keys.is_empty() {
+                return Some(format!("{}-of-{}", k, n));
+            }
+
+            let keys_str = if keys.len() <= 5 {
+                format!("{{{}}}", keys.join(", "))
+            } else {
+                format!("{{{}, ... ({} total)}}", keys[..3].join(", "), keys.len())
+            };
+
+            if k == n {
+                // AND
+                if has_timelock && keys.len() == 1 {
+                    Some(format!("{} {}", keys[0], timelock_desc))
+                } else if has_timelock {
+                    Some(format!("{}-of-{} multisig: {} {}", k, keys.len(), keys_str, timelock_desc))
+                } else {
+                    Some(format!("{}-of-{} multisig: {}", k, keys.len(), keys_str))
+                }
+            } else if k == 1 {
+                // OR (shouldn't get here normally)
+                Some(format!("any of {}", keys_str))
+            } else {
+                // THRESH
+                if has_timelock {
+                    Some(format!("{}-of-{} multisig: {} {}", k, n, keys_str, timelock_desc))
+                } else {
+                    Some(format!("{}-of-{} multisig: {}", k, n, keys_str))
+                }
+            }
+        }
+        SemanticPolicy::Older(t) => {
+            if t.is_height_locked() {
+                let blocks = t.to_consensus_u32();
+                let days = blocks as f64 / 144.0;
+                Some(format!("wait {} blocks (~{:.0} days)", blocks, days))
+            } else {
+                Some(format!("wait {}", format_duration_seconds(t.to_consensus_u32())))
+            }
+        }
+        SemanticPolicy::After(t) => {
+            if t.is_block_height() {
+                Some(format!("after block {}", t.to_consensus_u32()))
+            } else {
+                Some(format!("after {}", format_unix_timestamp(t.to_consensus_u32() as i64)))
+            }
+        }
+        _ => None,
+    }
+}
+
+/// Generate summary for a threshold (k-of-n) policy
+fn generate_thresh_summary<Pk: MiniscriptKey + std::fmt::Display>(
+    children: &[Arc<SemanticPolicy<Pk>>],
+    k: usize,
+    n: usize,
+) -> String {
+    // Collect all keys from children
+    let mut keys: Vec<String> = Vec::new();
+    for child in children {
+        if let SemanticPolicy::Key(pk) = child.as_ref() {
+            keys.push(pk.to_string());
+        }
+    }
+
+    if keys.len() == n {
+        // Pure multisig
+        let keys_str = if keys.len() <= 7 {
+            format!("{{{}}}", keys.join(", "))
+        } else {
+            format!("{{{}, ... ({} total)}}", keys[..5].join(", "), keys.len())
+        };
+        format!("{}-of-{} multisig: {}", k, n, keys_str)
+    } else {
+        format!("{}-of-{} threshold", k, n)
     }
 }
 
