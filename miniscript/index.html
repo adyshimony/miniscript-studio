@@ -666,6 +666,11 @@
                 padding: 10px 12px !important;
             }
             
+            /* Mobile: Hide clear buttons */
+            #clear-policy-btn, #clear-btn {
+                display: none !important;
+            }
+
             /* Mobile: Hide auto-compile containers and theme toggle */
             .auto-compile-container {
                 display: none !important;
@@ -808,6 +813,46 @@
             textarea[readonly] {
                 font-size: 12px !important;
             }
+
+            /* Mobile: Desktop recommendation banner */
+            .mobile-banner:not(.hidden) {
+                display: flex !important;
+            }
+        }
+
+        /* Mobile banner - hidden by default on desktop */
+        .mobile-banner {
+            display: none;
+            background: #3b82f6;
+            color: white;
+            padding: 10px 15px;
+            margin: -15px -15px 15px -15px;
+            border-radius: 8px 8px 0 0;
+            font-size: 13px;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .mobile-banner-text {
+            text-align: center;
+        }
+
+        .mobile-banner-close {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0 4px;
+            opacity: 0.8;
+        }
+
+        .mobile-banner-close:hover {
+            opacity: 1;
         }
 
         @media (max-width: 480px) {
@@ -1129,6 +1174,12 @@
     
     <div class="main-content">
         <div class="container">
+            <!-- Mobile banner - recommend desktop -->
+            <div id="mobile-banner" class="mobile-banner">
+                <span class="mobile-banner-text">For the best experience, use on a desktop browser</span>
+                <button class="mobile-banner-close" onclick="this.parentElement.classList.add('hidden')" aria-label="Close">&times;</button>
+            </div>
+
             <!-- Theme toggle button -->
             <button id="floating-theme-toggle" class="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
                 <span id="theme-icon">☀️</span>
