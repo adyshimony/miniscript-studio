@@ -2,7 +2,8 @@
 
 A WebAssembly Miniscript Studio that runs entirely in the browser, powered by the Rust Miniscript crate. Compile Bitcoin policies to Miniscript and Bitcoin Script, lift scripts, generate addresses across Legacy, Segwit, and Taproot contexts, HD wallet descriptor support, key managment, educational examples and more.
 
-🌐 **Live Site:** https://adys.dev/miniscript
+  **Live Site:** https://adys.dev/miniscript
+  **Tutorial post:** https://adys.dev/blog/miniscript-studio-intro
 
 ## Features
 
