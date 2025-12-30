@@ -184,7 +184,7 @@ pub fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
         }
         // Handle OP_PUSHBYTES_* opcodes
         else if upper.starts_with("OP_PUSHBYTES_") {
-            builder = handle_pushbytes_opcode(&upper, &parts, &mut i)?;
+            builder = handle_pushbytes_opcode(builder, &upper, &parts, &mut i)?;
         }
         // Handle hex data
         else if is_hex_data(part) {
@@ -205,44 +205,44 @@ pub fn parse_asm_to_script(asm: &str) -> Result<ScriptBuf, String> {
 }
 
 // Handle OP_PUSHBYTES_* opcodes
-fn handle_pushbytes_opcode(opcode: &str, parts: &[&str], index: &mut usize) -> Result<Builder, String> {
+fn handle_pushbytes_opcode(builder: Builder, opcode: &str, parts: &[&str], index: &mut usize) -> Result<Builder, String> {
     let expected_size = opcode.strip_prefix("OP_PUSHBYTES_")
         .and_then(|s| s.parse::<usize>().ok())
         .ok_or_else(|| format!("Invalid OP_PUSHBYTES format: {}", opcode))?;
-    
+
     if expected_size > 75 {
         return Err(format!("Invalid pushbytes size: {}", expected_size));
     }
-    
+
     if *index + 1 >= parts.len() {
         return Err(format!("Missing hex data after {}", opcode));
     }
-    
+
     let hex_data = parts[*index + 1];
     if !is_hex_data(hex_data) {
         return Err(format!("Expected hex data after {}, got: {}", opcode, hex_data));
     }
-    
+
     let bytes = hex::decode(hex_data)
         .map_err(|_| "Invalid hex data after OP_PUSHBYTES")?;
-    
+
     if bytes.len() != expected_size {
         return Err(format!(
             "OP_PUSHBYTES_{} expects {} bytes, got {} bytes",
             expected_size, expected_size, bytes.len()
         ));
     }
-    
+
     let push_bytes = PushBytesBuf::try_from(bytes)
         .map_err(|_| "Invalid push bytes")?;
-    
+
     *index += 1; // Skip the hex data token
-    Ok(Builder::new().push_slice(push_bytes))
+    Ok(builder.push_slice(push_bytes))
 }
 
 // Check if a string is valid hex data
 fn is_hex_data(s: &str) -> bool {
-    s.len() > 2 && s.len() % 2 == 0 && s.chars().all(|c| c.is_ascii_hexdigit())
+    s.len() >= 2 && s.len() % 2 == 0 && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 // Push hex data to script builder

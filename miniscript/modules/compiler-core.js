@@ -4828,26 +4828,25 @@ export class MiniscriptCompiler {
             display.dataset.simplifiedAsm = simplifiedAsm;
             display.dataset.originalWithKeyNames = originalWithKeyNames;
             display.dataset.simplifiedWithKeyNames = simplifiedWithKeyNames;
-            
             // Add event listener for key names toggle button
             keyNamesToggle.addEventListener('click', () => {
                 const isActive = keyNamesToggle.dataset.active === 'true';
-                const isHidingPushbytes = toggleButton.dataset.active === 'true';
-                
+                const currentValue = display.value;
+
                 if (isActive) {
-                    // Hide key names - show actual keys
-                    display.value = isHidingPushbytes ? display.dataset.simplifiedAsm : display.dataset.originalAsm;
+                    // Hide key names - replace names with actual keys
+                    display.value = this.replaceNamesWithKeys(currentValue);
                     keyNamesToggle.style.color = 'var(--text-secondary)';
                     keyNamesToggle.title = 'Show key names';
                     keyNamesToggle.dataset.active = 'false';
                 } else {
-                    // Show key names - use pre-computed versions
-                    display.value = isHidingPushbytes ? display.dataset.simplifiedWithKeyNames : display.dataset.originalWithKeyNames;
+                    // Show key names - replace keys with names
+                    display.value = this.replaceKeysWithNames(currentValue);
                     keyNamesToggle.style.color = 'var(--success-border)';
                     keyNamesToggle.title = 'Hide key names';
                     keyNamesToggle.dataset.active = 'true';
                 }
-                
+
                 // Reset format state when toggling key names
                 formatButton.dataset.formatted = 'false';
                 formatButton.style.color = 'var(--text-secondary)';
@@ -4859,22 +4858,22 @@ export class MiniscriptCompiler {
             
             toggleButton.addEventListener('click', () => {
                 const isCurrentlyHiding = toggleButton.dataset.active === 'true';
-                const isShowingKeyNames = keyNamesToggle.dataset.active === 'true';
-                
+                const currentValue = display.value;
+
                 if (isCurrentlyHiding) {
-                    // Show pushbytes
-                    display.value = isShowingKeyNames ? display.dataset.originalWithKeyNames : display.dataset.originalAsm;
+                    // Show pushbytes - expand the current ASM
+                    display.value = this.expandAsm(currentValue);
                     toggleButton.style.color = 'var(--text-secondary)';
                     toggleButton.title = 'Hide pushbytes';
                     toggleButton.dataset.active = 'false';
                 } else {
-                    // Hide pushbytes
-                    display.value = isShowingKeyNames ? display.dataset.simplifiedWithKeyNames : display.dataset.simplifiedAsm;
+                    // Hide pushbytes - simplify the current ASM
+                    display.value = this.simplifyAsm(currentValue);
                     toggleButton.style.color = 'var(--success-border)';
                     toggleButton.title = 'Show pushbytes';
                     toggleButton.dataset.active = 'true';
                 }
-                
+
                 // Reset format state when toggling hide-pushbytes
                 formatButton.dataset.formatted = 'false';
                 formatButton.style.color = 'var(--text-secondary)';
@@ -7761,6 +7760,36 @@ export class MiniscriptCompiler {
             .replace(/OP_PUSHDATA\d?\s+/g, '')
             .replace(/\s+/g, ' ')
             .trim();
+    }
+
+    expandAsm(simplifiedAsm) {
+        // Add OP_PUSHBYTES_* back to hex data based on byte length
+        // This is the inverse of simplifyAsm
+        const tokens = simplifiedAsm.split(/\s+/);
+        const result = [];
+
+        for (const token of tokens) {
+            if (!token) continue;
+
+            // Check if token is hex data (even length, all hex chars, not an opcode)
+            if (/^[0-9a-fA-F]+$/.test(token) && token.length % 2 === 0 && !token.startsWith('OP_')) {
+                const byteLength = token.length / 2;
+                if (byteLength <= 75) {
+                    result.push(`OP_PUSHBYTES_${byteLength} ${token}`);
+                } else if (byteLength <= 255) {
+                    result.push(`OP_PUSHDATA1 ${token}`);
+                } else if (byteLength <= 65535) {
+                    result.push(`OP_PUSHDATA2 ${token}`);
+                } else {
+                    result.push(`OP_PUSHDATA4 ${token}`);
+                }
+            } else {
+                // Keep opcodes and other tokens as-is
+                result.push(token);
+            }
+        }
+
+        return result.join(' ');
     }
 
     detectContextFromExpression(expression) {
