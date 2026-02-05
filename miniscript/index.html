@@ -1354,6 +1354,9 @@
                     <button onclick="shareMiniscriptExpression(event)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share miniscript via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🔗
                     </button>
+                    <button id="export-miniscript-btn" onclick="openMiniscriptExportModal()" disabled style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px; opacity: 0.4;" title="Export compilation results" onmouseover="if(!this.disabled)this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                        📤
+                    </button>
                 </div>
             </div>
             <div 
@@ -2470,7 +2473,29 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal">
+        <div class="modal-content" style="max-width: 700px; padding-bottom: 15px;">
+            <h3 style="margin-bottom: 20px;">Export</h3>
+
+            <!-- Format always developer JSON -->
+            <input type="radio" name="export-format" value="developer" checked style="display: none;">
+
+            <!-- Preview -->
+            <div style="margin-bottom: 20px;">
+                <textarea id="export-preview" readonly class="textarea-like" style="min-height: 400px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; background: var(--secondary-bg);" placeholder="Export preview will appear here..."></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group" style="margin-top: 10px; justify-content: flex-end;">
+                <button id="export-copy-btn" class="secondary-btn" style="min-width: 140px;">Copy to Clipboard</button>
+                <button id="export-download-btn" class="primary-btn" style="min-width: 140px;">Download JSON</button>
+                <button id="export-close-btn" class="secondary-btn" style="min-width: 140px;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="/miniscript/script.js"></script>
     <script>
         // Global functions that need to be available immediately

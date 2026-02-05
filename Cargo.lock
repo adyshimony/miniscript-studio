@@ -173,6 +173,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin",
  "hex",
+ "js-sys",
  "lazy_static",
  "miniscript",
  "regex",

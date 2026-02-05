@@ -2298,3 +2298,50 @@ window.toggleMiniscriptDebugInfo = function(button) {
         }
     }
 };
+
+// ==================== EXPORT FEATURE ====================
+
+/**
+ * Open export modal for policy compilation results
+ */
+window.openPolicyExportModal = function() {
+    if (window.compiler && typeof window.compiler.openExportModal === 'function') {
+        window.compiler.openExportModal('policy');
+    } else {
+        console.error('Compiler or openExportModal method not available');
+    }
+};
+
+/**
+ * Open export modal for miniscript compilation results
+ */
+window.openMiniscriptExportModal = function() {
+    if (window.compiler && typeof window.compiler.openExportModal === 'function') {
+        window.compiler.openExportModal('miniscript');
+    } else {
+        console.error('Compiler or openExportModal method not available');
+    }
+};
+
+// Keyboard shortcut for export (Ctrl+Shift+E)
+window.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'E') {
+        e.preventDefault();
+
+        // Determine which tab is active
+        const policyInput = document.getElementById('policy-input');
+        const expressionInput = document.getElementById('expression-input');
+
+        // Check if there's a successful compilation
+        const policySuccess = document.querySelector('#policy-errors .result-box.success');
+        const miniscriptSuccess = document.querySelector('#miniscript-messages .result-box.success, #results .result-box.success');
+
+        if (policySuccess && policyInput?.textContent?.trim()) {
+            window.openPolicyExportModal();
+        } else if (miniscriptSuccess && expressionInput?.textContent?.trim()) {
+            window.openMiniscriptExportModal();
+        } else {
+            console.log('No successful compilation to export');
+        }
+    }
+});

@@ -1,4 +1,4 @@
-import init, { compile_unified, lift_to_miniscript, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights, get_wasm_build_info, analyze_policy, analyze_miniscript } from '../pkg/miniscript_wasm.js';
+import init, { compile_unified, lift_to_miniscript, generate_address_for_network, get_taproot_branches, get_taproot_miniscript_branches, get_taproot_branch_weights, get_wasm_build_info, analyze_policy, analyze_miniscript, export_for_bitcoin_core, export_comprehensive, export_descriptor } from '../pkg/miniscript_wasm.js';
 import { CONSTANTS } from './constants.js';
 
 /**
@@ -51,7 +51,10 @@ export class MiniscriptCompiler {
      */
     async init() {
         try {
-            this.wasm = await init();
+            // Add cache-busting parameter to force loading fresh WASM binary
+            const wasmUrl = new URL('../pkg/miniscript_wasm_bg.wasm', import.meta.url);
+            wasmUrl.searchParams.set('v', Date.now());
+            this.wasm = await init({ module_or_path: wasmUrl });
             console.log('WASM module initialized');
 
             // Print WASM build info on page load
@@ -616,6 +619,23 @@ export class MiniscriptCompiler {
             compileBtn.disabled = false;
 
             if (result.success) {
+                // Store compilation result for export feature
+                this.lastMiniscriptCompilation = {
+                    result: result,
+                    expression: cleanedExpression,
+                    processedExpression: processedExpression,
+                    context: context,
+                    inputType: 'miniscript'
+                };
+                console.log('Stored miniscript compilation for export:', this.lastMiniscriptCompilation);
+
+                // Enable export button in toolbar
+                const exportBtn = document.getElementById('export-miniscript-btn');
+                if (exportBtn) {
+                    exportBtn.disabled = false;
+                    exportBtn.style.opacity = '1';
+                }
+
                 // Add the processed expression (with actual keys) for taproot network switching
                 result.processedMiniscript = processedExpression;
                 // Update the input display to show cleaned expression and reset format button
@@ -859,13 +879,25 @@ export class MiniscriptCompiler {
                 this.showMiniscriptError(result.error);
                 // Clear results
                 document.getElementById('results').innerHTML = '';
+                // Disable export button on failure
+                const exportBtn = document.getElementById('export-miniscript-btn');
+                if (exportBtn) {
+                    exportBtn.disabled = true;
+                    exportBtn.style.opacity = '0.4';
+                }
             }
-            
+
         } catch (error) {
             console.error('Compilation error:', error);
             compileBtn.textContent = originalText;
             compileBtn.disabled = false;
             this.showMiniscriptError(`Compilation failed: ${error.message}`);
+            // Disable export button on error
+            const exportBtn = document.getElementById('export-miniscript-btn');
+            if (exportBtn) {
+                exportBtn.disabled = true;
+                exportBtn.style.opacity = '0.4';
+            }
         } finally {
             this.isCompiling = false;
         }
@@ -963,10 +995,27 @@ export class MiniscriptCompiler {
             compilePolicyBtn.disabled = false;
 
             if (result.success && result.compiled_miniscript) {
+                // Store compilation result for export feature
+                this.lastPolicyCompilation = {
+                    result: result,
+                    expression: cleanedPolicy,
+                    processedExpression: processedPolicy,
+                    context: context,
+                    inputType: 'policy'
+                };
+                console.log('Stored policy compilation for export:', this.lastPolicyCompilation);
+
+                // Enable export button in toolbar
+                const exportBtn = document.getElementById('export-miniscript-btn');
+                if (exportBtn) {
+                    exportBtn.disabled = false;
+                    exportBtn.style.opacity = '1';
+                }
+
                 // Success: fill the miniscript field and show results
                 const expressionInput = document.getElementById('expression-input');
                 const formatButton = document.getElementById('format-miniscript-btn');
-                
+
                 // Store the last compiled descriptor for branch parsing
                 this.lastCompiledDescriptor = result.compiled_miniscript;
                 
@@ -1522,7 +1571,9 @@ export class MiniscriptCompiler {
         
         policyErrorsDiv.innerHTML = `
             <div class="result-box success" style="margin: 0; text-align: left;">
-                <h4>✅ Policy ${contextDisplay} compilation successful</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0;">✅ Policy ${contextDisplay} compilation successful</h4>
+                </div>
                 ${content}
             </div>
         `;
@@ -1877,7 +1928,14 @@ export class MiniscriptCompiler {
         if (addressOutput) addressOutput.value = '';
         if (treeVisualization) treeVisualization.innerHTML = '';
         if (miniscriptSuccess) miniscriptSuccess.style.display = 'none';
-        
+
+        // Disable export button
+        const exportBtn = document.getElementById('export-miniscript-btn');
+        if (exportBtn) {
+            exportBtn.disabled = true;
+            exportBtn.style.opacity = '0.4';
+        }
+
         console.log('Cleared all editors and outputs for multi-branch taproot');
     }
     
@@ -6509,7 +6567,9 @@ export class MiniscriptCompiler {
                     titleElement.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
-                            ${debugButtonHtml}
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                ${debugButtonHtml}
+                            </div>
                         </div>
                     `;
                 }
@@ -6649,7 +6709,9 @@ export class MiniscriptCompiler {
                 <h4>
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span>✅ <strong>Miniscript ${contextDisplay} compilation successful</strong></span>
-                        ${debugButtonHtml}
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            ${debugButtonHtml}
+                        </div>
                     </div>
                 </h4>
                 <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">${message}</div>
@@ -6999,6 +7061,13 @@ export class MiniscriptCompiler {
             }
         }
         document.getElementById('miniscript-messages').innerHTML = '';
+
+        // Disable export button when clearing success messages
+        const exportBtn = document.getElementById('export-miniscript-btn');
+        if (exportBtn) {
+            exportBtn.disabled = true;
+            exportBtn.style.opacity = '0.4';
+        }
     }
 
     handleReplaceKeysToggle(isChecked) {
@@ -8267,5 +8336,338 @@ export class MiniscriptCompiler {
 
         // Initial check
         checkForRangeDescriptor();
+    }
+
+    // ==================== EXPORT FEATURE ====================
+
+    /**
+     * Open the export modal with current compilation results
+     * @param {string} inputType - 'policy' or 'miniscript'
+     */
+    openExportModal(inputType = 'miniscript') {
+        const modal = document.getElementById('export-modal');
+        if (!modal) {
+            console.error('Export modal not found');
+            return;
+        }
+
+        // Store current input type for export
+        this.currentExportInputType = inputType;
+
+        // Get current expression and context
+        let rawExpression = '';
+        if (inputType === 'policy') {
+            const policyInput = document.getElementById('policy-input');
+            // Try multiple methods to get text content
+            rawExpression = policyInput?.textContent?.trim()
+                || policyInput?.innerText?.trim()
+                || '';
+            this.currentExportContext = document.querySelector('input[name="policy-context"]:checked')?.value || 'segwit';
+        } else {
+            const expressionInput = document.getElementById('expression-input');
+            // Try multiple methods to get text content
+            rawExpression = expressionInput?.textContent?.trim()
+                || expressionInput?.innerText?.trim()
+                || '';
+            this.currentExportContext = document.querySelector('input[name="context"]:checked')?.value || 'segwit';
+        }
+
+        console.log('Export: DOM element found:', inputType === 'policy' ? !!document.getElementById('policy-input') : !!document.getElementById('expression-input'));
+        console.log('Export: raw expression length:', rawExpression.length);
+        console.log('Export: raw expression:', rawExpression.substring(0, 100) + (rawExpression.length > 100 ? '...' : ''));
+
+        // Clean the expression (remove formatting artifacts like spaces/newlines)
+        const cleanedExpression = this.cleanExpression(rawExpression);
+
+        // Replace key variables with actual values (like Alice -> actual pubkey)
+        this.currentExportExpression = this.replaceKeyVariables(cleanedExpression, this.currentExportContext);
+
+        console.log('Export: cleaned expression:', cleanedExpression.substring(0, 100));
+        console.log('Export: processed expression:', this.currentExportExpression.substring(0, 100));
+        console.log('Export: context:', this.currentExportContext);
+        console.log('Export: inputType:', this.currentExportInputType);
+
+        // Reset format selection to developer JSON
+        const developerRadio = document.querySelector('input[name="export-format"][value="developer"]');
+        if (developerRadio) developerRadio.checked = true;
+
+        // Generate initial preview
+        this.updateExportPreview();
+
+        // Show modal
+        modal.style.display = 'block';
+
+        // Set up event listeners for format changes
+        this.setupExportModalListeners();
+    }
+
+    /**
+     * Set up event listeners for the export modal
+     */
+    setupExportModalListeners() {
+        // Format change listener
+        const formatRadios = document.querySelectorAll('input[name="export-format"]');
+        formatRadios.forEach(radio => {
+            radio.removeEventListener('change', this._handleFormatChange);
+            this._handleFormatChange = () => this.updateExportPreview();
+            radio.addEventListener('change', this._handleFormatChange);
+        });
+
+        // Copy button
+        const copyBtn = document.getElementById('export-copy-btn');
+        if (copyBtn) {
+            copyBtn.removeEventListener('click', this._handleCopyClick);
+            this._handleCopyClick = () => this.copyExportToClipboard();
+            copyBtn.addEventListener('click', this._handleCopyClick);
+        }
+
+        // Download button
+        const downloadBtn = document.getElementById('export-download-btn');
+        if (downloadBtn) {
+            downloadBtn.removeEventListener('click', this._handleDownloadClick);
+            this._handleDownloadClick = () => this.downloadExport();
+            downloadBtn.addEventListener('click', this._handleDownloadClick);
+        }
+
+        // Close button
+        const closeBtn = document.getElementById('export-close-btn');
+        if (closeBtn) {
+            closeBtn.removeEventListener('click', this._handleCloseClick);
+            this._handleCloseClick = () => this.closeExportModal();
+            closeBtn.addEventListener('click', this._handleCloseClick);
+        }
+    }
+
+    /**
+     * Update the export preview based on selected format
+     */
+    async updateExportPreview() {
+        const preview = document.getElementById('export-preview');
+        if (!preview) return;
+
+        const format = document.querySelector('input[name="export-format"]:checked')?.value || 'developer';
+
+        try {
+            let exportData;
+            const options = {
+                include_all_networks: true,
+                include_analysis: true,
+                include_satisfaction_paths: true
+            };
+
+            console.log('Export preview - expression:', this.currentExportExpression);
+            console.log('Export preview - context:', this.currentExportContext);
+            console.log('Export preview - inputType:', this.currentExportInputType);
+            console.log('Export preview - format:', format);
+
+            if (format === 'bitcoin-core') {
+                // For Bitcoin Core, we need the descriptor from comprehensive export first
+                const comprehensiveResult = export_comprehensive(
+                    this.currentExportExpression,
+                    this.currentExportContext,
+                    this.currentExportInputType,
+                    options
+                );
+                console.log('Comprehensive result for Bitcoin Core:', comprehensiveResult);
+
+                if (comprehensiveResult.success && comprehensiveResult.compilation?.descriptor) {
+                    exportData = export_for_bitcoin_core(
+                        comprehensiveResult.compilation.descriptor,
+                        options
+                    );
+                } else {
+                    exportData = { error: comprehensiveResult.error || 'Failed to generate descriptor' };
+                }
+            } else {
+                // Developer comprehensive JSON
+                exportData = export_comprehensive(
+                    this.currentExportExpression,
+                    this.currentExportContext,
+                    this.currentExportInputType,
+                    options
+                );
+                console.log('Developer export result:', exportData);
+            }
+
+            // Store for copy/download
+            this.currentExportData = exportData;
+            this.currentExportFormat = format;
+
+            // Display in preview
+            if (typeof exportData === 'string') {
+                preview.value = exportData;
+            } else {
+                preview.value = JSON.stringify(exportData, null, 2);
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            preview.value = `Error generating export: ${error.message}`;
+        }
+    }
+
+    /**
+     * Copy export data to clipboard
+     */
+    async copyExportToClipboard() {
+        const preview = document.getElementById('export-preview');
+        if (!preview || !preview.value) return;
+
+        try {
+            await navigator.clipboard.writeText(preview.value);
+            this.showToast('Copied to clipboard');
+        } catch (error) {
+            console.error('Copy failed:', error);
+            // Fallback for older browsers
+            preview.select();
+            document.execCommand('copy');
+            this.showToast('Copied to clipboard');
+        }
+    }
+
+    /**
+     * Download export as JSON file
+     */
+    downloadExport() {
+        const preview = document.getElementById('export-preview');
+        if (!preview || !preview.value) return;
+
+        // Generate filename
+        const date = new Date().toISOString().split('T')[0];
+        const context = this.currentExportContext || 'unknown';
+        const format = this.currentExportFormat || 'export';
+
+        // Create a summary from the expression (first 20 chars)
+        const exprSummary = (this.currentExportExpression || 'unknown')
+            .replace(/[^a-zA-Z0-9]/g, '-')
+            .substring(0, 20)
+            .toLowerCase();
+
+        const filename = `miniscript-${format}-${exprSummary}-${context}-${date}.json`;
+
+        // Create and trigger download
+        const blob = new Blob([preview.value], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        this.showToast(`Downloaded ${filename}`);
+    }
+
+    /**
+     * Generate QR code for export data
+     */
+    generateExportQrCode() {
+        const qrContainer = document.getElementById('export-qr-container');
+        const qrCode = document.getElementById('export-qr-code');
+        const preview = document.getElementById('export-preview');
+
+        if (!qrContainer || !qrCode || !preview) return;
+
+        // Toggle visibility
+        if (qrContainer.style.display === 'none') {
+            qrContainer.style.display = 'block';
+
+            // Check if QRCode library is available
+            if (typeof QRCode === 'undefined') {
+                qrCode.innerHTML = '<p style="color: var(--error-text);">QR Code library not loaded. Add qrcode.min.js to enable this feature.</p>';
+                return;
+            }
+
+            // Clear previous QR code
+            qrCode.innerHTML = '';
+
+            // For Sparrow format, just use the descriptor
+            // For other formats, use the full JSON (may be too large for QR)
+            let qrData = preview.value;
+
+            if (qrData.length > 2953) {
+                // QR code has a limit, show warning
+                qrCode.innerHTML = '<p style="color: var(--warning-text);">Data too large for QR code. Use Sparrow/Liana format for QR export.</p>';
+                return;
+            }
+
+            try {
+                new QRCode(qrCode, {
+                    text: qrData,
+                    width: 256,
+                    height: 256,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+            } catch (error) {
+                qrCode.innerHTML = `<p style="color: var(--error-text);">Failed to generate QR code: ${error.message}</p>`;
+            }
+        } else {
+            qrContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Close the export modal
+     */
+    closeExportModal() {
+        const modal = document.getElementById('export-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+
+        // Hide QR container
+        const qrContainer = document.getElementById('export-qr-container');
+        if (qrContainer) {
+            qrContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Show a toast notification
+     * @param {string} message - The message to display
+     */
+    showToast(message) {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'export-toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--text-color);
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 14px;
+            animation: fadeInOut 2s ease-in-out;
+        `;
+
+        // Add animation styles if not already present
+        if (!document.getElementById('toast-styles')) {
+            const style = document.createElement('style');
+            style.id = 'toast-styles';
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                    85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                    100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+
+        // Remove after animation
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
     }
 }

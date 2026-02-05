@@ -16,6 +16,7 @@ mod lift;
 pub mod address;
 mod taproot;
 pub mod analyze;
+pub mod export;
 
 // Public modules for integration tests
 pub mod descriptors;
@@ -134,6 +135,7 @@ pub fn get_wasm_build_info() -> JsValue {
         version: &'static str,
         has_descriptor_support: bool,
         has_xonly_conversion: bool,
+        has_export_feature: bool,
         build_id: &'static str,
     }
 
@@ -141,8 +143,27 @@ pub fn get_wasm_build_info() -> JsValue {
         version: env!("CARGO_PKG_VERSION"),
         has_descriptor_support: true,  // This indicates the new version with descriptor support
         has_xonly_conversion: true,    // Indicates x-only key conversion support for taproot
-        build_id: "2025-01-29-xonly",  // Manual build identifier
+        has_export_feature: true,      // Export feature for Bitcoin Core/Sparrow/Developer JSON
+        build_id: "2026-02-06-checksum", // Manual build identifier
     };
 
     serde_wasm_bindgen::to_value(&info).unwrap()
+}
+
+// Export for Bitcoin Core importdescriptors format
+#[wasm_bindgen]
+pub fn export_for_bitcoin_core(descriptor: &str, options_js: JsValue) -> JsValue {
+    export::export_for_bitcoin_core(descriptor, options_js)
+}
+
+// Export comprehensive data (Developer JSON)
+#[wasm_bindgen]
+pub fn export_comprehensive(expression: &str, context: &str, input_type: &str, options_js: JsValue) -> JsValue {
+    export::export_comprehensive(expression, context, input_type, options_js)
+}
+
+// Export simple descriptor (Sparrow/Liana compatible)
+#[wasm_bindgen]
+pub fn export_descriptor(expression: &str, context: &str, input_type: &str) -> JsValue {
+    export::export_descriptor(expression, context, input_type)
 }
