@@ -1543,7 +1543,7 @@ export class MiniscriptCompiler {
         policyErrorsDiv.innerHTML = `
             <div class="result-box error" style="margin: 0; text-align: left;">
                 <h4>❌ Policy error</h4>
-                <div style="margin-top: 10px; text-align: left;">${message}</div>
+                <div style="margin-top: 10px; text-align: left;">${this.escapeHtml(message)}</div>
                 ${additionalHelp}
                 ${liftedPolicyNote}
             </div>
@@ -4513,7 +4513,7 @@ export class MiniscriptCompiler {
             errorDiv.style.background = 'var(--error-bg, #FED7D7)';
             errorDiv.style.borderColor = 'var(--error-border, #F87171)';
             errorDiv.style.color = 'var(--error-text, #991B1B)';
-            errorDiv.innerHTML = '❌ Cannot extract keys:<br>' + errors.join('<br>');
+            errorDiv.innerHTML = '❌ Cannot extract keys:<br>' + errors.map(e => this.escapeHtml(e)).join('<br>');
             return;
         }
         
@@ -5452,7 +5452,7 @@ export class MiniscriptCompiler {
                     <input type="text"
                            id="derivation-index"
                            placeholder="*"
-                           value="${currentIndex}"
+                           value="${this.escapeHtml(currentIndex)}"
                            pattern="[0-9]*"
                            style="width: 90px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--container-bg); color: var(--text-color); text-align: center; filter: brightness(1.3);">
                     ${showPathSelection ? `
@@ -5679,7 +5679,7 @@ export class MiniscriptCompiler {
         resultsDiv.innerHTML = `
             <div class="result-box error">
                 <h4>❌ Error</h4>
-                <div style="margin-top: 10px;">${message}</div>
+                <div style="margin-top: 10px;">${this.escapeHtml(message)}</div>
             </div>
         `;
     }
@@ -5742,7 +5742,7 @@ export class MiniscriptCompiler {
         messagesDiv.innerHTML = `
             <div class="result-box error" style="margin: 0; text-align: left;">
                 <h4>❌ Miniscript error</h4>
-                <div style="margin-top: 10px; text-align: left;">${message}</div>
+                <div style="margin-top: 10px; text-align: left;">${this.escapeHtml(message)}</div>
                 ${additionalHelp}
             </div>
         `;
@@ -7330,7 +7330,7 @@ export class MiniscriptCompiler {
         this.hideSaveModal();
         
         // Show success message
-        this.showSuccess(`Expression "${this.escapeHtml(name)}" has been saved!`);
+        this.showSuccess(`Expression "${name}" has been saved!`);
     }
 
     showModalError(message) {
@@ -7355,7 +7355,7 @@ export class MiniscriptCompiler {
         
         const successDiv = document.createElement('div');
         successDiv.className = 'result-box success lift-message';
-        successDiv.innerHTML = `<h4>✅ <strong>Success</strong></h4><div>${message}</div>`;
+        successDiv.innerHTML = `<h4>✅ <strong>Success</strong></h4><div>${this.escapeHtml(message)}</div>`;
         resultsDiv.appendChild(successDiv);
         
         // Auto-remove success message after 3 seconds (for non-lift success messages)
@@ -7373,7 +7373,7 @@ export class MiniscriptCompiler {
         
         const infoDiv = document.createElement('div');
         infoDiv.className = 'result-box info lift-message';
-        infoDiv.innerHTML = `<h4>ℹ️ Info</h4><div>${message}</div>`;
+        infoDiv.innerHTML = `<h4>ℹ️ Info</h4><div>${this.escapeHtml(message)}</div>`;
         resultsDiv.appendChild(infoDiv);
         
         // Auto-remove info message after 4 seconds (for non-lift info messages)
@@ -7391,7 +7391,7 @@ export class MiniscriptCompiler {
         
         const errorDiv = document.createElement('div');
         errorDiv.className = 'result-box error lift-message';
-        errorDiv.innerHTML = `<h4>❌ Lift Error</h4><div>${message}</div>`;
+        errorDiv.innerHTML = `<h4>❌ Lift Error</h4><div>${this.escapeHtml(message)}</div>`;
         resultsDiv.appendChild(errorDiv);
         
         // Lift error messages persist until user action (no auto-removal)
@@ -7988,7 +7988,7 @@ export class MiniscriptCompiler {
         this.hideSavePolicyModal();
         
         // Show success message
-        this.showSuccess(`Policy "${this.escapeHtml(name)}" has been saved!`);
+        this.showSuccess(`Policy "${name}" has been saved!`);
     }
 
     showPolicyModalError(message) {
@@ -8601,7 +8601,7 @@ export class MiniscriptCompiler {
                     correctLevel: QRCode.CorrectLevel.L
                 });
             } catch (error) {
-                qrCode.innerHTML = `<p style="color: var(--error-text);">Failed to generate QR code: ${error.message}</p>`;
+                qrCode.innerHTML = `<p style="color: var(--error-text);">Failed to generate QR code: ${this.escapeHtml(error.message)}</p>`;
             }
         } else {
             qrContainer.style.display = 'none';

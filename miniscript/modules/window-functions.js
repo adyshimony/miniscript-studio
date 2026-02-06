@@ -162,7 +162,7 @@ window.loadExample = function(example, exampleId, explicitContext) {
         // Clear address field and restore placeholder
         const addressDisplay = document.getElementById('address-display');
         if (addressDisplay) {
-            addressDisplay.innerHTML = 'Address will appear here after compilation';
+            addressDisplay.textContent = 'Address will appear here after compilation';
             addressDisplay.style.color = 'var(--text-muted)';
             addressDisplay.style.fontStyle = 'italic';
         }
@@ -2278,12 +2278,17 @@ window.toggleMiniscriptDebugInfo = function(button) {
                     debugDiv.style.marginTop = '15px';
 
                     const debugText = compiler.formatDebugInfo(result);
-                    debugDiv.innerHTML = `
-                        <div style="margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;">🔍 Debug Info</div>
-                        <div class="debug-text-display" style="margin-top: 8px;">
-                            <pre>${debugText}</pre>
-                        </div>
-                    `;
+                    const headerDiv = document.createElement('div');
+                    headerDiv.style.cssText = 'margin-top: 10px; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; hyphens: none; max-width: 100%; overflow-x: auto; font-size: 13px;';
+                    headerDiv.textContent = '🔍 Debug Info';
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'debug-text-display';
+                    contentDiv.style.marginTop = '8px';
+                    const preElement = document.createElement('pre');
+                    preElement.textContent = debugText;
+                    contentDiv.appendChild(preElement);
+                    debugDiv.appendChild(headerDiv);
+                    debugDiv.appendChild(contentDiv);
 
                     // Insert after the last child of result-box
                     resultBox.appendChild(debugDiv);

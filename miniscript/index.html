@@ -419,6 +419,10 @@
             background: #4a5568;
         }
         
+        button:disabled {
+            cursor: not-allowed;
+        }
+
         /* Light theme button overrides */
         [data-theme="light"] .primary-btn {
             background: #cbd5e0;
@@ -1069,10 +1073,10 @@
 </head>
 <body>
     <!-- Beer button -->
-    <a href="https://coinos.io/adys/receive" target="_blank" style="position: fixed; top: 10px; left: 10px; z-index: 1000; font-size: 16px; text-decoration: none; transform: rotate(-45deg);" title="Buy me a beer 🍺">🍺</a>
+    <a href="https://coinos.io/adys/receive" target="_blank" style="position: fixed; top: 10px; left: 10px; z-index: 1000; font-size: 16px; text-decoration: none; transform: rotate(-45deg);" title="Buy me a beer 🍺" aria-label="Buy me a beer">🍺</a>
     
     <!-- GitHub button -->
-    <a href="https://github.com/adyshimony/miniscript-studio" target="_blank" style="position: fixed; top: 10px; right: 11px; z-index: 1000; font-size: 16px; text-decoration: none;" title="View source on GitHub">🐙</a>
+    <a href="https://github.com/adyshimony/miniscript-studio" target="_blank" style="position: fixed; top: 10px; right: 11px; z-index: 1000; font-size: 16px; text-decoration: none;" title="View source on GitHub" aria-label="View source on GitHub">🐙</a>
     
     <style>
         .corner-ribbon-left, .corner-ribbon-right {
@@ -1210,31 +1214,34 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label for="policy-input">Policy (optional):</label>
                 <div style="display: flex; align-items: center; gap: 0px;">
-                    <button id="policy-key-names-toggle" onclick="togglePolicyKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="policy-key-names-toggle" onclick="togglePolicyKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" aria-label="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🏷️
                     </button>
-                    <button id="extract-policy-keys-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Extract keys from expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="extract-policy-keys-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Extract keys from expression" aria-label="Extract keys from expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🔑
                     </button>
-                    <button id="policy-format-toggle" onclick="togglePolicyFormat()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle formatting" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="policy-format-toggle" onclick="togglePolicyFormat()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Toggle formatting" aria-label="Toggle formatting" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📐
                     </button>
-                    <button onclick="removePolicyExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="removePolicyExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" aria-label="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🧹
                     </button>
-                    <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy policy expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="copyPolicyExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy policy expression" aria-label="Copy policy expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📋
                     </button>
-                    <button onclick="sharePolicyExpression(event)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share policy via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="sharePolicyExpression(event)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share policy via URL" aria-label="Share policy via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🔗
                     </button>
                 </div>
             </div>
-            <div 
-                id="policy-input" 
+            <div
+                id="policy-input"
                 contenteditable="true"
                 spellcheck="false"
                 class="policy-editor"
+                role="textbox"
+                aria-label="Policy expression editor"
+                aria-multiline="true"
             ></div>
             
             <!-- Debug mode toggle for Policy tab -->
@@ -1333,37 +1340,40 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label for="expression-input" style="font-weight: 600; color: var(--text-secondary);">Miniscript:</label>
                 <div style="display: flex; align-items: center; gap: 0px;">
-                    <button id="key-names-toggle" onclick="toggleKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="key-names-toggle" onclick="toggleKeyNames()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Show key names" aria-label="Show key names" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🏷️
                     </button>
-                    <button id="extract-keys-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Extract keys from expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="extract-keys-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Extract keys from expression" aria-label="Extract keys from expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🔑
                     </button>
-                    <button id="format-miniscript-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Format expression with indentation" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="format-miniscript-btn" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Format expression with indentation" aria-label="Format expression with indentation" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📐
                     </button>
-                    <button onclick="removeMiniscriptExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="removeMiniscriptExtraChars()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Remove extra characters" aria-label="Remove extra characters" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🧹
                     </button>
-                    <button id="lift-miniscript-btn" onclick="liftMiniscriptToPolicy()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Policy for Analysis" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="lift-miniscript-btn" onclick="liftMiniscriptToPolicy()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Lift to Policy for Analysis" aria-label="Lift to Policy for Analysis" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         ⬆️
                     </button>
-                    <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy miniscript expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="copyMiniscriptExpression()" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Copy miniscript expression" aria-label="Copy miniscript expression" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📋
                     </button>
-                    <button onclick="shareMiniscriptExpression(event)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share miniscript via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="shareMiniscriptExpression(event)" style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px;" title="Share miniscript via URL" aria-label="Share miniscript via URL" onmouseover="this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         🔗
                     </button>
-                    <button id="export-miniscript-btn" onclick="openMiniscriptExportModal()" disabled style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px; opacity: 0.4;" title="Export compilation results" onmouseover="if(!this.disabled)this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button id="export-miniscript-btn" onclick="openMiniscriptExportModal()" disabled style="background: none; border: none; padding: 4px; margin: 0; cursor: pointer; font-size: 16px; color: var(--text-secondary); display: flex; align-items: center; border-radius: 3px; opacity: 0.4;" title="Export compilation results" aria-label="Export compilation results" onmouseover="if(!this.disabled)this.style.backgroundColor='var(--button-secondary-bg)'" onmouseout="this.style.backgroundColor='transparent'">
                         📤
                     </button>
                 </div>
             </div>
-            <div 
-                id="expression-input" 
+            <div
+                id="expression-input"
                 contenteditable="true"
                 spellcheck="false"
                 class="miniscript-editor"
+                role="textbox"
+                aria-label="Miniscript expression editor"
+                aria-multiline="true"
             ></div>
             
             <!-- Debug mode toggle for Miniscript tab -->
@@ -1462,7 +1472,7 @@
             
         </div>
         
-        <div class="results-section" id="results" style="margin-bottom: 20px;">
+        <div class="results-section" id="results" style="margin-bottom: 20px;" aria-live="polite">
         </div>
         
         <details style="margin-bottom: 20px;">
@@ -1477,8 +1487,8 @@
                 </div>
                 
                 <div class="add-key-form">
-                    <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20">
-                    <input type="text" id="key-value-input" placeholder="Key value (any format)">
+                    <input type="text" id="key-name-input" placeholder="Key name (e.g., Alice)" maxlength="20" aria-label="Key name">
+                    <input type="text" id="key-value-input" placeholder="Key value (any format)" aria-label="Key value">
                     <div style="display: flex; gap: 10px;">
                         <button id="add-key-btn" class="primary-btn" style="padding: 8px 12px; font-size: 13px; flex: 1;">➕ Add key</button>
                         <button onclick="generateKey()" class="secondary-btn" style="padding: 8px 12px; font-size: 13px; flex: 1;">🎲 Generate</button>
@@ -2431,7 +2441,7 @@
         
     </div>
     
-    <div id="save-modal" class="modal">
+    <div id="save-modal" class="modal" role="dialog" aria-modal="true" aria-label="Save miniscript expression">
         <div class="modal-content">
             <h3>Save expression</h3>
             <label for="save-name">Expression name:</label>
@@ -2443,7 +2453,7 @@
         </div>
     </div>
 
-    <div id="save-policy-modal" class="modal">
+    <div id="save-policy-modal" class="modal" role="dialog" aria-modal="true" aria-label="Save policy expression">
         <div class="modal-content">
             <h3>Save policy</h3>
             <label for="save-policy-name">Policy name:</label>
@@ -2455,7 +2465,7 @@
         </div>
     </div>
     
-    <div id="extract-keys-modal" class="modal">
+    <div id="extract-keys-modal" class="modal" role="dialog" aria-modal="true" aria-label="Extract keys from expression">
         <div class="modal-content" style="max-width: 600px;">
             <h3>🔑 Extract Keys from Expression</h3>
             <p style="color: var(--text-secondary); margin-bottom: 10px;">Found keys in your expression. Select which ones to extract:</p>
@@ -2475,7 +2485,7 @@
     </div>
 
     <!-- Export Modal -->
-    <div id="export-modal" class="modal">
+    <div id="export-modal" class="modal" role="dialog" aria-modal="true" aria-label="Export compilation results">
         <div class="modal-content" style="max-width: 700px; padding-bottom: 15px;">
             <h3 style="margin-bottom: 20px;">Export</h3>
 
